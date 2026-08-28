@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import sqlite3
 import tempfile
 import uuid
 from contextlib import ExitStack, suppress
@@ -516,12 +517,18 @@ def _load_current_index(
         and manifest.parameters.index_schema_version != INDEX_SCHEMA_VERSION
     ):
         return _CurrentIndex(manifest=manifest, generation=generation)
-    with IndexStore.open_readonly(generation / DATABASE_NAME) as store:
-        if store.foreign_key_violations() or store.integrity_check() != ("ok",):
-            raise RepositoryError(
-                "index_integrity_error",
-                "Published repository index failed integrity checks.",
-            )
+    try:
+        with IndexStore.open_readonly(generation / DATABASE_NAME) as store:
+            if store.foreign_key_violations() or store.integrity_check() != ("ok",):
+                raise RepositoryError(
+                    "index_integrity_error",
+                    "Published repository index failed integrity checks.",
+                )
+    except sqlite3.Error as error:
+        raise RepositoryError(
+            "index_integrity_error",
+            "Published repository index failed integrity checks.",
+        ) from error
     return _CurrentIndex(manifest=manifest, generation=generation)
 
 
