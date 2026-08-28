@@ -107,13 +107,13 @@
 **Description:** 为 Git 和非 Git 仓库建立候选文件源，统一 include/exclude、默认排除和稳定排序。
 
 **Acceptance criteria:**
-- [ ] Git 模式包含 tracked 与未忽略 untracked 文件，并尊重 `.gitignore`。
-- [ ] 非 Git 模式排除 `.git/`、`.repo-dive/`、虚拟环境、缓存、依赖与构建目录。
-- [ ] 空格、Unicode 和换行文件名不会破坏 NUL 分隔解析；结果按 POSIX 路径排序。
+- [x] Git 模式包含 tracked 与未忽略 untracked 文件，并尊重 `.gitignore`。
+- [x] 非 Git 模式排除 `.git/`、`.repo-dive/`、虚拟环境、缓存、依赖与构建目录。
+- [x] 空格、Unicode 和换行文件名不会破坏 NUL 分隔解析；结果按 POSIX 路径排序。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/scanner/test_candidates.py -q`
-- [ ] Fixture check: Git 与 filesystem Fixture 产生已记录的确定列表。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/scanner/test_candidates.py -q`
+- [x] Fixture check: Git 与 filesystem Fixture 产生已记录的确定列表。
 
 **Dependencies:** Task 3
 
