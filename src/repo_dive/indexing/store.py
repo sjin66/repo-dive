@@ -6,11 +6,13 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import resources
+from math import isclose
 from pathlib import Path
 from types import TracebackType
 from typing import cast
 
 from repo_dive.errors import InternalOperationError, RepositoryError
+from repo_dive.indexing.bm25 import BM25Index, BM25Parameters, Posting
 from repo_dive.parsing.models import Chunk, ParseResult, Relationship, Symbol
 from repo_dive.scanner.models import (
     FileRecord,
@@ -19,7 +21,16 @@ from repo_dive.scanner.models import (
     SourceFile,
 )
 
-INDEX_SCHEMA_VERSION = 1
+INDEX_SCHEMA_VERSION = 2
+
+_BM25_STAT_KEYS = {
+    "average_document_length": "bm25.average_document_length",
+    "b": "bm25.b",
+    "document_count": "bm25.document_count",
+    "k1": "bm25.k1",
+    "tokenizer_version": "bm25.tokenizer_version",
+    "total_document_length": "bm25.total_document_length",
+}
 
 
 class IndexStore:
@@ -111,6 +122,7 @@ class IndexStore:
         _validate_document_path(source.record.path, parsed)
         try:
             with self._transaction():
+                self._clear_bm25_index()
                 self._connection.execute(
                     "DELETE FROM files WHERE path = ?", (source.record.path,)
                 )
@@ -128,6 +140,144 @@ class IndexStore:
                 "index_write_failed",
                 "Could not update the repository index.",
             ) from error
+
+    def replace_bm25_index(self, index: BM25Index) -> None:
+        """Atomically replace all lexical postings and corpus statistics."""
+        self._ensure_open()
+        if not _is_valid_bm25_index(index):
+            raise InternalOperationError(
+                "index_integrity_error",
+                "BM25 records violate the internal integrity contract.",
+            )
+        try:
+            with self._transaction():
+                expected_chunk_ids = {
+                    cast(str, row[0])
+                    for row in self._connection.execute("SELECT id FROM chunks")
+                }
+                actual_chunk_ids = {chunk_id for chunk_id, _ in index.document_lengths}
+                if actual_chunk_ids != expected_chunk_ids:
+                    raise InternalOperationError(
+                        "index_integrity_error",
+                        "BM25 documents do not match the indexed Chunks.",
+                    )
+
+                self._clear_bm25_index()
+                for chunk_id, token_count in index.document_lengths:
+                    self._connection.execute(
+                        "UPDATE chunks SET token_count = ? WHERE id = ?",
+                        (token_count, chunk_id),
+                    )
+
+                term_ids = {
+                    term: term_id
+                    for term_id, (term, _) in enumerate(
+                        index.document_frequencies,
+                        start=1,
+                    )
+                }
+                self._connection.executemany(
+                    "INSERT INTO terms (id, term, document_frequency) VALUES (?, ?, ?)",
+                    (
+                        (term_ids[term], term, document_frequency)
+                        for term, document_frequency in index.document_frequencies
+                    ),
+                )
+                self._connection.executemany(
+                    "INSERT INTO postings (term_id, chunk_id, term_frequency) "
+                    "VALUES (?, ?, ?)",
+                    (
+                        (
+                            term_ids[posting.term],
+                            posting.chunk_id,
+                            posting.term_frequency,
+                        )
+                        for posting in index.postings
+                    ),
+                )
+                self._connection.executemany(
+                    "INSERT INTO stats (key, value) VALUES (?, ?)",
+                    _bm25_stats(index),
+                )
+        except InternalOperationError:
+            raise
+        except (KeyError, sqlite3.IntegrityError) as error:
+            raise InternalOperationError(
+                "index_integrity_error",
+                "BM25 records violate the internal integrity contract.",
+            ) from error
+        except sqlite3.Error as error:
+            raise InternalOperationError(
+                "index_write_failed",
+                "Could not update the BM25 index.",
+            ) from error
+
+    def get_bm25_index(self) -> BM25Index | None:
+        """Read the complete persisted BM25 corpus, or None before a build."""
+        self._ensure_open()
+        rows = self._connection.execute(
+            "SELECT key, value FROM stats WHERE key LIKE 'bm25.%'"
+        ).fetchall()
+        if not rows:
+            return None
+
+        stats = {cast(str, row[0]): cast(str, row[1]) for row in rows}
+        try:
+            parameters = BM25Parameters(
+                k1=float(stats[_BM25_STAT_KEYS["k1"]]),
+                b=float(stats[_BM25_STAT_KEYS["b"]]),
+                tokenizer_version=stats[_BM25_STAT_KEYS["tokenizer_version"]],
+            )
+            document_count = int(stats[_BM25_STAT_KEYS["document_count"]])
+            total_document_length = int(stats[_BM25_STAT_KEYS["total_document_length"]])
+            average_document_length = float(
+                stats[_BM25_STAT_KEYS["average_document_length"]]
+            )
+        except (KeyError, ValueError) as error:
+            raise InternalOperationError(
+                "index_bm25_corrupt",
+                "BM25 statistics are incomplete or invalid.",
+            ) from error
+
+        document_lengths = tuple(
+            (cast(str, row[0]), cast(int, row[1]))
+            for row in self._connection.execute(
+                "SELECT id, token_count FROM chunks ORDER BY id"
+            )
+        )
+        document_frequencies = tuple(
+            (cast(str, row[0]), cast(int, row[1]))
+            for row in self._connection.execute(
+                "SELECT term, document_frequency FROM terms ORDER BY term"
+            )
+        )
+        postings = tuple(
+            Posting(
+                term=cast(str, row[0]),
+                chunk_id=cast(str, row[1]),
+                term_frequency=cast(int, row[2]),
+            )
+            for row in self._connection.execute(
+                "SELECT terms.term, postings.chunk_id, postings.term_frequency "
+                "FROM postings JOIN terms ON terms.id = postings.term_id "
+                "ORDER BY terms.term, postings.chunk_id"
+            )
+        )
+        index = BM25Index(
+            parameters=parameters,
+            document_count=document_count,
+            total_document_length=total_document_length,
+            average_document_length=average_document_length,
+            document_lengths=document_lengths,
+            document_frequencies=document_frequencies,
+            postings=postings,
+        )
+        if not _is_valid_bm25_index(index):
+            raise InternalOperationError(
+                "index_bm25_corrupt",
+                "BM25 records are internally inconsistent.",
+            )
+        return index
 
     def get_file(self, path: str) -> FileRecord | None:
         """Read one typed file record by repository-relative path."""
@@ -313,6 +463,12 @@ class IndexStore:
             ),
         )
 
+    def _clear_bm25_index(self) -> None:
+        self._connection.execute("DELETE FROM postings")
+        self._connection.execute("DELETE FROM terms")
+        self._connection.execute("DELETE FROM stats WHERE key LIKE 'bm25.%'")
+        self._connection.execute("UPDATE chunks SET token_count = 0")
+
 
 def _connect(path: Path) -> sqlite3.Connection:
     try:
@@ -342,6 +498,82 @@ def _validate_document_path(file_path: str, parsed: ParseResult) -> None:
                 "mismatch_count": len(mismatched_paths),
             },
         )
+
+
+def _bm25_stats(index: BM25Index) -> tuple[tuple[str, str], ...]:
+    return (
+        (
+            _BM25_STAT_KEYS["average_document_length"],
+            repr(index.average_document_length),
+        ),
+        (_BM25_STAT_KEYS["b"], repr(index.parameters.b)),
+        (_BM25_STAT_KEYS["document_count"], str(index.document_count)),
+        (_BM25_STAT_KEYS["k1"], repr(index.parameters.k1)),
+        (
+            _BM25_STAT_KEYS["tokenizer_version"],
+            index.parameters.tokenizer_version,
+        ),
+        (
+            _BM25_STAT_KEYS["total_document_length"],
+            str(index.total_document_length),
+        ),
+    )
+
+
+def _is_valid_bm25_index(index: BM25Index) -> bool:
+    document_ids = [chunk_id for chunk_id, _ in index.document_lengths]
+    document_lengths = dict(index.document_lengths)
+    terms = [term for term, _ in index.document_frequencies]
+    document_frequencies = dict(index.document_frequencies)
+    posting_keys = [(posting.term, posting.chunk_id) for posting in index.postings]
+
+    expected_average = (
+        index.total_document_length / index.document_count
+        if index.document_count
+        else 0.0
+    )
+    calculated_document_frequencies: dict[str, int] = {}
+    for posting in index.postings:
+        calculated_document_frequencies[posting.term] = (
+            calculated_document_frequencies.get(posting.term, 0) + 1
+        )
+
+    return all(
+        (
+            index.document_count == len(index.document_lengths),
+            len(document_ids) == len(set(document_ids)),
+            index.document_lengths == tuple(sorted(index.document_lengths)),
+            all(length >= 0 for length in document_lengths.values()),
+            index.total_document_length == sum(document_lengths.values()),
+            isclose(
+                index.average_document_length,
+                expected_average,
+                rel_tol=1e-12,
+                abs_tol=1e-12,
+            ),
+            len(terms) == len(set(terms)),
+            index.document_frequencies == tuple(sorted(index.document_frequencies)),
+            all(
+                term and 0 < frequency <= index.document_count
+                for term, frequency in index.document_frequencies
+            ),
+            len(posting_keys) == len(set(posting_keys)),
+            index.postings
+            == tuple(
+                sorted(
+                    index.postings,
+                    key=lambda posting: (posting.term, posting.chunk_id),
+                )
+            ),
+            all(
+                posting.term in document_frequencies
+                and posting.chunk_id in document_lengths
+                and posting.term_frequency > 0
+                for posting in index.postings
+            ),
+            calculated_document_frequencies == document_frequencies,
+        )
+    )
 
 
 def _symbol_from_row(row: sqlite3.Row) -> Symbol:

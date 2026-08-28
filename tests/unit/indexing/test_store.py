@@ -143,7 +143,10 @@ def test_schema_rejects_posting_for_missing_chunk(tmp_path: Path) -> None:
     connection = sqlite3.connect(database)
     try:
         connection.execute("PRAGMA foreign_keys = ON")
-        connection.execute("INSERT INTO terms (term) VALUES (?)", ("run",))
+        connection.execute(
+            "INSERT INTO terms (term, document_frequency) VALUES (?, ?)",
+            ("run", 1),
+        )
 
         with pytest.raises(sqlite3.IntegrityError):
             connection.execute(

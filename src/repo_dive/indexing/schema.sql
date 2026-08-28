@@ -32,6 +32,7 @@ CREATE TABLE chunks (
     text TEXT NOT NULL,
     symbol_id TEXT REFERENCES symbols(id) ON DELETE SET NULL,
     content_hash TEXT NOT NULL,
+    token_count INTEGER NOT NULL DEFAULT 0 CHECK (token_count >= 0),
     UNIQUE (file_path, ordinal)
 );
 
@@ -49,7 +50,8 @@ CREATE TABLE relationships (
 
 CREATE TABLE terms (
     id INTEGER PRIMARY KEY,
-    term TEXT NOT NULL UNIQUE
+    term TEXT NOT NULL UNIQUE,
+    document_frequency INTEGER NOT NULL CHECK (document_frequency > 0)
 );
 
 CREATE TABLE postings (
@@ -72,5 +74,5 @@ CREATE TABLE vectors (
     CHECK (length(embedding) = dimensions * 4)
 );
 
-PRAGMA user_version = 1;
+PRAGMA user_version = 2;
 COMMIT;

@@ -254,13 +254,13 @@
 **Description:** 实现保留原标识符并拆分 snake_case、camelCase、路径和符号的 Tokenizer，以及可解释 BM25 posting/stat 写入。
 
 **Acceptance criteria:**
-- [ ] `HTTPServer`, `http_server` 和 `path/to/file.py` 同时保留整体和拆分 Token。
-- [ ] BM25 文档频率、文档长度、平均长度和参数被持久化且重建确定。
-- [ ] 空 Chunk、仅符号 Chunk 和 Unicode 标识符有测试覆盖。
+- [x] `HTTPServer`, `http_server` 和 `path/to/file.py` 同时保留整体和拆分 Token。
+- [x] BM25 文档频率、文档长度、平均长度和参数被持久化且重建确定。
+- [x] 空 Chunk、仅符号 Chunk 和 Unicode 标识符有测试覆盖。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/indexing/test_bm25.py -q`
-- [ ] Golden check: 固定 Corpus 的 posting 与统计等于记录值。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/indexing/test_bm25.py -q`
+- [x] Golden check: 固定 Corpus 的 posting 与统计等于记录值。
 
 **Dependencies:** Task 10
 
