@@ -753,13 +753,13 @@
 **Description:** 使用运行时生成 Fixture 测量扫描、索引、Search、Context 和 Wiki 的趋势，建立内存/结果上限和增量重建回归门槛。
 
 **Acceptance criteria:**
-- [ ] 性能测试不依赖机器绝对毫秒值，而检查复杂度趋势、结果上限和增量工作量。
-- [ ] Scanner/Parser 流式处理文件；Search/Context 不把无界 Corpus 全部载入返回列表。
-- [ ] 记录推荐仓库规模、默认文件/Chunk/结果/预算上限及超限错误。
+- [x] 性能测试不依赖机器绝对毫秒值，而检查复杂度趋势、结果上限和增量工作量。
+- [x] Scanner/Parser 流式处理文件；Search/Context 不把无界 Corpus 全部载入返回列表。
+- [x] 记录推荐仓库规模、默认文件/Chunk/结果/预算上限及超限错误。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/performance -q`
-- [ ] Regression check: 修改单文件的增量索引处理数小于全量文件数。
+- [x] Tests pass: `.venv/bin/pytest tests/performance -q`
+- [x] Regression check: 修改单文件的增量索引处理数小于全量文件数。
 
 **Dependencies:** Tasks 13、20、25、28
 

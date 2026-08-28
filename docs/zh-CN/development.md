@@ -70,6 +70,7 @@ CI 调用相同目标。除非先把工具命令加入对应 Make 目标，否�
 src/repo_dive/        Python 包
 tests/unit/           隔离的行为测试
 tests/integration/    仓库工作流测试
+tests/performance/    确定性的规模与资源预算测试
 tests/fixtures/       小型且明确的仓库 Fixture
 evals/cases/          机器可读的 Agent/RAG 评测用例
 docs/en/              英文工程文档
@@ -90,6 +91,48 @@ docs/superpowers/     已批准的规范和实施计划
 ## 评测变更
 
 检索与上下文启发式算法必须增加 `evals/cases/` 用例。每个用例包含稳定 ID、类别、Prompt 和预期行为。尚不可执行的用例用于记录产品契约，不能假装功能已经存在。
+
+## 规模与性能预算
+
+修改 Scanner、Parser、索引、检索、Context 打包或 Wiki Evidence 行为时，
+单独运行确定性的规模检查：
+
+```bash
+.venv/bin/pytest tests/performance -q
+```
+
+这些测试在运行时生成仓库，不断言会随机器变化的绝对毫秒值，而是比较工作量和
+内存趋势：Corpus 扩大四倍时，峰值内存必须保持在六倍以内；64 文件仓库只修改
+一个文件时必须只重建一个文件；Search、Context 和 Wiki 集合必须始终处于公开
+结果数量与 Token 预算之内。
+
+推荐的交互式工作区间是不超过 5,000 个选中源码文件或 50,000 个 Chunk。这是
+运行建议，不是仓库硬上限。处理更大的 Monorepo 时，先使用 `--include` 和
+`--exclude` 缩小 Corpus，再执行性能测试或有代表性的本地测量，然后再依赖交互式
+延迟。精确 BM25 与可选 Vector 检索目前每次查询会读取一次持久化 Chunk Corpus，
+因此工作内存随选中 Corpus 线性增长；返回给调用方的 Search、Context 和 Wiki
+集合不随 Corpus 无界增长。
+
+Scanner 使用固定的 64 KiB 数据块读取源码并对完整文件计算 Hash；一旦超过配置的
+文件限制，就不再保留源码字节。Parser 按确定顺序一次接收并处理一个 `SourceFile`。
+索引通过新 Generation 发布；增量重建工作量与发生变化的文件和 Chunk 成正比，
+而不是与完整解析数量成正比。
+
+| 边界 | 默认值或建议 | 硬行为 |
+| --- | --- | --- |
+| 选中仓库 | 建议不超过 5,000 个文件或 50,000 个 Chunk | 没有全局硬上限；更大的 Corpus 应显式缩小范围 |
+| 源文件 | `--max-file-size 1000000` 字节 | 更大的文件记录为 `skipped`/`too_large`，不导致命令失败 |
+| Chunk | `--max-chunk-lines 200` | 必须为正数；无效 CLI 输入返回 `invalid_invocation` 和退出码 2 |
+| Query | 最多 1,000 个字符 | 空输入或超限输入返回 `invalid_invocation` 和退出码 2 |
+| Search 候选 | 内部上限 200 | 不会作为无界结果集合暴露给调用方 |
+| Search 结果 | 默认 10，硬上限 50 | 超出 1–50 返回 `invalid_invocation` 和退出码 2 |
+| Context/Wiki Evidence 预算 | 必填；建议 1,200–8,000 Token | 必须为正数；只打包完整 Chunk，`estimated_tokens <= token_budget`，最多检索 50 条结果 |
+| Wiki 结构输入 | 1,000,000 字节 | `wiki_structure_input_too_large`，退出码 2 |
+| Wiki 页面输入/正文 | 1,500,000 / 200,000 字节 | `wiki_page_input_too_large` / `wiki_page_body_too_large`，退出码 2 |
+
+不能仅仅因为某台机器上的测试较慢就放宽阈值。先比较工作量、Corpus 比例和峰值内存
+比例，再分析具体路径。只有相同测量显示改进超过运行间噪声，并且正确性测试保持绿色
+时，才保留优化。
 
 ## 交付前检查
 
