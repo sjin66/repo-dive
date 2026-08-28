@@ -97,7 +97,11 @@ def metadata() -> Metadata:
 
 
 def test_wiki_and_metadata_round_trip_with_independent_versions() -> None:
-    expected_page = replace(page(), evidence_snapshot=evidence_snapshot())
+    expected_page = replace(
+        page(),
+        evidence_snapshot=evidence_snapshot(),
+        citation_ids=("evidence:one",),
+    )
     expected_wiki = replace(
         wiki(),
         sections=(replace(wiki().sections[0], pages=(expected_page,)),),
@@ -134,6 +138,7 @@ def test_wiki_decoder_accepts_pre_evidence_optional_fields() -> None:
     sections = cast(list[JsonObject], document["sections"])
     pages = cast(list[JsonObject], sections[0]["pages"])
     page_document = pages[0]
+    del page_document["citation_ids"]
     del page_document["evidence_snapshot"]
     evidence_documents = cast(list[JsonObject], page_document["evidence"])
     del evidence_documents[0]["content_hash"]
@@ -142,6 +147,7 @@ def test_wiki_decoder_accepts_pre_evidence_optional_fields() -> None:
 
     decoded_page = decoded.sections[0].pages[0]
     assert decoded_page.evidence_snapshot is None
+    assert decoded_page.citation_ids == ()
     assert decoded_page.evidence[0].content_hash is None
 
 
@@ -207,6 +213,8 @@ def test_wiki_rejects_duplicate_ids_and_invalid_evidence_locations() -> None:
         replace(evidence(), path="../outside.py")
     with pytest.raises(ValueError, match="line range"):
         replace(evidence(), start_line=0)
+    with pytest.raises(ValueError, match="must belong"):
+        replace(page(), citation_ids=("evidence:unknown",))
 
 
 def test_decoders_reject_missing_and_unknown_required_structure() -> None:

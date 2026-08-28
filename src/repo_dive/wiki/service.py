@@ -28,7 +28,11 @@ from repo_dive.wiki.models import (
     Wiki,
 )
 from repo_dive.wiki.store import WikiStore
-from repo_dive.wiki.validation import stale_page_ids_for_index
+from repo_dive.wiki.submission import PageSubmission, validate_submission_content
+from repo_dive.wiki.validation import (
+    stale_page_ids_for_index,
+    validate_page_evidence,
+)
 
 STRUCTURE_SCHEMA_VERSION = "1.0"
 MAX_EVIDENCE_QUERY_LENGTH = 1_000
@@ -128,6 +132,15 @@ class WikiEvidenceUpdate:
     bundle: EvidenceBundle
     fusion: FusionMetadata
     symbols: tuple[Symbol, ...]
+    metadata: Metadata
+
+
+@dataclass(frozen=True, slots=True)
+class WikiPageUpdate:
+    """Observable outcome of persisting one generated Wiki page."""
+
+    changed: bool
+    page: Page
     metadata: Metadata
 
 
@@ -336,6 +349,71 @@ class WikiService:
             symbols=retrieved.symbols,
             metadata=metadata,
         )
+
+    def submit_page(
+        self,
+        page_id: str,
+        submission: PageSubmission,
+    ) -> WikiPageUpdate:
+        """Validate and atomically persist one agent-generated page."""
+        state = self.read_state()
+        page = _find_page(state.wiki, page_id)
+        if page is None:
+            raise InvocationError(
+                "wiki_page_unknown",
+                "Wiki page ID does not exist in the current structure.",
+                details={"page_id": page_id},
+            )
+        if submission.page_id != page_id:
+            raise InvocationError(
+                "wiki_page_id_mismatch",
+                "Wiki page input does not match the requested Page ID.",
+                details={"page_id": page_id},
+            )
+        if page.status not in {
+            PageStatus.EVIDENCE_READY,
+            PageStatus.FAILED,
+            PageStatus.GENERATED,
+        }:
+            raise InvocationError(
+                "wiki_page_state_invalid",
+                "Wiki page is not ready for generated content.",
+                details={"page_id": page_id, "status": page.status.value},
+            )
+
+        validate_page_evidence(self._store.repository, page)
+        if page.status is PageStatus.GENERATED:
+            if (
+                page.body == submission.body
+                and page.citation_ids == submission.evidence_ids
+            ):
+                return WikiPageUpdate(
+                    changed=False,
+                    page=page,
+                    metadata=state.metadata,
+                )
+            raise InvocationError(
+                "wiki_page_state_invalid",
+                "Generated Wiki pages cannot be replaced by page submission.",
+                details={"page_id": page_id, "status": page.status.value},
+            )
+
+        try:
+            validate_submission_content(page, submission)
+        except InvocationError as error:
+            self._persist_failed_page(
+                state,
+                page_id=page_id,
+                error_code=error.code,
+            )
+            raise
+
+        generated = _with_generated_content(page, submission)
+        timestamp = self._clock()
+        metadata = replace(state.metadata, updated_at=timestamp)
+        self._store.write_metadata(metadata)
+        self._store.write_wiki(_replace_page(state.wiki, generated))
+        return WikiPageUpdate(changed=True, page=generated, metadata=metadata)
 
     def _persist_failed_page(
         self,
@@ -621,6 +699,21 @@ def _with_ready_evidence(
         pending.transition_to(PageStatus.EVIDENCE_READY),
         evidence=evidence,
         evidence_snapshot=snapshot,
+        citation_ids=(),
+        error=None,
+    )
+
+
+def _with_generated_content(page: Page, submission: PageSubmission) -> Page:
+    ready = page
+    if page.status is PageStatus.FAILED:
+        ready = page.transition_to(PageStatus.PENDING).transition_to(
+            PageStatus.EVIDENCE_READY
+        )
+    return replace(
+        ready.transition_to(PageStatus.GENERATED),
+        body=submission.body,
+        citation_ids=submission.evidence_ids,
         error=None,
     )
 
@@ -670,6 +763,7 @@ __all__ = [
     "StructureUpdate",
     "WikiService",
     "WikiEvidenceUpdate",
+    "WikiPageUpdate",
     "WikiState",
     "WikiStructure",
     "structure_from_document",

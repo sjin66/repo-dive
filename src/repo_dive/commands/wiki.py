@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import Counter
 from pathlib import Path
 from typing import cast
@@ -26,12 +27,18 @@ from repo_dive.wiki.service import (
     STRUCTURE_SCHEMA_VERSION,
     StructureUpdate,
     WikiEvidenceUpdate,
+    WikiPageUpdate,
     WikiService,
     WikiState,
     structure_from_document,
 )
+from repo_dive.wiki.submission import (
+    PAGE_SUBMISSION_SCHEMA_VERSION,
+    page_submission_from_document,
+)
 
 MAX_STRUCTURE_INPUT_BYTES = 1_000_000
+MAX_PAGE_INPUT_BYTES = 1_500_000
 
 
 def configure(parser: argparse.ArgumentParser) -> None:
@@ -80,6 +87,27 @@ def configure(parser: argparse.ArgumentParser) -> None:
     )
     _add_format(evidence_parser)
     evidence_parser.set_defaults(_wiki_handler=_handle_evidence)
+
+    page_parser = subparsers.add_parser(
+        "page",
+        help="validate and persist one agent-generated Wiki page",
+    )
+    page_parser.add_argument("repository", help="local repository directory")
+    page_parser.add_argument(
+        "--page",
+        required=True,
+        type=_page_id,
+        metavar="PAGE_ID",
+        help="stable Page ID from the persisted Wiki structure",
+    )
+    page_parser.add_argument(
+        "--input",
+        required=True,
+        metavar="PATH|-",
+        help="UTF-8 JSON page input file, or - for stdin",
+    )
+    _add_format(page_parser)
+    page_parser.set_defaults(_wiki_handler=_handle_page)
 
     status_parser = subparsers.add_parser(
         "status",
@@ -165,6 +193,28 @@ def _handle_evidence(args: argparse.Namespace) -> CommandOutput:
     )
 
 
+def _handle_page(args: argparse.Namespace) -> CommandOutput:
+    document = _read_page_document(args.input)
+    try:
+        submission = page_submission_from_document(document)
+    except (KeyError, TypeError, ValueError) as error:
+        raise InvocationError(
+            "wiki_page_invalid",
+            "Wiki page input does not match the required Schema.",
+        ) from error
+    update = WikiService(args.repository).submit_page(args.page, submission)
+    output_format: OutputFormat = args.format
+    output = (
+        _markdown_page(update) if output_format == "markdown" else _json_page(update)
+    )
+    return CommandOutput(
+        command="wiki page",
+        format=output_format,
+        result=output,
+        repository=update.metadata.repository,
+    )
+
+
 def _page_id(value: str) -> str:
     if not value or value.strip() != value:
         raise argparse.ArgumentTypeError("Page ID must not be empty or padded")
@@ -207,6 +257,51 @@ def _read_structure_document(input_path: str) -> JsonObject:
     return document
 
 
+def _read_page_document(input_path: str) -> JsonObject:
+    try:
+        if input_path == "-":
+            stream = getattr(sys.stdin, "buffer", sys.stdin)
+            raw = stream.read(MAX_PAGE_INPUT_BYTES + 1)
+        else:
+            with Path(input_path).open("rb") as stream:
+                raw = stream.read(MAX_PAGE_INPUT_BYTES + 1)
+        data = raw.encode("utf-8") if isinstance(raw, str) else raw
+        if len(data) > MAX_PAGE_INPUT_BYTES:
+            raise InvocationError(
+                "wiki_page_input_too_large",
+                "Wiki page input exceeds the supported size.",
+                details={"max_bytes": MAX_PAGE_INPUT_BYTES},
+            )
+        value = json.loads(data.decode("utf-8"))
+    except InvocationError:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise InvocationError(
+            "wiki_page_input_invalid",
+            "Wiki page input is unavailable or invalid JSON.",
+        ) from error
+    if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
+        raise InvocationError(
+            "wiki_page_input_invalid",
+            "Wiki page input must be a JSON object.",
+        )
+    document = cast(JsonObject, value)
+    actual_version = document.get("schema_version")
+    if (
+        isinstance(actual_version, str)
+        and actual_version != PAGE_SUBMISSION_SCHEMA_VERSION
+    ):
+        raise InvocationError(
+            "wiki_page_version_unsupported",
+            "Wiki page input version is not supported.",
+            details={
+                "actual": actual_version,
+                "expected": PAGE_SUBMISSION_SCHEMA_VERSION,
+            },
+        )
+    return document
+
+
 def _json_structure(update: StructureUpdate) -> JsonObject:
     page_count = sum(len(section.pages) for section in update.wiki.sections)
     return {
@@ -243,6 +338,7 @@ def _json_status(state: WikiState) -> JsonObject:
                 "id": section.id,
                 "pages": [
                     {
+                        "citation_count": len(page.citation_ids),
                         "evidence_count": len(page.evidence),
                         "has_body": page.body is not None,
                         "has_error": page.error is not None,
@@ -297,6 +393,20 @@ def _json_evidence(update: WikiEvidenceUpdate) -> JsonObject:
         "status": update.page.status.value,
         "token_budget": context["token_budget"],
         "truncated": context["truncated"],
+    }
+
+
+def _json_page(update: WikiPageUpdate) -> JsonObject:
+    body = update.page.body
+    if body is None:  # pragma: no cover - service postcondition
+        raise RuntimeError("Generated page update is missing its body")
+    return {
+        "body_bytes": len(body.encode("utf-8")),
+        "changed": update.changed,
+        "citation_count": len(update.page.citation_ids),
+        "evidence_ids": list(update.page.citation_ids),
+        "page_id": update.page.id,
+        "status": update.page.status.value,
     }
 
 
@@ -358,6 +468,22 @@ def _markdown_evidence(update: WikiEvidenceUpdate) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _markdown_page(update: WikiPageUpdate) -> str:
+    body = update.page.body
+    if body is None:  # pragma: no cover - service postcondition
+        raise RuntimeError("Generated page update is missing its body")
+    lines = [
+        "# Wiki page",
+        "",
+        f"- Page ID: `{update.page.id}`",
+        f"- Status: `{update.page.status.value}`",
+        f"- Changed: {str(update.changed).lower()}",
+        f"- Body bytes: {len(body.encode('utf-8'))}",
+        f"- Citations: {len(update.page.citation_ids)}",
+    ]
+    return "\n".join(lines) + "\n"
+
+
 def _next_action(status: PageStatus) -> str:
     return {
         PageStatus.PENDING: "collect_evidence",
@@ -374,4 +500,4 @@ WIKI_COMMAND = Command(
     handler=handle,
 )
 
-__all__ = ["MAX_STRUCTURE_INPUT_BYTES", "WIKI_COMMAND"]
+__all__ = ["MAX_PAGE_INPUT_BYTES", "MAX_STRUCTURE_INPUT_BYTES", "WIKI_COMMAND"]

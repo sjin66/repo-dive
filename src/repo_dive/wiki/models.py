@@ -162,6 +162,7 @@ class Page:
     related_page_ids: tuple[str, ...] = ()
     evidence: tuple[EvidenceRef, ...] = ()
     evidence_snapshot: EvidenceSnapshot | None = None
+    citation_ids: tuple[str, ...] = ()
     body: str | None = None
     error: str | None = None
 
@@ -179,6 +180,9 @@ class Page:
             raise ValueError("a page cannot relate to itself")
         evidence_ids = tuple(item.evidence_id for item in self.evidence)
         _require_unique(evidence_ids, "Evidence IDs")
+        _require_unique(self.citation_ids, "citation Evidence IDs")
+        if set(self.citation_ids) - set(evidence_ids):
+            raise ValueError("citation Evidence IDs must belong to the page")
         if self.evidence_snapshot is not None and (
             not self.evidence
             or any(item.content_hash is None for item in self.evidence)
@@ -206,6 +210,7 @@ class Page:
     def to_document(self) -> JsonObject:
         return {
             "body": self.body,
+            "citation_ids": list(self.citation_ids),
             "description": self.description,
             "error": self.error,
             "evidence": [item.to_document() for item in self.evidence],
@@ -405,7 +410,7 @@ def _page_from_document(document: JsonObject) -> Page:
             "status",
             "title",
         },
-        {"evidence_snapshot"},
+        {"citation_ids", "evidence_snapshot"},
         "Page document fields",
     )
     return Page(
@@ -422,6 +427,7 @@ def _page_from_document(document: JsonObject) -> Page:
         evidence_snapshot=_optional_evidence_snapshot(
             document.get("evidence_snapshot")
         ),
+        citation_ids=_string_tuple(document.get("citation_ids", [])),
         body=_optional_string(document["body"]),
         error=_optional_string(document["error"]),
     )
