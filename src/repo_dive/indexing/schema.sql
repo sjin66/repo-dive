@@ -16,7 +16,9 @@ CREATE TABLE symbols (
     ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
     kind TEXT NOT NULL,
     name TEXT NOT NULL,
+    name_normalized TEXT NOT NULL,
     qualified_name TEXT NOT NULL,
+    qualified_name_normalized TEXT NOT NULL,
     start_line INTEGER NOT NULL CHECK (start_line >= 1),
     end_line INTEGER NOT NULL CHECK (end_line >= start_line),
     UNIQUE (file_path, ordinal),
@@ -74,5 +76,17 @@ CREATE TABLE vectors (
     CHECK (length(embedding) = dimensions * 4)
 );
 
-PRAGMA user_version = 2;
+CREATE INDEX symbols_name_lookup
+ON symbols (name, qualified_name, file_path);
+
+CREATE INDEX symbols_normalized_name_lookup
+ON symbols (name_normalized, qualified_name_normalized, file_path);
+
+CREATE INDEX relationships_source_lookup
+ON relationships (source_id, kind, target_id);
+
+CREATE INDEX relationships_target_lookup
+ON relationships (target_id, kind, source_id);
+
+PRAGMA user_version = 3;
 COMMIT;

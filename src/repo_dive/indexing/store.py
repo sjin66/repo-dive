@@ -9,7 +9,7 @@ from importlib import resources
 from math import isclose
 from pathlib import Path
 from types import TracebackType
-from typing import cast
+from typing import Literal, cast
 
 from repo_dive.errors import InternalOperationError, RepositoryError
 from repo_dive.indexing.bm25 import BM25Index, BM25Parameters, Posting
@@ -21,7 +21,7 @@ from repo_dive.scanner.models import (
     SourceFile,
 )
 
-INDEX_SCHEMA_VERSION = 2
+INDEX_SCHEMA_VERSION = 3
 
 _BM25_STAT_KEYS = {
     "average_document_length": "bm25.average_document_length",
@@ -279,6 +279,103 @@ class IndexStore:
             )
         return index
 
+    def query_symbols(
+        self,
+        query: str,
+        *,
+        path: str | None,
+        max_results: int,
+    ) -> tuple[Symbol, ...]:
+        """Find exact then case-folded symbol matches with a stable order."""
+        self._ensure_open()
+        if not query or max_results <= 0:
+            raise ValueError("symbol query and max_results must be positive")
+
+        normalized = query.casefold()
+        path_clause = " AND file_path = ?" if path is not None else ""
+        parameters: list[str | int] = [
+            query,
+            query,
+            normalized,
+            normalized,
+        ]
+        if path is not None:
+            parameters.append(path)
+        parameters.extend((query, query, normalized, max_results))
+        rows = self._connection.execute(
+            "SELECT id, kind, name, qualified_name, file_path, start_line, end_line "
+            "FROM symbols WHERE "
+            "(name = ? OR qualified_name = ? OR name_normalized = ? "
+            "OR qualified_name_normalized = ?)"
+            f"{path_clause} "
+            "ORDER BY CASE "
+            "WHEN qualified_name = ? THEN 0 "
+            "WHEN name = ? THEN 1 "
+            "WHEN qualified_name_normalized = ? THEN 2 "
+            "ELSE 3 END, file_path, start_line, end_line, id LIMIT ?",
+            parameters,
+        )
+        return tuple(_symbol_from_row(row) for row in rows)
+
+    def get_symbols_by_id(self, symbol_ids: tuple[str, ...]) -> tuple[Symbol, ...]:
+        """Read a bounded caller-supplied set of Symbols by identity."""
+        self._ensure_open()
+        if not symbol_ids:
+            return ()
+        placeholders = ", ".join("?" for _ in symbol_ids)
+        rows = self._connection.execute(
+            "SELECT id, kind, name, qualified_name, file_path, start_line, end_line "
+            f"FROM symbols WHERE id IN ({placeholders}) ORDER BY id",
+            symbol_ids,
+        )
+        return tuple(_symbol_from_row(row) for row in rows)
+
+    def query_relationships(
+        self,
+        symbol_ids: tuple[str, ...],
+        *,
+        direction: Literal["outgoing", "incoming", "both"],
+        edge_kinds: tuple[str, ...] | None,
+        limit: int,
+    ) -> tuple[Relationship, ...]:
+        """Read a stable, bounded relationship frontier for graph traversal."""
+        self._ensure_open()
+        if not symbol_ids:
+            return ()
+        if direction not in {"outgoing", "incoming", "both"} or limit <= 0:
+            raise ValueError("relationship direction and limit must be valid")
+
+        placeholders = ", ".join("?" for _ in symbol_ids)
+        parameters: list[str | int] = []
+        if direction == "outgoing":
+            frontier_clause = f"source_id IN ({placeholders})"
+            parameters.extend(symbol_ids)
+        elif direction == "incoming":
+            frontier_clause = f"target_id IN ({placeholders})"
+            parameters.extend(symbol_ids)
+        else:
+            frontier_clause = (
+                f"(source_id IN ({placeholders}) OR target_id IN ({placeholders}))"
+            )
+            parameters.extend(symbol_ids)
+            parameters.extend(symbol_ids)
+
+        kind_clause = ""
+        if edge_kinds is not None:
+            if not edge_kinds:
+                return ()
+            kind_placeholders = ", ".join("?" for _ in edge_kinds)
+            kind_clause = f" AND kind IN ({kind_placeholders})"
+            parameters.extend(edge_kinds)
+        parameters.append(limit)
+        rows = self._connection.execute(
+            "SELECT source_id, target_id, kind, confidence, source "
+            f"FROM relationships WHERE {frontier_clause}{kind_clause} "
+            "ORDER BY source_id, target_id, kind, source LIMIT ?",
+            parameters,
+        )
+        return tuple(_relationship_from_row(row) for row in rows)
+
     def get_file(self, path: str) -> FileRecord | None:
         """Read one typed file record by repository-relative path."""
         self._ensure_open()
@@ -404,9 +501,9 @@ class IndexStore:
     def _insert_symbols(self, file_path: str, symbols: tuple[Symbol, ...]) -> None:
         self._connection.executemany(
             "INSERT INTO symbols "
-            "(id, file_path, ordinal, kind, name, qualified_name, "
-            "start_line, end_line) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "(id, file_path, ordinal, kind, name, name_normalized, "
+            "qualified_name, qualified_name_normalized, start_line, end_line) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 (
                     symbol.id,
@@ -414,7 +511,9 @@ class IndexStore:
                     ordinal,
                     symbol.kind,
                     symbol.name,
+                    symbol.name.casefold(),
                     symbol.qualified_name,
+                    symbol.qualified_name.casefold(),
                     symbol.start_line,
                     symbol.end_line,
                 )

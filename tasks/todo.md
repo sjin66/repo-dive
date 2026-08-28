@@ -275,13 +275,13 @@
 **Description:** 持久化符号和关系，并提供按 symbol name、qualified name、path 和边类型查询邻居的窄接口。
 
 **Acceptance criteria:**
-- [ ] 精确和大小写归一化符号查询行为有明确优先级。
-- [ ] 邻接查询限制深度、边类型和最大节点数，防止关系爆炸。
-- [ ] 每条返回关系保留 kind、confidence 和来源位置。
+- [x] 精确和大小写归一化符号查询行为有明确优先级。
+- [x] 邻接查询限制深度、边类型和最大节点数，防止关系爆炸。
+- [x] 每条返回关系保留 kind、confidence 和来源位置。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/indexing/test_graph.py -q`
-- [ ] Cycle check: 环图在给定深度内终止且顺序稳定。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/indexing/test_graph.py -q`
+- [x] Cycle check: 环图在给定深度内终止且顺序稳定。
 
 **Dependencies:** Task 10
 
