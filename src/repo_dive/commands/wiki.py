@@ -1,4 +1,4 @@
-"""Public `repo-dive wiki` structure and status command boundaries."""
+"""Public resumable `repo-dive wiki` command boundaries."""
 
 from __future__ import annotations
 
@@ -9,12 +9,23 @@ from pathlib import Path
 from typing import cast
 
 from repo_dive.commands import Command, CommandOutput, OutputFormat
+from repo_dive.commands.context import (
+    context_result_document,
+    context_result_markdown,
+)
+from repo_dive.commands.retrieval_arguments import (
+    positive_token_budget,
+    result_limit,
+)
 from repo_dive.errors import InvocationError
-from repo_dive.schema import JsonObject
+from repo_dive.parsing.models import Symbol
+from repo_dive.retrieval.service import DEFAULT_MAX_RESULTS
+from repo_dive.schema import JsonObject, JsonValue
 from repo_dive.wiki.models import PageStatus
 from repo_dive.wiki.service import (
     STRUCTURE_SCHEMA_VERSION,
     StructureUpdate,
+    WikiEvidenceUpdate,
     WikiService,
     WikiState,
     structure_from_document,
@@ -40,6 +51,35 @@ def configure(parser: argparse.ArgumentParser) -> None:
     )
     _add_format(structure_parser)
     structure_parser.set_defaults(_wiki_handler=_handle_structure)
+
+    evidence_parser = subparsers.add_parser(
+        "evidence",
+        help="retrieve and persist grounded Evidence for one Wiki page",
+    )
+    evidence_parser.add_argument("repository", help="local repository directory")
+    evidence_parser.add_argument(
+        "--page",
+        required=True,
+        type=_page_id,
+        metavar="PAGE_ID",
+        help="stable Page ID from the persisted Wiki structure",
+    )
+    evidence_parser.add_argument(
+        "--token-budget",
+        required=True,
+        type=positive_token_budget,
+        metavar="TOKENS",
+        help="positive estimated-token budget for complete page Evidence",
+    )
+    evidence_parser.add_argument(
+        "--max-results",
+        type=result_limit,
+        default=DEFAULT_MAX_RESULTS,
+        metavar="COUNT",
+        help="maximum retrieval candidates before budget packing",
+    )
+    _add_format(evidence_parser)
+    evidence_parser.set_defaults(_wiki_handler=_handle_evidence)
 
     status_parser = subparsers.add_parser(
         "status",
@@ -103,6 +143,32 @@ def _handle_status(args: argparse.Namespace) -> CommandOutput:
         result=output,
         repository=str(state.metadata.repository),
     )
+
+
+def _handle_evidence(args: argparse.Namespace) -> CommandOutput:
+    update = WikiService(args.repository).collect_evidence(
+        args.page,
+        token_budget=args.token_budget,
+        max_results=args.max_results,
+    )
+    output_format: OutputFormat = args.format
+    output = (
+        _markdown_evidence(update)
+        if output_format == "markdown"
+        else _json_evidence(update)
+    )
+    return CommandOutput(
+        command="wiki evidence",
+        format=output_format,
+        result=output,
+        repository=update.metadata.repository,
+    )
+
+
+def _page_id(value: str) -> str:
+    if not value or value.strip() != value:
+        raise argparse.ArgumentTypeError("Page ID must not be empty or padded")
+    return value
 
 
 def _read_structure_document(input_path: str) -> JsonObject:
@@ -196,6 +262,44 @@ def _json_status(state: WikiState) -> JsonObject:
     }
 
 
+def _json_evidence(update: WikiEvidenceUpdate) -> JsonObject:
+    symbols = {symbol.id: symbol for symbol in update.symbols}
+    snapshot = update.page.evidence_snapshot
+    if snapshot is None:  # pragma: no cover - service postcondition
+        raise RuntimeError("Evidence update is missing its persisted snapshot")
+    context = context_result_document(
+        update.bundle,
+        fusion=update.fusion,
+        max_results=snapshot.retrieval.max_results,
+        symbols=symbols,
+    )
+    context_items = cast(list[JsonObject], context["items"])
+    items: list[JsonValue] = []
+    for document, item in zip(context_items, update.bundle.items, strict=True):
+        item_document = dict(document)
+        item_document["content_hash"] = item.hit.chunk.content_hash
+        items.append(item_document)
+    return {
+        "estimated_tokens": context["estimated_tokens"],
+        "estimator": context["estimator"],
+        "excluded": context["excluded"],
+        "fusion": context["fusion"],
+        "generated_at": snapshot.generated_at,
+        "index_build_id": snapshot.index_build_id,
+        "index_schema_version": snapshot.index_schema_version,
+        "items": items,
+        "max_results": context["max_results"],
+        "page_id": update.page.id,
+        "query": context["query"],
+        "repository_fingerprint": snapshot.repository_fingerprint,
+        "reserved_tokens": context["reserved_tokens"],
+        "result_count": context["result_count"],
+        "status": update.page.status.value,
+        "token_budget": context["token_budget"],
+        "truncated": context["truncated"],
+    }
+
+
 def _markdown_structure(update: StructureUpdate) -> str:
     page_count = sum(len(section.pages) for section in update.wiki.sections)
     lines = [
@@ -231,6 +335,26 @@ def _markdown_status(state: WikiState) -> str:
             f"- `{page.id}` — {page.status.value} → {_next_action(page.status)}"
             for page in section.pages
         )
+    return "\n".join(lines) + "\n"
+
+
+def _markdown_evidence(update: WikiEvidenceUpdate) -> str:
+    snapshot = update.page.evidence_snapshot
+    if snapshot is None:  # pragma: no cover - service postcondition
+        raise RuntimeError("Evidence update is missing its persisted snapshot")
+    symbols: dict[str, Symbol] = {symbol.id: symbol for symbol in update.symbols}
+    context = context_result_markdown(update.bundle, symbols=symbols)
+    context = context.replace("# Repository context", "## Retrieved context", 1)
+    lines = [
+        "# Wiki evidence",
+        "",
+        f"- Page ID: `{update.page.id}`",
+        f"- Status: `{update.page.status.value}`",
+        f"- Generated at: `{snapshot.generated_at}`",
+        f"- Index build: `{snapshot.index_build_id}`",
+        "",
+        context.rstrip("\n"),
+    ]
     return "\n".join(lines) + "\n"
 
 

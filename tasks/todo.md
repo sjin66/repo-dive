@@ -549,13 +549,13 @@
 **Description:** 实现 `wiki evidence`：以页面描述和相关文件为检索提示生成 EvidenceBundle，并先保存 Evidence 状态再返回调用方。
 
 **Acceptance criteria:**
-- [ ] Evidence 保存 query、索引版本、Chunk hash、预算、检索参数与生成时间。
-- [ ] 成功后页面进入 `evidence_ready`；失败只标记本页，不重置其他页面。
-- [ ] 仓库/索引变化后过期 Evidence 不能用于页面提交或 build。
+- [x] Evidence 保存 query、索引版本、Chunk hash、预算、检索参数与生成时间。
+- [x] 成功后页面进入 `evidence_ready`；失败只标记本页，不重置其他页面。
+- [x] 仓库/索引变化后过期 Evidence 不能用于页面提交或 build。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/integration/test_wiki_evidence.py -q`
-- [ ] Staleness check: 修改一个相关文件只使依赖其 Evidence 的页面过期。
+- [x] Tests pass: `.venv/bin/python -m pytest tests/integration/test_wiki_evidence.py -q`
+- [x] Staleness check: 修改一个相关文件只使依赖其 Evidence 的页面过期。
 
 **Dependencies:** Tasks 20–22
 

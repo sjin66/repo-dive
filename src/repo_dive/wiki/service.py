@@ -8,21 +8,30 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
+from repo_dive.context import EvidenceBundle, EvidencePacker
 from repo_dive.errors import InvocationError, RepositoryError
 from repo_dive.indexing.service import PublishedIndex, load_published_index
 from repo_dive.indexing.store import INDEX_SCHEMA_VERSION
+from repo_dive.parsing.models import Symbol
+from repo_dive.retrieval.fusion import FusionMetadata
+from repo_dive.retrieval.service import search_repository
 from repo_dive.schema import JsonObject, JsonValue
 from repo_dive.wiki.models import (
     METADATA_SCHEMA_VERSION,
+    EvidenceRef,
+    EvidenceSnapshot,
     Metadata,
     Page,
     PageStatus,
+    RetrievalParameters,
     Section,
     Wiki,
 )
 from repo_dive.wiki.store import WikiStore
+from repo_dive.wiki.validation import stale_page_ids_for_index
 
 STRUCTURE_SCHEMA_VERSION = "1.0"
+MAX_EVIDENCE_QUERY_LENGTH = 1_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +120,17 @@ class WikiState:
     metadata: Metadata
 
 
+@dataclass(frozen=True, slots=True)
+class WikiEvidenceUpdate:
+    """Persisted page Evidence plus complete source output for the caller."""
+
+    page: Page
+    bundle: EvidenceBundle
+    fusion: FusionMetadata
+    symbols: tuple[Symbol, ...]
+    metadata: Metadata
+
+
 class WikiService:
     """Validate, merge, persist, and inspect repository-owned Wiki state."""
 
@@ -148,17 +168,23 @@ class WikiService:
                 metadata=metadata,
             )
 
-        source_changed = (
+        language_changed = current.metadata.output_language != structure.output_language
+        index_changed = (
             current.metadata.repository_fingerprint
             != published.manifest.repository_fingerprint
             or current.metadata.index_build_id != published.manifest.build_id
             or current.metadata.index_schema_version != INDEX_SCHEMA_VERSION
         )
-        language_changed = current.metadata.output_language != structure.output_language
+        stale_ids = (
+            frozenset(stale_page_ids_for_index(published, current.wiki))
+            if index_changed
+            else frozenset()
+        )
         merged, created, invalidated, preserved = _merge_wiki(
             current.wiki,
             proposed,
-            invalidate_all=source_changed or language_changed,
+            stale_page_ids=stale_ids,
+            invalidate_all=language_changed,
         )
         metadata_changed = (
             current.metadata.repository != str(published.repository)
@@ -208,6 +234,128 @@ class WikiService:
                 "Repository Wiki has not been initialized.",
             )
         return state
+
+    def collect_evidence(
+        self,
+        page_id: str,
+        *,
+        token_budget: int,
+        max_results: int,
+    ) -> WikiEvidenceUpdate:
+        """Retrieve, persist, then return one page's complete Evidence bundle."""
+        state = self.read_state()
+        page = _find_page(state.wiki, page_id)
+        if page is None:
+            raise InvocationError(
+                "wiki_page_unknown",
+                "Wiki page ID does not exist in the current structure.",
+                details={"page_id": page_id},
+            )
+
+        try:
+            query = _evidence_query(page)
+            retrieved = search_repository(
+                self._store.repository,
+                query,
+                max_results=max_results,
+            )
+            published = load_published_index(self._store.repository)
+            if retrieved.build_id != published.manifest.build_id:
+                raise RepositoryError(
+                    "index_changed_during_operation",
+                    "Repository index changed while Evidence was being collected.",
+                )
+            bundle = EvidencePacker().pack(
+                query,
+                retrieved.fusion.hits,
+                token_budget=token_budget,
+            )
+            if not bundle.items:
+                raise RepositoryError(
+                    "wiki_evidence_empty",
+                    "No complete repository Evidence fits the page budget.",
+                    details={"page_id": page_id},
+                )
+            stale_ids = stale_page_ids_for_index(published, state.wiki)
+        except RepositoryError as error:
+            self._persist_failed_page(state, page_id=page_id, error_code=error.code)
+            raise
+
+        generated_at = self._clock()
+        snapshot = EvidenceSnapshot(
+            query=query,
+            repository_fingerprint=published.manifest.repository_fingerprint,
+            index_schema_version=INDEX_SCHEMA_VERSION,
+            index_build_id=published.manifest.build_id,
+            token_budget=bundle.token_budget,
+            estimated_tokens=bundle.estimated_tokens,
+            reserved_tokens=bundle.reserved_tokens,
+            estimator=bundle.estimator,
+            truncated=bundle.truncated,
+            retrieval=RetrievalParameters(
+                max_results=max_results,
+                strategy=retrieved.fusion.metadata.strategy,
+                rrf_k=retrieved.fusion.metadata.rrf_k,
+                channel_weights=retrieved.fusion.metadata.channel_weights,
+                overlap_threshold=retrieved.fusion.metadata.overlap_threshold,
+            ),
+            generated_at=generated_at,
+        )
+        references = tuple(
+            EvidenceRef(
+                evidence_id=item.evidence_id,
+                chunk_id=item.hit.chunk.id,
+                path=item.hit.chunk.path,
+                start_line=item.hit.chunk.start_line,
+                end_line=item.hit.chunk.end_line,
+                content_hash=item.hit.chunk.content_hash,
+            )
+            for item in bundle.items
+        )
+        normalized = _reset_stale_pages(state.wiki, frozenset(stale_ids))
+        current_page = _find_page(normalized, page_id)
+        if current_page is None:  # pragma: no cover - protected by immutable IDs
+            raise RuntimeError("Wiki page disappeared while collecting Evidence")
+        updated_page = _with_ready_evidence(
+            current_page,
+            evidence=references,
+            snapshot=snapshot,
+        )
+        updated_wiki = _replace_page(normalized, updated_page)
+        metadata = _updated_metadata(
+            state.metadata,
+            published,
+            timestamp=generated_at,
+        )
+        self._store.write_metadata(metadata)
+        self._store.write_wiki(updated_wiki)
+        return WikiEvidenceUpdate(
+            page=updated_page,
+            bundle=bundle,
+            fusion=retrieved.fusion.metadata,
+            symbols=retrieved.symbols,
+            metadata=metadata,
+        )
+
+    def _persist_failed_page(
+        self,
+        state: WikiState,
+        *,
+        page_id: str,
+        error_code: str,
+    ) -> None:
+        page = _find_page(state.wiki, page_id)
+        if page is None:
+            return
+        failed = (
+            page
+            if page.status is PageStatus.FAILED
+            else page.transition_to(PageStatus.FAILED)
+        )
+        failed = replace(failed, error=error_code)
+        timestamp = self._clock()
+        self._store.write_metadata(replace(state.metadata, updated_at=timestamp))
+        self._store.write_wiki(_replace_page(state.wiki, failed))
 
     def _read_optional_state(self) -> WikiState | None:
         has_wiki = self._store.has_wiki()
@@ -303,6 +451,7 @@ def _merge_wiki(
     current: Wiki,
     proposed: Wiki,
     *,
+    stale_page_ids: frozenset[str],
     invalidate_all: bool,
 ) -> tuple[Wiki, tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
     current_pages = {
@@ -319,7 +468,11 @@ def _merge_wiki(
             if previous is None:
                 created.append(proposed_page.id)
                 pages.append(proposed_page)
-            elif not invalidate_all and _same_page_structure(previous, proposed_page):
+            elif (
+                not invalidate_all
+                and proposed_page.id not in stale_page_ids
+                and _same_page_structure(previous, proposed_page)
+            ):
                 preserved.append(proposed_page.id)
                 pages.append(previous)
             else:
@@ -370,6 +523,108 @@ def _new_metadata(
     )
 
 
+def _updated_metadata(
+    current: Metadata,
+    published: PublishedIndex,
+    *,
+    timestamp: str,
+) -> Metadata:
+    return replace(
+        current,
+        repository=str(published.repository),
+        repository_fingerprint=published.manifest.repository_fingerprint,
+        index_schema_version=INDEX_SCHEMA_VERSION,
+        index_build_id=published.manifest.build_id,
+        updated_at=timestamp,
+    )
+
+
+def _evidence_query(page: Page) -> str:
+    query = "\n".join(
+        (
+            page.title,
+            page.description,
+            *(f"path:{path}" for path in page.relevant_files),
+        )
+    )
+    if len(query) > MAX_EVIDENCE_QUERY_LENGTH:
+        raise RepositoryError(
+            "wiki_evidence_query_too_large",
+            "Wiki page retrieval query exceeds the supported size.",
+            details={
+                "max_characters": MAX_EVIDENCE_QUERY_LENGTH,
+                "page_id": page.id,
+            },
+        )
+    return query
+
+
+def _find_page(wiki: Wiki, page_id: str) -> Page | None:
+    return next(
+        (
+            page
+            for section in wiki.sections
+            for page in section.pages
+            if page.id == page_id
+        ),
+        None,
+    )
+
+
+def _replace_page(wiki: Wiki, replacement: Page) -> Wiki:
+    return replace(
+        wiki,
+        sections=tuple(
+            replace(
+                section,
+                pages=tuple(
+                    replacement if page.id == replacement.id else page
+                    for page in section.pages
+                ),
+            )
+            for section in wiki.sections
+        ),
+    )
+
+
+def _reset_stale_pages(wiki: Wiki, stale_ids: frozenset[str]) -> Wiki:
+    return replace(
+        wiki,
+        sections=tuple(
+            replace(
+                section,
+                pages=tuple(
+                    page.transition_to(PageStatus.PENDING)
+                    if page.id in stale_ids
+                    and page.status in {PageStatus.EVIDENCE_READY, PageStatus.GENERATED}
+                    else page
+                    for page in section.pages
+                ),
+            )
+            for section in wiki.sections
+        ),
+    )
+
+
+def _with_ready_evidence(
+    page: Page,
+    *,
+    evidence: tuple[EvidenceRef, ...],
+    snapshot: EvidenceSnapshot,
+) -> Page:
+    pending = (
+        page
+        if page.status is PageStatus.PENDING
+        else page.transition_to(PageStatus.PENDING)
+    )
+    return replace(
+        pending.transition_to(PageStatus.EVIDENCE_READY),
+        evidence=evidence,
+        evidence_snapshot=snapshot,
+        error=None,
+    )
+
+
 def _page_ids(wiki: Wiki) -> tuple[str, ...]:
     return tuple(page.id for section in wiki.sections for page in section.pages)
 
@@ -411,8 +666,10 @@ def _string_tuple(value: JsonValue) -> tuple[str, ...]:
 __all__ = [
     "METADATA_SCHEMA_VERSION",
     "STRUCTURE_SCHEMA_VERSION",
+    "MAX_EVIDENCE_QUERY_LENGTH",
     "StructureUpdate",
     "WikiService",
+    "WikiEvidenceUpdate",
     "WikiState",
     "WikiStructure",
     "structure_from_document",

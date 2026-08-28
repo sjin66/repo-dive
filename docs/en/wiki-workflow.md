@@ -66,6 +66,7 @@ The available command boundary is:
 
 ```text
 repo-dive wiki structure <repository> --input structure.json --format json|markdown
+repo-dive wiki evidence <repository> --page <page-id> --token-budget N --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
 
@@ -76,6 +77,10 @@ Structure submission is stateless: callers provide only titles, descriptions, ou
 For each page, the agent requests evidence using the page topic and relevant-file hints. The RAG retrieval pipeline queries structural, BM25, and optional vector channels; fuses their candidates; removes duplicate or overlapping chunks; optionally expands symbol relationships; and applies an explicit context budget.
 
 Every evidence item records its repository-relative path, line range when trustworthy, symbol when known, score components, and content fingerprint. Evidence is stored with the page state before prose generation starts.
+
+`wiki evidence` is the available boundary for this stage. It derives a reproducible query from the page title, description, and relevant-file hints, then runs structural/BM25 retrieval and budget packing. The persisted snapshot includes the query, index identity, budget and estimator accounting, fusion parameters, generation time, and each selected Chunk hash. Only after the atomic page-state write succeeds is the complete Evidence bundle returned to the caller.
+
+Freshness is page-local. An index Schema change invalidates saved Evidence globally, while a normal repository rebuild checks each referenced Chunk ID, hash, path, and line range. Therefore a changed Chunk invalidates only pages that actually cite it; the recorded index build ID remains audit provenance rather than a global invalidation switch.
 
 ## Stage 5: Augmented Generation and Persistence
 

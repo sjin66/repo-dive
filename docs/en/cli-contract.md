@@ -14,7 +14,7 @@ Functional commands support:
 repo-dive <command> [repository] --format json
 ```
 
-The current build implements `index`, `search`, `context`, `wiki structure`, and `wiki status` in addition to `--help` and `--version`.
+The current build implements `index`, `search`, `context`, `wiki structure`, `wiki evidence`, and `wiki status` in addition to `--help` and `--version`.
 
 ## RAG Command Boundary
 
@@ -25,7 +25,7 @@ Command families expose each RAG stage independently:
 - `context`: deduplicate and package evidence under a caller-supplied token budget.
 - `wiki`: persist agent-generated page state and assemble `.repo-dive/wiki.md`.
 
-`index`, `search`, and `context` are available deterministic RAG operations. `wiki structure` and `wiki status` provide the first persistent Wiki boundary; evidence binding, page submission, and final assembly remain planned. None of these commands implicitly calls a generative model.
+`index`, `search`, and `context` are available deterministic RAG operations. `wiki structure`, `wiki evidence`, and `wiki status` provide persistent, resumable Wiki state; page submission and final assembly remain planned. None of these commands implicitly calls a generative model.
 
 The context command requires a positive token budget and accepts a bounded retrieval-candidate count:
 
@@ -39,6 +39,7 @@ The structure command reads a bounded UTF-8 JSON document from an explicit file:
 
 ```text
 repo-dive wiki structure <repository> --input structure.json --format json|markdown
+repo-dive wiki evidence <repository> --page <page-id> --token-budget N [--max-results COUNT] --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
 
@@ -47,6 +48,10 @@ Structure input Schema `1.0` accepts only `schema_version`, `title`, `descriptio
 Reapplying an identical structure is byte-idempotent. New pages start as `pending`; changing a page title, description, relevant files, or relationships resets only that page to `pending` while preserving its previous evidence/body/error for diagnosis. Reordering or moving an otherwise unchanged page preserves its state. A repository/index identity or output-language change invalidates all retained pages.
 
 Status output reports ordered sections and pages, state counts, whether a body or error exists, and one next action per page without returning generated bodies. The mappings are `pending -> collect_evidence`, `evidence_ready -> generate_page`, `generated -> complete`, and `failed -> retry`.
+
+`wiki evidence` derives its query deterministically from the persisted page title, description, and `path:<relevant-file>` hints. It applies the same bounded hybrid retrieval and complete-Chunk context packing as `context`, but writes the page Evidence snapshot before emitting source text. A successful page enters `evidence_ready`; an empty bundle or repository/index retrieval failure marks only the requested page `failed` with a safe error code.
+
+The persisted snapshot records the query, repository fingerprint, index Schema/build identity, token accounting, estimator, truncation flag, retrieval/fusion parameters, generation timestamp, and included Evidence references. Every reference stores the Chunk ID, content hash, path, and inclusive line range. Build identity is audit metadata; freshness is checked against the current index Schema and each referenced Chunk identity/hash, so an unrelated index rebuild does not invalidate unaffected pages. Stale Evidence is rejected by the page/build validation boundary.
 
 ## Standard Streams
 

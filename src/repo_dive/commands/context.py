@@ -7,7 +7,11 @@ import json
 from collections import Counter
 
 from repo_dive.commands import Command, CommandOutput, OutputFormat
-from repo_dive.commands.retrieval_arguments import query_value, result_limit
+from repo_dive.commands.retrieval_arguments import (
+    positive_token_budget,
+    query_value,
+    result_limit,
+)
 from repo_dive.context import EvidenceBundle, EvidenceItem, EvidencePacker
 from repo_dive.context.packer import ExclusionReason
 from repo_dive.parsing.models import Symbol
@@ -26,7 +30,7 @@ def configure(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--token-budget",
-        type=_positive_integer,
+        type=positive_token_budget,
         required=True,
         metavar="TOKENS",
         help="positive estimated-token budget for the complete evidence bundle",
@@ -61,9 +65,9 @@ def handle(args: argparse.Namespace) -> CommandOutput:
     symbols = {symbol.id: symbol for symbol in retrieved.symbols}
     output_format: OutputFormat = args.format
     output = (
-        _markdown_result(bundle, symbols=symbols)
+        context_result_markdown(bundle, symbols=symbols)
         if output_format == "markdown"
-        else _json_result(
+        else context_result_document(
             bundle,
             fusion=retrieved.fusion.metadata,
             max_results=args.max_results,
@@ -78,17 +82,7 @@ def handle(args: argparse.Namespace) -> CommandOutput:
     )
 
 
-def _positive_integer(value: str) -> int:
-    try:
-        parsed = int(value)
-    except ValueError as error:
-        raise argparse.ArgumentTypeError("value must be a positive integer") from error
-    if parsed <= 0:
-        raise argparse.ArgumentTypeError("value must be a positive integer")
-    return parsed
-
-
-def _json_result(
+def context_result_document(
     bundle: EvidenceBundle,
     *,
     fusion: FusionMetadata,
@@ -161,7 +155,7 @@ def _json_symbol(symbol: Symbol | None) -> JsonObject | None:
     }
 
 
-def _markdown_result(
+def context_result_markdown(
     bundle: EvidenceBundle,
     *,
     symbols: dict[str, Symbol],
@@ -231,4 +225,8 @@ CONTEXT_COMMAND = Command(
     handler=handle,
 )
 
-__all__ = ["CONTEXT_COMMAND"]
+__all__ = [
+    "CONTEXT_COMMAND",
+    "context_result_document",
+    "context_result_markdown",
+]

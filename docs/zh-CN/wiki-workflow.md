@@ -66,6 +66,7 @@ CLI 校验引用，并把接受的结构持久化到 `wiki.json`。它不能自�
 
 ```text
 repo-dive wiki structure <repository> --input structure.json --format json|markdown
+repo-dive wiki evidence <repository> --page <page-id> --token-budget N --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
 
@@ -76,6 +77,10 @@ repo-dive wiki status <repository> --format json|markdown
 Agent 针对每个页面，使用页面主题和相关文件提示请求证据。RAG 检索流水线查询结构、BM25 和可选向量通道，融合候选项，移除重复或重叠 Chunk，按需扩展符号关系，然后应用明确的上下文预算。
 
 每条证据记录仓库相对路径、可信时的行号范围、已知时的符号、各项评分以及内容指纹。在内容生成开始前，证据先与页面状态一起保存。
+
+`wiki evidence` 是该阶段当前可用的边界。它根据页面标题、描述和相关文件提示构造可复现 Query，然后执行结构/BM25 检索与预算打包。持久化快照包含 Query、索引身份、预算和估算器账目、融合参数、生成时间以及每个入选 Chunk 的哈希。只有原子页面状态写入成功后，完整 Evidence Bundle 才返回调用方。
+
+新鲜度以页面为单位。索引 Schema 变化会使已保存 Evidence 全局失效；普通仓库重建则逐一校验引用的 Chunk ID、哈希、路径和行号范围。因此，变化的 Chunk 只使真正引用它的页面失效；记录的索引 build ID 仅用于审计溯源，不作为全局失效开关。
 
 ## 阶段 5：增强生成与持久化
 

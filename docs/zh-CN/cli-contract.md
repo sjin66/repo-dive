@@ -14,7 +14,7 @@
 repo-dive <command> [repository] --format json
 ```
 
-当前版本除 `--help` 和 `--version` 外，已经实现 `index`、`search`、`context`、`wiki structure` 和 `wiki status`。
+当前版本除 `--help` 和 `--version` 外，已经实现 `index`、`search`、`context`、`wiki structure`、`wiki evidence` 和 `wiki status`。
 
 ## RAG 命令边界
 
@@ -25,7 +25,7 @@ repo-dive <command> [repository] --format json
 - `context`：去重，并在调用方给定的 Token 预算下打包证据。
 - `wiki`：持久化 Agent 生成的页面状态，并汇总 `.repo-dive/wiki.md`。
 
-`index`、`search` 和 `context` 是当前可用的确定性 RAG 操作。`wiki structure` 和 `wiki status` 提供首个持久化 Wiki 边界；证据绑定、页面提交与最终汇总仍属于后续计划。这些命令都不会隐式调用生成模型。
+`index`、`search` 和 `context` 是当前可用的确定性 RAG 操作。`wiki structure`、`wiki evidence` 和 `wiki status` 提供持久、可恢复的 Wiki 状态；页面提交与最终汇总仍属于后续计划。这些命令都不会隐式调用生成模型。
 
 `context` 命令要求正整数 Token 预算，并接受有上限的检索候选数量：
 
@@ -39,6 +39,7 @@ JSON 结果报告 `token_budget`、`estimated_tokens`、`reserved_tokens`、`est
 
 ```text
 repo-dive wiki structure <repository> --input structure.json --format json|markdown
+repo-dive wiki evidence <repository> --page <page-id> --token-budget N [--max-results COUNT] --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
 
@@ -47,6 +48,10 @@ repo-dive wiki status <repository> --format json|markdown
 重复提交相同结构时，公开文件保持字节级幂等。新页面从 `pending` 开始；修改页面标题、描述、相关文件或关系时，只把该页面重置为 `pending`，并保留旧 evidence/body/error 供诊断。仅重新排序或移动未改变的页面会保留其状态。仓库/索引身份或输出语言变化会使所有保留页面失效。
 
 状态输出包含有序章节与页面、状态计数、正文或错误是否存在，以及每页的下一步动作，但不返回已生成正文。映射为 `pending -> collect_evidence`、`evidence_ready -> generate_page`、`generated -> complete`、`failed -> retry`。
+
+`wiki evidence` 根据已持久化的页面标题、描述和 `path:<相关文件>` 提示确定性构造 Query。它使用与 `context` 相同的有界混合检索和完整 Chunk 上下文打包，但会先写入页面 Evidence 快照，再向 stdout 返回源码。成功后页面进入 `evidence_ready`；空 Bundle 或仓库/索引检索失败时，只把请求页面标为 `failed`，并保存安全错误码。
+
+持久化快照记录 Query、仓库指纹、索引 Schema/build 身份、Token 账目、估算器、截断标志、检索/融合参数和生成时间；每条引用记录 Chunk ID、内容哈希、路径和首尾都包含的行号范围。Build 身份用于审计；新鲜度依据当前索引 Schema 和逐 Chunk 身份/哈希判断，因此无关索引重建不会使未受影响页面失效。页面提交与 build 校验边界会拒绝过期 Evidence。
 
 ## 标准流
 

@@ -32,4 +32,20 @@ def result_limit(value: str) -> int:
     return parsed
 
 
-__all__ = ["MAX_QUERY_LENGTH", "query_value", "result_limit"]
+def positive_token_budget(value: str) -> int:
+    """Parse a positive token budget shared by Context and Wiki commands."""
+    try:
+        parsed = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("value must be a positive integer") from error
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("value must be a positive integer")
+    return parsed
+
+
+__all__ = [
+    "MAX_QUERY_LENGTH",
+    "positive_token_budget",
+    "query_value",
+    "result_limit",
+]
