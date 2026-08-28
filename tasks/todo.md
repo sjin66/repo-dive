@@ -95,7 +95,7 @@
 
 ## Checkpoint A：公共契约
 
-- [ ] `make check`（被现有未跟踪 `.agents/skills/code-simplification/SKILL.md` 的 Ruff 格式问题阻断）
+- [x] `make check`
 - [x] `make test-all`
 - [x] JSON stdout/stderr 与退出码契约通过进程级测试。
 - [x] 人工审阅 Schema、错误码和路径 API；后续任务不得绕过它们。
