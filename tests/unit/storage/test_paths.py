@@ -29,6 +29,23 @@ def test_resolve_repository_rejects_regular_file(tmp_path: Path) -> None:
     assert exc_info.value.code == "repository_not_directory"
 
 
+def test_resolve_repository_reports_unavailable_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+
+    def fail_resolve(path: Path, *, strict: bool = False) -> Path:
+        raise PermissionError("simulated permission failure")
+
+    monkeypatch.setattr(Path, "resolve", fail_resolve)
+
+    with pytest.raises(RepositoryError) as exc_info:
+        resolve_repository(repository)
+
+    assert exc_info.value.code == "repository_unavailable"
+
+
 @pytest.mark.parametrize("unsafe_path", ["../outside.py", "/tmp/outside.py"])
 def test_resolve_within_repository_rejects_path_escape(
     tmp_path: Path, unsafe_path: str
