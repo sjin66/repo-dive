@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from collections import Counter
@@ -26,6 +27,7 @@ from repo_dive.wiki.models import PageStatus
 from repo_dive.wiki.service import (
     STRUCTURE_SCHEMA_VERSION,
     StructureUpdate,
+    WikiBuildUpdate,
     WikiEvidenceUpdate,
     WikiPageUpdate,
     WikiService,
@@ -108,6 +110,14 @@ def configure(parser: argparse.ArgumentParser) -> None:
     )
     _add_format(page_parser)
     page_parser.set_defaults(_wiki_handler=_handle_page)
+
+    build_parser = subparsers.add_parser(
+        "build",
+        help="validate and atomically assemble the current Wiki Markdown",
+    )
+    build_parser.add_argument("repository", help="local repository directory")
+    _add_format(build_parser)
+    build_parser.set_defaults(_wiki_handler=_handle_build)
 
     status_parser = subparsers.add_parser(
         "status",
@@ -209,6 +219,18 @@ def _handle_page(args: argparse.Namespace) -> CommandOutput:
     )
     return CommandOutput(
         command="wiki page",
+        format=output_format,
+        result=output,
+        repository=update.metadata.repository,
+    )
+
+
+def _handle_build(args: argparse.Namespace) -> CommandOutput:
+    update = WikiService(args.repository).build_wiki()
+    output_format: OutputFormat = args.format
+    output = update.markdown if output_format == "markdown" else _json_build(update)
+    return CommandOutput(
+        command="wiki build",
         format=output_format,
         result=output,
         repository=update.metadata.repository,
@@ -407,6 +429,25 @@ def _json_page(update: WikiPageUpdate) -> JsonObject:
         "evidence_ids": list(update.page.citation_ids),
         "page_id": update.page.id,
         "status": update.page.status.value,
+    }
+
+
+def _json_build(update: WikiBuildUpdate) -> JsonObject:
+    data = update.markdown.encode("utf-8")
+    return {
+        "artifact_path": update.artifact_path,
+        "bytes": len(data),
+        "changed": update.changed,
+        "page_count": sum(
+            len(section.pages) for section in update.wiki.sections
+        ),
+        "section_count": len(update.wiki.sections),
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "source_count": sum(
+            len(page.citation_ids)
+            for section in update.wiki.sections
+            for page in section.pages
+        ),
     }
 
 

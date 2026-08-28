@@ -9,7 +9,7 @@ from typing import TypeVar, cast
 
 from repo_dive.errors import RepositoryError
 from repo_dive.schema import JsonObject
-from repo_dive.storage.atomic import atomic_write_json
+from repo_dive.storage.atomic import atomic_write_bytes, atomic_write_json
 from repo_dive.storage.paths import resolve_repository, resolve_within_repository
 from repo_dive.wiki.models import (
     METADATA_SCHEMA_VERSION,
@@ -22,6 +22,7 @@ from repo_dive.wiki.models import (
 
 WIKI_PATH = ".repo-dive/wiki.json"
 METADATA_PATH = ".repo-dive/metadata.json"
+WIKI_MARKDOWN_PATH = ".repo-dive/wiki.md"
 
 ArtifactT = TypeVar("ArtifactT")
 
@@ -76,6 +77,24 @@ class WikiStore:
             metadata.to_document(),
         )
 
+    def write_markdown(self, markdown: str) -> tuple[Path, bool]:
+        """Atomically replace Wiki Markdown unless the exact bytes already exist."""
+        data = markdown.encode("utf-8")
+        target = resolve_within_repository(self.repository, WIKI_MARKDOWN_PATH)
+        try:
+            current = target.read_bytes()
+        except FileNotFoundError:
+            current = None
+        except OSError as error:
+            raise RepositoryError(
+                "wiki_output_unavailable",
+                "Existing Wiki Markdown artifact is unavailable.",
+                details={"path": WIKI_MARKDOWN_PATH},
+            ) from error
+        if current == data:
+            return target, False
+        return atomic_write_bytes(self.repository, WIKI_MARKDOWN_PATH, data), True
+
     def _read(
         self,
         relative_path: str,
@@ -122,4 +141,4 @@ def _object(value: object) -> JsonObject:
     return cast(JsonObject, value)
 
 
-__all__ = ["METADATA_PATH", "WIKI_PATH", "WikiStore"]
+__all__ = ["METADATA_PATH", "WIKI_MARKDOWN_PATH", "WIKI_PATH", "WikiStore"]

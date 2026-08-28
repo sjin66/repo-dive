@@ -16,6 +16,7 @@ from repo_dive.parsing.models import Symbol
 from repo_dive.retrieval.fusion import FusionMetadata
 from repo_dive.retrieval.service import search_repository
 from repo_dive.schema import JsonObject, JsonValue
+from repo_dive.wiki.assembler import assemble_wiki
 from repo_dive.wiki.models import (
     METADATA_SCHEMA_VERSION,
     EvidenceRef,
@@ -27,9 +28,10 @@ from repo_dive.wiki.models import (
     Section,
     Wiki,
 )
-from repo_dive.wiki.store import WikiStore
+from repo_dive.wiki.store import WIKI_MARKDOWN_PATH, WikiStore
 from repo_dive.wiki.submission import PageSubmission, validate_submission_content
 from repo_dive.wiki.validation import (
+    stale_page_ids,
     stale_page_ids_for_index,
     validate_page_evidence,
 )
@@ -141,6 +143,17 @@ class WikiPageUpdate:
 
     changed: bool
     page: Page
+    metadata: Metadata
+
+
+@dataclass(frozen=True, slots=True)
+class WikiBuildUpdate:
+    """Complete assembled Markdown plus its atomic persistence outcome."""
+
+    changed: bool
+    markdown: str
+    artifact_path: str
+    wiki: Wiki
     metadata: Metadata
 
 
@@ -414,6 +427,50 @@ class WikiService:
         self._store.write_metadata(metadata)
         self._store.write_wiki(_replace_page(state.wiki, generated))
         return WikiPageUpdate(changed=True, page=generated, metadata=metadata)
+
+    def build_wiki(self) -> WikiBuildUpdate:
+        """Validate all page Evidence, assemble, and atomically publish Markdown."""
+        state = self.read_state()
+        pages = tuple(
+            page for section in state.wiki.sections for page in section.pages
+        )
+        incomplete = tuple(
+            page.id for page in pages if page.status is not PageStatus.GENERATED
+        )
+        if incomplete:
+            raise RepositoryError(
+                "wiki_build_incomplete",
+                "Wiki cannot be built until every page is generated.",
+                details={"page_ids": list(incomplete)},
+            )
+        invalid = tuple(
+            page.id
+            for page in pages
+            if page.body is None or not page.citation_ids
+        )
+        if invalid:
+            raise RepositoryError(
+                "wiki_build_page_invalid",
+                "Generated Wiki pages are missing body or citation data.",
+                details={"page_ids": list(invalid)},
+            )
+        stale = stale_page_ids(self._store.repository, state.wiki)
+        if stale:
+            raise RepositoryError(
+                "wiki_evidence_stale",
+                "Wiki page Evidence is stale for the current repository index.",
+                details={"page_ids": list(stale)},
+            )
+
+        markdown = assemble_wiki(state.wiki)
+        _, changed = self._store.write_markdown(markdown)
+        return WikiBuildUpdate(
+            changed=changed,
+            markdown=markdown,
+            artifact_path=WIKI_MARKDOWN_PATH,
+            wiki=state.wiki,
+            metadata=state.metadata,
+        )
 
     def _persist_failed_page(
         self,
@@ -761,6 +818,7 @@ __all__ = [
     "STRUCTURE_SCHEMA_VERSION",
     "MAX_EVIDENCE_QUERY_LENGTH",
     "StructureUpdate",
+    "WikiBuildUpdate",
     "WikiService",
     "WikiEvidenceUpdate",
     "WikiPageUpdate",
