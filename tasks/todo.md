@@ -9,13 +9,13 @@
 **Description:** 定义成功/错误 JSON 信封、稳定错误码和异常到退出码的唯一映射，避免各命令自行拼 JSON。
 
 **Acceptance criteria:**
-- [ ] `ResultEnvelope[T]` 和 `ErrorEnvelope` 序列化为 `schema_version = "1.0"` 的单一 JSON 文档。
-- [ ] 调用/校验、仓库/输入、内部错误分别映射到退出码 `2`、`3`、`4`。
-- [ ] JSON 序列化失败不会向 stdout 写出半截文档。
+- [x] `ResultEnvelope[T]` 和 `ErrorEnvelope` 序列化为 `schema_version = "1.0"` 的单一 JSON 文档。
+- [x] 调用/校验、仓库/输入、内部错误分别映射到退出码 `2`、`3`、`4`。
+- [x] JSON 序列化失败不会向 stdout 写出半截文档。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/test_schema.py tests/unit/test_cli_errors.py -q`
-- [ ] Contract check: `.venv/bin/python -m repo_dive --version`
+- [x] Tests pass: `.venv/bin/pytest tests/unit/test_schema.py tests/unit/test_cli_errors.py -q`
+- [x] Contract check: `.venv/bin/python -m repo_dive --version`
 
 **Dependencies:** None
 
@@ -32,13 +32,13 @@
 **Description:** 保留 `argparse`，建立命令注册与执行边界；CLI 捕获领域错误、输出信封，并保证 JSON stdout 隔离。
 
 **Acceptance criteria:**
-- [ ] `cli.main(argv)` 可分派命令处理器并返回整数退出码。
-- [ ] JSON 模式 stdout 只有一个以换行结尾的 JSON 文档，stderr 承载诊断且无 ANSI。
-- [ ] 未知命令和坏参数退出 `2`，并保持 `--help`/`--version` 兼容。
+- [x] `cli.main(argv)` 可分派命令处理器并返回整数退出码。
+- [x] JSON 模式 stdout 只有一个以换行结尾的 JSON 文档，stderr 承载诊断且无 ANSI。
+- [x] 未知命令和坏参数退出 `2`，并保持 `--help`/`--version` 兼容。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/test_cli.py tests/integration/test_cli_io.py -q`
-- [ ] Manual check: `.venv/bin/repo-dive --help`
+- [x] Tests pass: `.venv/bin/pytest tests/unit/test_cli.py tests/integration/test_cli_io.py -q`
+- [x] Manual check: `.venv/bin/repo-dive --help`
 
 **Dependencies:** Task 1
 
@@ -55,13 +55,13 @@
 **Description:** 提供所有模块共享的仓库根校验、相对 POSIX 路径转换和仓库内路径解析，拒绝路径穿越与符号链接逃逸。
 
 **Acceptance criteria:**
-- [ ] 不存在、非目录、不可读仓库返回稳定 repository error。
-- [ ] `..`、绝对路径注入和指向仓库外的符号链接被拒绝。
-- [ ] Windows 风格输入在证据边界规范化为仓库相对 POSIX 路径。
+- [x] 不存在、非目录、不可读仓库返回稳定 repository error。
+- [x] `..`、绝对路径注入和指向仓库外的符号链接被拒绝。
+- [x] Windows 风格输入在证据边界规范化为仓库相对 POSIX 路径。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/storage/test_paths.py -q`
-- [ ] Security check: 测试在临时仓库外创建目标，并确认没有读取发生。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/storage/test_paths.py -q`
+- [x] Security check: 测试在临时仓库外创建目标，并确认没有读取发生。
 
 **Dependencies:** Task 1
 
@@ -77,13 +77,13 @@
 **Description:** 实现同目录临时文件、flush/fsync、原子替换和失败清理，作为 Metadata、Wiki 与 Manifest 的唯一公开写入方式。
 
 **Acceptance criteria:**
-- [ ] 成功写入不会留下临时文件，JSON 使用 UTF-8 和稳定键顺序。
-- [ ] 替换前失败时旧文件字节保持不变。
-- [ ] 目标路径必须先通过 Task 3 的仓库边界检查。
+- [x] 成功写入不会留下临时文件，JSON 使用 UTF-8 和稳定键顺序。
+- [x] 替换前失败时旧文件字节保持不变。
+- [x] 目标路径必须先通过 Task 3 的仓库边界检查。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/storage/test_atomic.py -q`
-- [ ] Failure injection: 模拟 `os.replace` 失败并验证旧文件仍可读取。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/storage/test_atomic.py -q`
+- [x] Failure injection: 模拟 `os.replace` 失败并验证旧文件仍可读取。
 
 **Dependencies:** Task 3
 
@@ -95,10 +95,10 @@
 
 ## Checkpoint A：公共契约
 
-- [ ] `make check`
-- [ ] `make test-all`
-- [ ] JSON stdout/stderr 与退出码契约通过进程级测试。
-- [ ] 人工审阅 Schema、错误码和路径 API；后续任务不得绕过它们。
+- [ ] `make check`（被现有未跟踪 `.agents/skills/code-simplification/SKILL.md` 的 Ruff 格式问题阻断）
+- [x] `make test-all`
+- [x] JSON stdout/stderr 与退出码契约通过进程级测试。
+- [x] 人工审阅 Schema、错误码和路径 API；后续任务不得绕过它们。
 
 ## Phase 2：仓库摄取、解析与切分
 
