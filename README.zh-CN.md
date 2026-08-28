@@ -8,15 +8,15 @@
 
 ## 当前状态
 
-当前基础版本提供：
+当前离线 RAG 核心提供：
 
-- 可安装的 `repo-dive` 命令，支持 `--help` 和 `--version`；
-- 跨 Agent 的权威指令；
-- 架构、CLI、工作流和开发契约的中英双语文档；
-- 本地与 CI 共用的验证入口；
-- 测试和评测骨架。
+- 具有安全仓库边界的确定性 Git/文件系统扫描；
+- Python AST 与 Tree-sitter 解析，以及稳定的 Chunk、符号和关系；
+- 原子发布的本地 SQLite 索引、BM25 与结构检索；
+- 支持 JSON 或 Markdown 的只读 `search` 和 Token 预算 `context` 命令；
+- 稳定的进程、Schema、评测及本地/CI Harness 契约。
 
-仓库扫描、语法解析、索引、检索、上下文组装和 Wiki 生成尚未实现。
+可选向量检索以及 Wiki 状态持久化/汇总仍属于后续计划。
 
 ## 设计哲学
 
@@ -31,9 +31,9 @@
 
 完整说明见[架构设计](docs/zh-CN/architecture.md)。
 
-## 预期 Agent 工作流
+## Agent 工作流
 
-规划中的工作流是：
+当前可用的检索流程与规划中的 Wiki 阶段是：
 
 ```text
 调用方 Agent
@@ -71,9 +71,12 @@ make test-all
 ```bash
 .venv/bin/repo-dive --help
 .venv/bin/repo-dive --version
+.venv/bin/repo-dive index /path/to/repository --format json
+.venv/bin/repo-dive search /path/to/repository "entrypoint" --max-results 10 --format json
+.venv/bin/repo-dive context /path/to/repository "architecture" --token-budget 1200 --format json
 ```
 
-实现命令前请阅读[开发指南](docs/zh-CN/development.md)和 [CLI 契约](docs/zh-CN/cli-contract.md)。
+支持的工作流与公开契约参见[开发指南](docs/zh-CN/development.md)和 [CLI 契约](docs/zh-CN/cli-contract.md)。
 
 ## 项目文档
 

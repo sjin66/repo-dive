@@ -8,24 +8,32 @@
 
 命令显式接收仓库路径，不能从无关父目录推断另一个仓库。相对输入路径基于当前工作目录解析，并在元数据中以规范化绝对仓库根目录返回。
 
-功能命令将支持：
+功能命令支持：
 
 ```text
 repo-dive <command> [repository] --format json
 ```
 
-基础版本当前只实现 `repo-dive --help` 和 `repo-dive --version`。
+当前版本除 `--help` 和 `--version` 外，已经实现 `index`、`search` 和 `context`。
 
-## 规划中的 RAG 命令边界
+## RAG 命令边界
 
-规划中的命令族分别暴露每个 RAG 阶段：
+命令族分别暴露每个 RAG 阶段：
 
 - `index`：扫描、解析、切分，并建立结构/BM25/可选向量索引。
 - `search`：检索排序后的证据，并保留各通道评分。
 - `context`：去重，并在调用方给定的 Token 预算下打包证据。
 - `wiki`：持久化 Agent 生成的页面状态，并汇总 `.repo-dive/wiki.md`。
 
-`index`、`search` 和 `context` 是确定性的 RAG 操作。`wiki` 接受调用方 Copilot 会话生成的内容；这些命令都不会隐式调用生成模型。这些名称描述已批准的接口方向，在基础版本中尚不可用。
+`index`、`search` 和 `context` 是当前可用的确定性 RAG 操作。规划中的 `wiki` 命令族将接受调用方 Copilot 会话生成的内容。这些命令都不会隐式调用生成模型。
+
+`context` 命令要求正整数 Token 预算，并接受有上限的检索候选数量：
+
+```text
+repo-dive context <repository> <query> --token-budget N [--max-results COUNT] --format json|markdown
+```
+
+JSON 结果报告 `token_budget`、`estimated_tokens`、`reserved_tokens`、`estimator`、`truncated`、固定的 `duplicate`/`budget`/`low_score` 排除计数、融合参数和完整 Evidence 条目。每条 Evidence 包含稳定的 `evidence_id`、仓库相对路径、首尾都包含的行号范围、可用时的符号元数据、源码正文、评分和检索原因。
 
 ## 标准流
 
@@ -43,7 +51,7 @@ repo-dive <command> [repository] --format json
 
 ## 结果信封
 
-未来 JSON 命令使用以下顶层结构：
+JSON 命令使用以下顶层结构：
 
 ```json
 {
@@ -98,7 +106,7 @@ JSON 模式下的错误在 `stdout` 输出完整错误信封，同时在 `stderr
 
 ## 预算
 
-可能返回仓库内容的命令必须提供 `--token-budget` 或 `--max-results` 等明确限制。响应要报告实际预算、估算用量以及证据是否被截断。稳定元数据不占用调用方的证据预算。
+可能返回仓库内容的命令必须提供 `--token-budget` 或 `--max-results` 等明确限制。响应要报告实际预算、估算用量以及证据是否被截断。上下文预算在接纳完整源码正文前，先为稳定信封和条目元数据预留空间；不能通过截断 Evidence 行号范围来挤入预算。
 
 ## 幂等性与写入
 

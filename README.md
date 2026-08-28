@@ -8,15 +8,15 @@ The CLI is intentionally not another agent. It performs deterministic repository
 
 ## Status
 
-The current foundation provides:
+The current offline RAG core provides:
 
-- an installable `repo-dive` command with `--help` and `--version`;
-- authoritative cross-agent instructions;
-- bilingual architecture, CLI, workflow, and development contracts;
-- shared local/CI verification entry points;
-- test and evaluation scaffolding.
+- deterministic Git/filesystem scanning with safe repository boundaries;
+- Python AST and Tree-sitter parsing with stable chunks, symbols, and relationships;
+- atomic local SQLite indexing with BM25 and structural retrieval;
+- read-only `search` and token-budgeted `context` commands in JSON or Markdown;
+- stable process, schema, evaluation, and local/CI harness contracts.
 
-Repository scanning, syntax parsing, indexing, retrieval, context assembly, and wiki generation are planned but not implemented yet.
+Optional vector retrieval and wiki persistence/assembly remain planned work.
 
 ## Design Philosophy
 
@@ -31,9 +31,9 @@ Repository scanning, syntax parsing, indexing, retrieval, context assembly, and 
 
 See [Architecture](docs/en/architecture.md) for the complete rationale.
 
-## Intended Agent Workflow
+## Agent Workflow
 
-The planned workflow is:
+The available retrieval flow and planned wiki stages are:
 
 ```text
 calling agent
@@ -71,9 +71,12 @@ After setup:
 ```bash
 .venv/bin/repo-dive --help
 .venv/bin/repo-dive --version
+.venv/bin/repo-dive index /path/to/repository --format json
+.venv/bin/repo-dive search /path/to/repository "entrypoint" --max-results 10 --format json
+.venv/bin/repo-dive context /path/to/repository "architecture" --token-budget 1200 --format json
 ```
 
-See [Development](docs/en/development.md) and [CLI Contract](docs/en/cli-contract.md) before implementing commands.
+See [Development](docs/en/development.md) and [CLI Contract](docs/en/cli-contract.md) for supported workflows and public contracts.
 
 ## Project Documentation
 

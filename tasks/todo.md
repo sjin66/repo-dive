@@ -471,13 +471,13 @@
 **Description:** 暴露 `repo-dive context`，把查询、检索参数和 Token 预算转换为可供 Copilot 使用的带版本 EvidenceBundle。
 
 **Acceptance criteria:**
-- [ ] `--token-budget` 为必填正整数，并报告 estimator、实际估算、truncated 与 excluded summary。
-- [ ] 每个 Evidence Item 有稳定 Evidence ID、路径、可信行号、符号、正文和检索解释。
-- [ ] 同一索引、查询和参数返回字节等价 JSON（排除明确列出的耗时字段）。
+- [x] `--token-budget` 为必填正整数，并报告 estimator、实际估算、truncated 与 excluded summary。
+- [x] 每个 Evidence Item 有稳定 Evidence ID、路径、可信行号、符号、正文和检索解释。
+- [x] 同一索引、查询和参数返回字节等价 JSON（排除明确列出的耗时字段）。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/integration/test_context_command.py -q`
-- [ ] Manual check: `.venv/bin/repo-dive context tests/fixtures/index_repo "architecture" --token-budget 1200 --format json`
+- [x] Tests pass: `.venv/bin/pytest tests/integration/test_context_command.py -q`
+- [x] Manual check: `.venv/bin/repo-dive context tests/fixtures/index_repo "architecture" --token-budget 1200 --format json`
 
 **Dependencies:** Tasks 2、18–19
 
