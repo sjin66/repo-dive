@@ -13,6 +13,7 @@ from repo_dive.retrieval.service import (
     search_repository,
 )
 from repo_dive.retrieval.structural import StructuralHit, search_structural
+from repo_dive.retrieval.vector import VectorHit, search_vector
 
 __all__ = [
     "FusionMetadata",
@@ -22,8 +23,10 @@ __all__ = [
     "RepositorySearchResult",
     "SearchHit",
     "StructuralHit",
+    "VectorHit",
     "fuse_hits",
     "search_lexical",
     "search_repository",
     "search_structural",
+    "search_vector",
 ]
