@@ -59,6 +59,38 @@ See [Wiki Workflow](docs/en/wiki-workflow.md) for stage and artifact details.
 
 In this design, RAG means **retrieval-augmented generation with a split execution boundary**: `repo-dive` owns ingestion, indexing, retrieval, ranking, and context packaging; the calling Copilot session owns generation. The CLI does not launch a second hidden model session.
 
+## GitHub Copilot Quick Start
+
+No MCP server is required. After `make setup`, GitHub Copilot or another agent
+can call the executable directly. For a grounded repository answer:
+
+```bash
+.venv/bin/repo-dive index /path/to/repository --format json
+.venv/bin/repo-dive context /path/to/repository "How does startup work?" --token-budget 1200 --max-results 10 --format json
+```
+
+The caller generates its answer from `result.items` and cites each item's
+`path`, `start_line`, and `end_line`. For a persistent Wiki, run the complete
+resumable sequence:
+
+```bash
+.venv/bin/repo-dive index /path/to/repository --format json
+.venv/bin/repo-dive wiki structure /path/to/repository --input structure.json --format json
+.venv/bin/repo-dive wiki evidence /path/to/repository --page overview --token-budget 1200 --max-results 10 --format json
+# The calling Copilot model writes page.json from the returned Evidence.
+.venv/bin/repo-dive wiki page /path/to/repository --page overview --input page.json --format json
+.venv/bin/repo-dive wiki status /path/to/repository --format json
+.venv/bin/repo-dive wiki build /path/to/repository --format json
+```
+
+`wiki evidence` is the persisted Context stage for a Wiki page; do not replace
+it with generic `context`. Page JSON may also be piped with `--input -`. Exit
+codes are `0` success, `2` invalid invocation/input, `3` unavailable or stale
+repository data, and `4` internal failure. On failure, keep the previous
+`.repo-dive/` artifacts and recover according to the stable JSON error code.
+See [CLI Contract](docs/en/cli-contract.md) for complete input/output and retry
+examples.
+
 ## Development Setup
 
 Python 3.11 or newer is required.
@@ -84,6 +116,7 @@ After setup:
 .venv/bin/repo-dive wiki structure /path/to/repository --input structure.json --format json
 .venv/bin/repo-dive wiki evidence /path/to/repository --page overview --token-budget 1200 --format json
 .venv/bin/repo-dive wiki page /path/to/repository --page overview --input page.json --format json
+.venv/bin/repo-dive wiki page /path/to/repository --page overview --input - --format json
 .venv/bin/repo-dive wiki build /path/to/repository --format markdown
 .venv/bin/repo-dive wiki status /path/to/repository --format json
 ```

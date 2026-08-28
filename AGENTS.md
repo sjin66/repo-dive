@@ -47,6 +47,48 @@ Functional commands must be non-interactive and support `--format json`.
 - Evidence uses repository-relative POSIX paths and one-based inclusive line numbers.
 - Potentially large commands require an explicit token or result budget.
 
+## Calling-Agent Workflow
+
+MCP is not required. GitHub Copilot and other agents should invoke the
+non-interactive CLI directly, request JSON, check the process exit code, and
+parse stdout only as one complete JSON document.
+
+For ad hoc repository questions:
+
+1. Run `repo-dive index <repository> --format json` when no current index
+   exists or source has changed.
+2. Run `repo-dive context <repository> <query> --token-budget <tokens>
+   --format json`.
+3. Generate an answer only from returned Evidence, preserving paths and
+   one-based inclusive line ranges.
+
+For a persistent Wiki, use this resumable sequence:
+
+1. `repo-dive index <repository> --format json`
+2. `repo-dive wiki structure <repository> --input structure.json --format json`
+3. `repo-dive wiki evidence <repository> --page <page-id> --token-budget
+   <tokens> --format json`
+4. Use the calling agent's current model to generate page Markdown from the
+   returned Evidence. This is the context-to-generate boundary; the CLI does
+   not call a model. Do not use generic `context` as a substitute for persisted
+   Wiki Evidence.
+5. Submit `page.json` with the exact returned `evidence_id` values using
+   `repo-dive wiki page <repository> --page <page-id> --input page.json
+   --format json`. For pipelines, pass the same JSON through `--input -`.
+6. Repeat Evidence collection, generation, and page submission until
+   `repo-dive wiki status <repository> --format json` reports every page as
+   `generated`.
+7. Run `repo-dive wiki build <repository> --format json`; consume
+   `<repository>/.repo-dive/wiki.md` only after exit code `0`.
+
+In short: `index -> context (wiki evidence) -> generate -> wiki page -> build`.
+On exit code `2`, correct the invocation or JSON input without retrying it
+unchanged. On exit code `3`, inspect the stable error code; rebuild the index
+for `index_not_found` or `index_stale`, recollect Evidence for
+`wiki_evidence_stale`, and otherwise preserve current artifacts. On exit code
+`4`, surface the safe diagnostic and keep the last valid index or Wiki output;
+never parse stderr as source Evidence.
+
 ## Repository Artifact Contract
 
 Generated artifacts belong under the analyzed repository's `.repo-dive/` directory:

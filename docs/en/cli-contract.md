@@ -89,6 +89,335 @@ The assembled document preserves Section/Page order and contains the Wiki title 
 
 JSON output reports `artifact_path`, UTF-8 `bytes`, `changed`, Section/Page/source counts, and `sha256` without returning the assembled body. Markdown output writes the exact assembled document to stdout, while both formats first obey the same atomic artifact write. Rebuilding identical state is a no-write success with `changed: false`.
 
+## Agent Invocation Examples
+
+No MCP server is required. A calling agent should execute the CLI directly and
+use this order for a persistent Wiki:
+
+```text
+index -> wiki structure -> wiki evidence (Context) -> caller generates prose -> wiki page -> wiki build
+```
+
+Run `wiki status` between resumable steps. Generic `context` is appropriate for
+ad hoc answers; `wiki evidence` must be used for Wiki pages because it persists
+the Evidence snapshot validated by `wiki page` and `wiki build`.
+
+### Index success
+
+<!-- contract-example:index-success -->
+
+```bash
+repo-dive index /workspace/project --format json
+```
+
+```json
+{
+  "schema_version": "1.0",
+  "command": "index",
+  "repository": "/workspace/project",
+  "result": {
+    "build_id": "0123456789abcdef0123456789abcdef",
+    "chunks": 24,
+    "deleted_files": 0,
+    "files": 8,
+    "index_schema_version": 4,
+    "indexed_files": 8,
+    "manifest_schema_version": "1.0",
+    "rebuilt_files": 8,
+    "relationships": 11,
+    "repository_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "reused_files": 0,
+    "skipped_files": 0,
+    "symbols": 17,
+    "warning_count": 0
+  },
+  "warnings": []
+}
+```
+
+### Search success
+
+<!-- contract-example:search-success -->
+
+```bash
+repo-dive search /workspace/project "build_parser" --max-results 10 --format json
+```
+
+```json
+{
+  "schema_version": "1.0",
+  "command": "search",
+  "repository": "/workspace/project",
+  "result": {
+    "fusion": {
+      "channel_weights": {
+        "lexical": 1.0,
+        "structural": 1.0
+      },
+      "overlap_threshold": 0.8,
+      "rrf_k": 60,
+      "strategy": "weighted_rrf"
+    },
+    "hits": [
+      {
+        "chunk_id": "chunk:example",
+        "end_line": 25,
+        "fused_score": 0.03278688524590164,
+        "lexical_score": 1.25,
+        "path": "src/repo_dive/cli.py",
+        "reasons": [
+          "lexical_match:build",
+          "lexical_match:parser",
+          "rrf:lexical:rank=1,weight=1.000000,contribution=0.016393442623",
+          "symbol_match:name_exact:repo_dive.cli.build_parser",
+          "rrf:structural:rank=1,weight=1.000000,contribution=0.016393442623"
+        ],
+        "start_line": 12,
+        "structural_score": 0.95,
+        "symbol": {
+          "id": "symbol:example",
+          "kind": "function",
+          "name": "build_parser",
+          "qualified_name": "repo_dive.cli.build_parser"
+        },
+        "text": "def build_parser():\n    ...\n",
+        "vector_score": null
+      }
+    ],
+    "max_results": 10,
+    "query": "build_parser",
+    "result_count": 1
+  },
+  "warnings": []
+}
+```
+
+### Context success
+
+<!-- contract-example:context-success -->
+
+```bash
+repo-dive context /workspace/project "build_parser" --token-budget 1200 --max-results 10 --format json
+```
+
+```json
+{
+  "schema_version": "1.0",
+  "command": "context",
+  "repository": "/workspace/project",
+  "result": {
+    "estimated_tokens": 184,
+    "estimator": "conservative_utf8_bytes_v1",
+    "excluded": {
+      "budget": 0,
+      "duplicate": 0,
+      "low_score": 0
+    },
+    "fusion": {
+      "channel_weights": {
+        "lexical": 1.0,
+        "structural": 1.0
+      },
+      "overlap_threshold": 0.8,
+      "rrf_k": 60,
+      "strategy": "weighted_rrf"
+    },
+    "items": [
+      {
+        "chunk_id": "chunk:example",
+        "end_line": 25,
+        "estimated_tokens": 116,
+        "evidence_id": "evidence:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "fused_score": 0.03278688524590164,
+        "lexical_score": 1.25,
+        "path": "src/repo_dive/cli.py",
+        "reasons": [
+          "lexical_match:build",
+          "lexical_match:parser",
+          "rrf:lexical:rank=1,weight=1.000000,contribution=0.016393442623",
+          "symbol_match:name_exact:repo_dive.cli.build_parser",
+          "rrf:structural:rank=1,weight=1.000000,contribution=0.016393442623"
+        ],
+        "start_line": 12,
+        "structural_score": 0.95,
+        "symbol": {
+          "id": "symbol:example",
+          "kind": "function",
+          "name": "build_parser",
+          "qualified_name": "repo_dive.cli.build_parser"
+        },
+        "text": "def build_parser():\n    ...\n",
+        "vector_score": null
+      }
+    ],
+    "max_results": 10,
+    "query": "build_parser",
+    "reserved_tokens": 68,
+    "result_count": 1,
+    "token_budget": 1200,
+    "truncated": false
+  },
+  "warnings": []
+}
+```
+
+The calling model may now generate an answer, but must retain the returned
+path and inclusive lines as its citation.
+
+### Wiki file input and success
+
+<!-- contract-example:wiki-success -->
+
+`structure.json`:
+
+```json
+{
+  "schema_version": "1.0",
+  "title": "Project Wiki",
+  "description": "Grounded repository documentation.",
+  "output_language": "en",
+  "sections": [
+    {
+      "id": "guide",
+      "title": "Guide",
+      "pages": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Explain the CLI entrypoint.",
+          "relevant_files": [
+            "src/repo_dive/cli.py"
+          ],
+          "related_page_ids": []
+        }
+      ]
+    }
+  ]
+}
+```
+
+```bash
+repo-dive wiki structure /workspace/project --input structure.json --format json
+repo-dive wiki evidence /workspace/project --page overview --token-budget 1200 --max-results 10 --format json
+```
+
+The caller generates only the `body`; the CLI owns the page heading. It copies
+the exact IDs returned by `wiki evidence` into `page.json`:
+
+```json
+{
+  "schema_version": "1.0",
+  "page_id": "overview",
+  "body": "The CLI entrypoint builds a bounded argument parser and dispatches a typed command handler.\n",
+  "evidence_ids": [
+    "evidence:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  ]
+}
+```
+
+```bash
+repo-dive wiki page /workspace/project --page overview --input page.json --format json
+```
+
+```json
+{
+  "schema_version": "1.0",
+  "command": "wiki page",
+  "repository": "/workspace/project",
+  "result": {
+    "body_bytes": 92,
+    "changed": true,
+    "citation_count": 1,
+    "evidence_ids": [
+      "evidence:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    ],
+    "page_id": "overview",
+    "status": "generated"
+  },
+  "warnings": []
+}
+```
+
+```bash
+repo-dive wiki build /workspace/project --format json
+```
+
+```json
+{
+  "schema_version": "1.0",
+  "command": "wiki build",
+  "repository": "/workspace/project",
+  "result": {
+    "artifact_path": ".repo-dive/wiki.md",
+    "bytes": 512,
+    "changed": true,
+    "page_count": 1,
+    "section_count": 1,
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "source_count": 1
+  },
+  "warnings": []
+}
+```
+
+### stdin and Markdown output
+
+<!-- contract-example:stdin -->
+
+File and stdin input use the same Page Submission Schema:
+
+```bash
+repo-dive wiki page /workspace/project --page overview --input page.json --format json
+repo-dive wiki page /workspace/project --page overview --input - --format json < page.json
+repo-dive search /workspace/project "build_parser" --max-results 10 --format markdown
+```
+
+Representative Markdown stdout begins with:
+
+```markdown
+# Repository search
+
+- Query: "build_parser"
+- Results: 1
+- Fusion: weighted_rrf
+```
+
+### Error and recovery
+
+<!-- contract-example:error -->
+
+Commands in JSON mode emit a complete error document even when they fail:
+
+```json
+{
+  "schema_version": "1.0",
+  "command": "context",
+  "error": {
+    "code": "index_stale",
+    "message": "Repository index is stale; run `repo-dive index` first.",
+    "details": {
+      "build_id": "0123456789abcdef0123456789abcdef"
+    }
+  }
+}
+```
+
+<!-- contract-example:recovery -->
+
+Use the process exit code before interpreting the envelope:
+
+```text
+0 -> consume result
+2 -> correct arguments or JSON input; do not retry unchanged
+3 + index_not_found/index_stale -> run index, then retry retrieval
+3 + wiki_evidence_stale -> run wiki evidence again, regenerate, then submit wiki page
+4 -> surface the safe diagnostic and preserve the last valid .repo-dive artifacts
+```
+
+After an interrupted Wiki run, call `repo-dive wiki status ... --format json`
+and follow each page's `next_action`. Never treat stderr or an old generic
+`context` response as persisted Wiki Evidence.
+
 ## Standard Streams
 
 ### JSON mode

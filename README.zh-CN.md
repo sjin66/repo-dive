@@ -56,6 +56,35 @@
 
 这里的 RAG 是一种**执行边界分离的检索增强生成**：`repo-dive` 负责摄取、索引、检索、排序和上下文打包；调用方 Copilot 会话负责生成。CLI 不会再启动一个隐藏的模型会话。
 
+## GitHub Copilot 快速开始
+
+不需要 MCP Server。执行 `make setup` 后，GitHub Copilot 或其他 Agent 可以直接
+调用可执行文件。要生成有仓库证据支持的回答：
+
+```bash
+.venv/bin/repo-dive index /path/to/repository --format json
+.venv/bin/repo-dive context /path/to/repository "How does startup work?" --token-budget 1200 --max-results 10 --format json
+```
+
+调用方只根据 `result.items` 生成回答，并引用每项的 `path`、`start_line` 和
+`end_line`。要生成持久 Wiki，执行完整且可恢复的序列：
+
+```bash
+.venv/bin/repo-dive index /path/to/repository --format json
+.venv/bin/repo-dive wiki structure /path/to/repository --input structure.json --format json
+.venv/bin/repo-dive wiki evidence /path/to/repository --page overview --token-budget 1200 --max-results 10 --format json
+# 调用方 Copilot 模型根据返回的 Evidence 编写 page.json。
+.venv/bin/repo-dive wiki page /path/to/repository --page overview --input page.json --format json
+.venv/bin/repo-dive wiki status /path/to/repository --format json
+.venv/bin/repo-dive wiki build /path/to/repository --format json
+```
+
+`wiki evidence` 是 Wiki 页面的持久化 Context 阶段，不能用通用 `context` 替代。
+页面 JSON 也可以通过 `--input -` 传入。退出码为：`0` 成功、`2` 调用或输入无效、
+`3` 仓库数据不可用或过期、`4` 内部失败。失败时保留已有 `.repo-dive/` 产物，
+并依据稳定的 JSON 错误码恢复。完整输入输出与重试示例见
+[CLI 契约](docs/zh-CN/cli-contract.md)。
+
 ## 开发环境
 
 要求 Python 3.11 或更高版本。
@@ -81,6 +110,7 @@ make test-all
 .venv/bin/repo-dive wiki structure /path/to/repository --input structure.json --format json
 .venv/bin/repo-dive wiki evidence /path/to/repository --page overview --token-budget 1200 --format json
 .venv/bin/repo-dive wiki page /path/to/repository --page overview --input page.json --format json
+.venv/bin/repo-dive wiki page /path/to/repository --page overview --input - --format json
 .venv/bin/repo-dive wiki build /path/to/repository --format markdown
 .venv/bin/repo-dive wiki status /path/to/repository --format json
 ```
