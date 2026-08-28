@@ -46,6 +46,34 @@ def test_failed_atomic_replace_preserves_old_file(
     assert list(target.parent.iterdir()) == [target]
 
 
+def test_cleanup_failure_does_not_leak_raw_os_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = tmp_path / "repository"
+    target = repository / ".repo-dive" / "wiki.md"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"old wiki\n")
+
+    def fail_replace(source: str | Path, destination: str | Path) -> None:
+        raise OSError("simulated replace failure")
+
+    def fail_unlink(path: Path, missing_ok: bool = False) -> None:
+        raise OSError("simulated cleanup failure")
+
+    monkeypatch.setattr("repo_dive.storage.atomic.os.replace", fail_replace)
+    monkeypatch.setattr(Path, "unlink", fail_unlink)
+
+    with pytest.raises(InternalOperationError) as exc_info:
+        atomic_write_bytes(repository, ".repo-dive/wiki.md", b"new wiki\n")
+
+    assert exc_info.value.code == "atomic_write_failed"
+    assert exc_info.value.details == {
+        "path": ".repo-dive/wiki.md",
+        "temporary_cleanup_failed": True,
+    }
+    assert target.read_bytes() == b"old wiki\n"
+
+
 def test_atomic_write_rejects_target_outside_repository(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     repository.mkdir()

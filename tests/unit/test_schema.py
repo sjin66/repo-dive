@@ -64,3 +64,8 @@ def test_json_document_is_stable_utf8_and_has_one_trailing_newline() -> None:
 def test_json_serialization_fails_before_returning_partial_output() -> None:
     with pytest.raises(TypeError):
         serialize_json_document({"unsupported": object()})
+
+
+def test_json_serialization_rejects_non_finite_numbers() -> None:
+    with pytest.raises(ValueError):
+        serialize_json_document({"score": float("nan")})

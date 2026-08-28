@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 from repo_dive.errors import InternalOperationError
-from repo_dive.schema import serialize_json_document
+from repo_dive.schema import JsonObject, serialize_json_document
 from repo_dive.storage.paths import (
     resolve_repository,
     resolve_within_repository,
@@ -40,12 +40,16 @@ def atomic_write_bytes(
         os.replace(temporary, target)
         temporary = None
     except OSError as error:
+        details: JsonObject = {"path": display_path}
         if temporary is not None:
-            temporary.unlink(missing_ok=True)
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                details["temporary_cleanup_failed"] = True
         raise InternalOperationError(
             "atomic_write_failed",
             "Could not atomically write repository artifact.",
-            details={"path": display_path},
+            details=details,
         ) from error
 
     return target

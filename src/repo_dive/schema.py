@@ -79,6 +79,7 @@ def serialize_json_document(value: object) -> str:
         json.dumps(
             value,
             ensure_ascii=False,
+            allow_nan=False,
             separators=(",", ":"),
             sort_keys=True,
         )
