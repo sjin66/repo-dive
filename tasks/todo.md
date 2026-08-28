@@ -628,13 +628,13 @@
 **Description:** 保存定长 float32 向量、Provider/模型身份和 Chunk hash，并实现受 `max_results` 限制的确定性暴力余弦检索。
 
 **Acceptance criteria:**
-- [ ] 拒绝维度不一致、NaN/Inf 和模型身份不匹配的向量。
-- [ ] 固定向量集合的余弦分数和顺序与手工结果一致。
-- [ ] Vector 表为空时不会影响 BM25/结构索引和查询。
+- [x] 拒绝维度不一致、NaN/Inf 和模型身份不匹配的向量。
+- [x] 固定向量集合的余弦分数和顺序与手工结果一致。
+- [x] Vector 表为空时不会影响 BM25/结构索引和查询。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/indexing/test_vectors.py tests/unit/retrieval/test_vector.py -q`
-- [ ] Determinism check: 同分向量按 Chunk ID 稳定排序。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/indexing/test_vectors.py tests/unit/retrieval/test_vector.py -q`
+- [x] Determinism check: 同分向量按 Chunk ID 稳定排序。
 
 **Dependencies:** Tasks 10、17
 

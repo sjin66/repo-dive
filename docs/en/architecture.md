@@ -104,9 +104,13 @@ The default RAG design uses three complementary evidence channels:
 
 BM25 and structural retrieval must work without credentials or a network connection. Vector retrieval enhances recall but cannot be required for basic repository understanding.
 
+Index Schema 4 represents each optional embedding as a fixed-length little-endian float32 SQLite BLOB bound to its Chunk ID and content hash. Provider, model, and dimensions form an explicit embedding identity; mixed identities, stale Chunk hashes, wrong dimensions, and non-finite values are rejected before replacement. An empty Vector table is valid and leaves the lexical and structural indexes unchanged.
+
 ### Retrieval and ranking
 
 A query may come directly from the caller or from a persisted wiki-page description. Each enabled channel returns candidates with its own score. The retrieval layer fuses candidates through a documented, replaceable strategy, removes duplicate/overlapping chunks, and may expand high-confidence symbol relationships. It must preserve component scores so results remain explainable.
+
+The baseline Vector retriever performs an exact brute-force cosine scan at persisted float32 precision. `max_results` bounds returned hits, and equal scores are ordered by Chunk ID. This standard-library implementation is the deterministic reference; an ANN index is justified only after repository-scale measurements demonstrate a need.
 
 ### Context assembly
 

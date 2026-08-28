@@ -17,7 +17,7 @@
 - 带原子产物的可恢复 `wiki structure`、`wiki evidence`、`wiki page`、`wiki build` 和 `wiki status` 命令；
 - 稳定的进程、Schema、评测及本地/CI Harness 契约。
 
-可选向量检索仍属于后续计划；离线 Wiki 工作流已经完整可用。
+可选的 SQLite float32 Vector Store 和确定性余弦检索器已经实现。本地 Embedding Provider 与三通道 CLI 集成仍属于后续计划；离线 Wiki 工作流保持完整可用。
 
 ## 设计哲学
 
