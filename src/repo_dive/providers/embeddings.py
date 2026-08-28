@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterable, Sequence
 from importlib import import_module
 from pathlib import Path
 from types import ModuleType
-from typing import Protocol, cast
+from typing import Literal, Protocol, cast
 
 from repo_dive.errors import InternalOperationError, InvocationError
 from repo_dive.indexing.vectors import (
@@ -17,6 +17,7 @@ from repo_dive.indexing.vectors import (
 )
 
 DEFAULT_EMBEDDING_BATCH_SIZE = 32
+VectorFailurePolicy = Literal["strict", "degraded"]
 
 
 class EmbeddingProvider(Protocol):
@@ -209,4 +210,5 @@ __all__ = [
     "DEFAULT_EMBEDDING_BATCH_SIZE",
     "EmbeddingProvider",
     "SentenceTransformersEmbeddingProvider",
+    "VectorFailurePolicy",
 ]
