@@ -448,13 +448,13 @@
 **Description:** 实现可替换 TokenEstimator 与预算 Packer，在保留元数据、来源多样性和完整行范围的前提下选择证据。
 
 **Acceptance criteria:**
-- [ ] 预算先扣除稳定信封/元数据预留；正文不会使 `estimated_tokens` 超预算。
-- [ ] 优先高分实现，并限制单文件占比；排除项报告 duplicate、budget 或 low_score。
-- [ ] 过小预算返回空 items + truncated，而不是输出破损 Evidence。
+- [x] 预算先扣除稳定信封/元数据预留；正文不会使 `estimated_tokens` 超预算。
+- [x] 优先高分实现，并限制单文件占比；排除项报告 duplicate、budget 或 low_score。
+- [x] 过小预算返回空 items + truncated，而不是输出破损 Evidence。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/context/test_tokens.py tests/unit/context/test_packer.py -q`
-- [ ] Property check: 多组预算下估算用量始终小于等于预算且随预算不减少。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/context/test_tokens.py tests/unit/context/test_packer.py -q`
+- [x] Property check: 多组预算下估算用量始终小于等于预算且随预算不减少。
 
 **Dependencies:** Task 17
 
