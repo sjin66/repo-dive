@@ -8,6 +8,7 @@ from repo_dive.parsing.models import Chunk, create_chunk
 from repo_dive.retrieval.fusion import FusionParameters, fuse_hits
 from repo_dive.retrieval.lexical import LexicalHit
 from repo_dive.retrieval.structural import StructuralHit
+from repo_dive.retrieval.vector import VectorHit
 
 
 def chunk(
@@ -33,6 +34,10 @@ def lexical(item: Chunk, score: float, *terms: str) -> LexicalHit:
 
 def structural(item: Chunk, score: float, *reasons: str) -> StructuralHit:
     return StructuralHit(chunk=item, structural_score=score, reasons=reasons)
+
+
+def vector(item: Chunk, score: float) -> VectorHit:
+    return VectorHit(chunk=item, vector_score=score)
 
 
 def test_weighted_rrf_records_parameters_and_does_not_invent_missing_ranks() -> None:
@@ -107,6 +112,41 @@ def test_exact_chunk_id_is_merged_across_channels_and_conflicts_are_rejected() -
             lexical_hits=(lexical(item, 2.5, "serve"),),
             structural_hits=(structural(conflicting, 0.9, "symbol_match:serve"),),
         )
+
+
+def test_vector_channel_participates_in_rrf_and_preserves_raw_score() -> None:
+    shared = chunk("src/shared.py", 1, 2, "shared implementation")
+    semantic_only = chunk("src/semantic.py", 3, 5, "semantic implementation")
+    parameters = FusionParameters(
+        rrf_k=10,
+        lexical_weight=1.0,
+        structural_weight=0.0,
+        vector_weight=2.0,
+    )
+
+    result = fuse_hits(
+        lexical_hits=(lexical(shared, 4.0, "shared"),),
+        vector_hits=(
+            vector(semantic_only, 0.95),
+            vector(shared, 0.75),
+        ),
+        parameters=parameters,
+    )
+
+    assert result.metadata.channel_weights == (
+        ("lexical", 1.0),
+        ("structural", 0.0),
+        ("vector", 2.0),
+    )
+    by_id = {hit.chunk.id: hit for hit in result.hits}
+    assert by_id[semantic_only.id].vector_score == 0.95
+    assert by_id[semantic_only.id].fused_score == pytest.approx(2 / 11)
+    assert by_id[shared.id].vector_score == 0.75
+    assert by_id[shared.id].fused_score == pytest.approx(1 / 11 + 2 / 12)
+    assert any(
+        reason.startswith("rrf:vector:rank=1")
+        for reason in by_id[semantic_only.id].reasons
+    )
 
 
 def test_overlap_dedup_prefers_informative_evidence_but_preserves_symbols() -> None:

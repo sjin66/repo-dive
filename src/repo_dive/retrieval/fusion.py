@@ -9,6 +9,7 @@ from math import isfinite
 from repo_dive.parsing.models import Chunk
 from repo_dive.retrieval.lexical import LexicalHit
 from repo_dive.retrieval.structural import StructuralHit
+from repo_dive.retrieval.vector import VectorHit
 
 DEFAULT_RRF_K = 60
 DEFAULT_OVERLAP_THRESHOLD = 0.8
@@ -21,12 +22,13 @@ class FusionParameters:
     rrf_k: int = DEFAULT_RRF_K
     lexical_weight: float = 1.0
     structural_weight: float = 1.0
+    vector_weight: float = 0.0
     overlap_threshold: float = DEFAULT_OVERLAP_THRESHOLD
 
     def __post_init__(self) -> None:
         if self.rrf_k < 0:
             raise ValueError("rrf_k must not be negative")
-        weights = (self.lexical_weight, self.structural_weight)
+        weights = (self.lexical_weight, self.structural_weight, self.vector_weight)
         if any(not isfinite(weight) or weight < 0.0 for weight in weights):
             raise ValueError("each channel weight must be finite and non-negative")
         if not any(weight > 0.0 for weight in weights):
@@ -72,6 +74,7 @@ class _Candidate:
     chunk: Chunk
     lexical_score: float | None = None
     structural_score: float | None = None
+    vector_score: float | None = None
     fused_score: float = 0.0
     reasons: list[str] = field(default_factory=list)
 
@@ -80,6 +83,7 @@ def fuse_hits(
     *,
     lexical_hits: Iterable[LexicalHit] = (),
     structural_hits: Iterable[StructuralHit] = (),
+    vector_hits: Iterable[VectorHit] = (),
     parameters: FusionParameters | None = None,
     max_results: int = 20,
 ) -> FusionResult:
@@ -87,13 +91,16 @@ def fuse_hits(
     if max_results < 0:
         raise ValueError("max_results must not be negative")
     configured = parameters or FusionParameters()
+    channel_weights = [
+        ("lexical", configured.lexical_weight),
+        ("structural", configured.structural_weight),
+    ]
+    if configured.vector_weight > 0.0:
+        channel_weights.append(("vector", configured.vector_weight))
     metadata = FusionMetadata(
         strategy="weighted_rrf",
         rrf_k=configured.rrf_k,
-        channel_weights=(
-            ("lexical", configured.lexical_weight),
-            ("structural", configured.structural_weight),
-        ),
+        channel_weights=tuple(channel_weights),
         overlap_threshold=configured.overlap_threshold,
     )
     if max_results == 0:
@@ -146,12 +153,32 @@ def fuse_hits(
                 ),
             )
 
+    if configured.vector_weight > 0.0:
+        for rank, vector_hit in enumerate(_rank_vector(vector_hits), start=1):
+            candidate = _candidate(candidates, vector_hit.chunk)
+            candidate.vector_score = vector_hit.vector_score
+            contribution = _rrf_contribution(
+                rank=rank,
+                weight=configured.vector_weight,
+                rrf_k=configured.rrf_k,
+            )
+            candidate.fused_score += contribution
+            _add_reason(
+                candidate,
+                _rrf_reason(
+                    channel="vector",
+                    rank=rank,
+                    weight=configured.vector_weight,
+                    contribution=contribution,
+                ),
+            )
+
     hits = tuple(
         SearchHit(
             chunk=candidate.chunk,
             lexical_score=candidate.lexical_score,
             structural_score=candidate.structural_score,
-            vector_score=None,
+            vector_score=candidate.vector_score,
             fused_score=candidate.fused_score,
             reasons=tuple(candidate.reasons),
         )
@@ -197,6 +224,28 @@ def _rank_structural(hits: Iterable[StructuralHit]) -> tuple[StructuralHit, ...]
             ranked,
             key=lambda hit: (
                 -hit.structural_score,
+                hit.chunk.path,
+                hit.chunk.start_line,
+                hit.chunk.id,
+            ),
+        )
+    )
+
+
+def _rank_vector(hits: Iterable[VectorHit]) -> tuple[VectorHit, ...]:
+    ranked = tuple(hits)
+    chunk_ids: set[str] = set()
+    for hit in ranked:
+        if hit.chunk.id in chunk_ids:
+            raise ValueError("vector channel contains duplicate Chunk IDs")
+        chunk_ids.add(hit.chunk.id)
+        if not isfinite(hit.vector_score):
+            raise ValueError("vector scores must be finite")
+    return tuple(
+        sorted(
+            ranked,
+            key=lambda hit: (
+                -hit.vector_score,
                 hit.chunk.path,
                 hit.chunk.start_line,
                 hit.chunk.id,
