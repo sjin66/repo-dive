@@ -572,13 +572,13 @@
 **Description:** 实现 `wiki page`，从 JSON stdin/文件接收 Copilot 生成的 Markdown 和 Evidence ID，验证后原子持久化单页。
 
 **Acceptance criteria:**
-- [ ] 拒绝未知/过期 Evidence ID、错误 Page ID、非法 UTF-8、超限正文和不允许的状态转换。
-- [ ] 成功页面进入 `generated`，正文与引用可独立重试且不影响其他页面。
-- [ ] 诊断不回显完整私有源码或完整页面正文。
+- [x] 拒绝未知/过期 Evidence ID、错误 Page ID、非法 UTF-8、超限正文和不允许的状态转换。
+- [x] 成功页面进入 `generated`，正文与引用可独立重试且不影响其他页面。
+- [x] 诊断不回显完整私有源码或完整页面正文。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/integration/test_wiki_page.py -q`
-- [ ] Retry check: failed 页面修正后可提交，已 generated 页面字节不变。
+- [x] Tests pass: `.venv/bin/pytest tests/integration/test_wiki_page.py -q`
+- [x] Retry check: failed 页面修正后可提交，已 generated 页面字节不变。
 
 **Dependencies:** Task 23
 

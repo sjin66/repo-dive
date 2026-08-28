@@ -8,7 +8,7 @@ This file is the authoritative repository-wide instruction set. Tool-specific in
 
 `repo-dive` is a pure-Python, agent-friendly local RAG CLI for collecting grounded evidence from repositories and assembling repository-owned knowledge artifacts. The CLI owns ingestion, indexing, retrieval, ranking, context packaging, and artifact persistence. The calling agent performs interpretation and prose generation. The CLI must never invoke a generative model implicitly.
 
-The current foundation contains only the package shell, documentation, and verification harness. Do not present planned scanning, parsing, indexing, retrieval, context, or wiki commands as implemented.
+Treat `tasks/todo.md`, executable help, and tests as the implementation-status authority. Do not present unchecked planned tasks as implemented.
 
 ## Design Principles
 
@@ -21,7 +21,7 @@ The current foundation contains only the package shell, documentation, and verif
 - Hide retrieval implementations behind narrow interfaces.
 - Use the same setup and verification entry points for humans, agents, and CI.
 
-## Planned Source Boundaries
+## Source Boundaries
 
 - `src/repo_dive/cli.py`: process arguments, stdout/stderr, and exit codes only.
 - `scanner`: repository traversal and filtering.

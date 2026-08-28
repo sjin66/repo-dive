@@ -28,6 +28,7 @@ Wiki 工作流把本地仓库证据转换成一个稳定的 Markdown 文档，�
 - 稳定的 `id`、`title` 和 `description`；
 - `status`、`relevant_files` 和 `related_page_ids`；
 - 完整的 `evidence` 引用，包括 `evidence_id`、`chunk_id`、仓库相对 POSIX `path` 和首尾都包含的行号范围；
+- 生成页面从已持久化引用中选择的 `citation_ids`；
 - 可为空的已生成 `body` 和安全 `error` 摘要。
 
 `metadata.json` 拥有可独立演进的 `schema_version`。它记录规范化仓库身份与指纹、可选源码 Commit、输出语言、时间戳、`wiki_schema_version`、`index_schema_version` 和 `index_build_id`。
@@ -67,6 +68,7 @@ CLI 校验引用，并把接受的结构持久化到 `wiki.json`。它不能自�
 ```text
 repo-dive wiki structure <repository> --input structure.json --format json|markdown
 repo-dive wiki evidence <repository> --page <page-id> --token-budget N --format json|markdown
+repo-dive wiki page <repository> --page <page-id> --input <page.json|-> --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
 
@@ -86,7 +88,20 @@ Agent 针对每个页面，使用页面主题和相关文件提示请求证据�
 
 调用方 Agent 使用当前模型和返回证据撰写单个 Markdown 页面。页面通过 stdin 或结构化输入文件交回 CLI。CLI 在保存前校验页面身份、证据引用、编码和大小。
 
-每个页面可以独立重试。完成一个页面不应要求重新生成其他已完成页面。
+输入是严格的 Schema `1.0` JSON 对象：
+
+```json
+{
+  "schema_version": "1.0",
+  "page_id": "overview",
+  "body": "# Overview\n\n基于证据的说明。\n",
+  "evidence_ids": ["evidence:..."]
+}
+```
+
+只有当每个引用 ID 都属于该页，并且保存的 Chunk 哈希、路径和行号范围仍然有效时，CLI 才接受 Evidence 子集。正文和选中的引用 ID 一起保存，随后页面进入 `generated`。成功摘要和诊断都不会返回完整正文。
+
+每个页面可以独立重试。修正后的 `failed` 页面可以复用仍然有效的 Evidence 快照，完成它不会重写其他已生成页面。完全相同的已生成提交是保持字节不变的空操作；修改已生成页面需要后续显式失效/重新生成流程，不能意外覆盖。
 
 这是 RAG 的生成阶段。它运行在调用方 Copilot 会话中，而不是 CLI 内部，因此能够复用调用方选择的模型和对话，同时证据仍然是带版本、可检查的 CLI 结果。
 

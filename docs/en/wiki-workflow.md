@@ -28,6 +28,7 @@ Only `wiki.md`, `wiki.json`, and `metadata.json` are public artifact contracts. 
 - stable `id`, `title`, and `description`;
 - `status`, `relevant_files`, and `related_page_ids`;
 - complete `evidence` references with `evidence_id`, `chunk_id`, repository-relative POSIX `path`, and an inclusive line range;
+- `citation_ids` selected by the generated page from those persisted references;
 - nullable generated `body` and safe `error` summary.
 
 `metadata.json` has an independently evolvable `schema_version`. It records the normalized repository identity and fingerprint, optional source Commit, output language, timestamps, `wiki_schema_version`, `index_schema_version`, and `index_build_id`.
@@ -67,6 +68,7 @@ The available command boundary is:
 ```text
 repo-dive wiki structure <repository> --input structure.json --format json|markdown
 repo-dive wiki evidence <repository> --page <page-id> --token-budget N --format json|markdown
+repo-dive wiki page <repository> --page <page-id> --input <page.json|-> --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
 
@@ -86,7 +88,20 @@ Freshness is page-local. An index Schema change invalidates saved Evidence globa
 
 The calling agent uses its current model and the returned evidence to write one Markdown page. The page is returned to the CLI through stdin or a structured input file. The CLI validates page identity, evidence citations, encoding, and size before persisting it.
 
-Page generation is independently retryable. Completing one page must not require regenerating other completed pages.
+The input is a strict Schema `1.0` JSON object:
+
+```json
+{
+  "schema_version": "1.0",
+  "page_id": "overview",
+  "body": "# Overview\n\nGrounded explanation.\n",
+  "evidence_ids": ["evidence:..."]
+}
+```
+
+The CLI accepts the cited Evidence subset only when every ID belongs to the page and the saved Chunk hashes, paths, and line ranges remain current. It stores the body and selected citation IDs together, then moves the page to `generated`. It never returns the full body in the success summary or in diagnostics.
+
+Page generation is independently retryable. A corrected `failed` page can reuse a still-current Evidence snapshot, and completing it does not rewrite another generated page. Repeating an identical generated submission is a byte-preserving no-op; changing an already generated page requires an explicit later invalidation/regeneration workflow rather than an accidental overwrite.
 
 This is the generation step of RAG. It runs in the calling Copilot session rather than inside the CLI, so it can reuse the caller's selected model and conversation while the evidence remains a versioned, inspectable CLI result.
 

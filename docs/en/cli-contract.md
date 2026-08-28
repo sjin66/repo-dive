@@ -14,7 +14,7 @@ Functional commands support:
 repo-dive <command> [repository] --format json
 ```
 
-The current build implements `index`, `search`, `context`, `wiki structure`, `wiki evidence`, and `wiki status` in addition to `--help` and `--version`.
+The current build implements `index`, `search`, `context`, `wiki structure`, `wiki evidence`, `wiki page`, and `wiki status` in addition to `--help` and `--version`.
 
 ## RAG Command Boundary
 
@@ -25,7 +25,7 @@ Command families expose each RAG stage independently:
 - `context`: deduplicate and package evidence under a caller-supplied token budget.
 - `wiki`: persist agent-generated page state and assemble `.repo-dive/wiki.md`.
 
-`index`, `search`, and `context` are available deterministic RAG operations. `wiki structure`, `wiki evidence`, and `wiki status` provide persistent, resumable Wiki state; page submission and final assembly remain planned. None of these commands implicitly calls a generative model.
+`index`, `search`, and `context` are deterministic RAG operations. `wiki structure`, `wiki evidence`, `wiki page`, and `wiki status` provide persistent, resumable Wiki state; only final assembly remains planned. None of these commands implicitly calls a generative model.
 
 The context command requires a positive token budget and accepts a bounded retrieval-candidate count:
 
@@ -40,6 +40,7 @@ The structure command reads a bounded UTF-8 JSON document from an explicit file:
 ```text
 repo-dive wiki structure <repository> --input structure.json --format json|markdown
 repo-dive wiki evidence <repository> --page <page-id> --token-budget N [--max-results COUNT] --format json|markdown
+repo-dive wiki page <repository> --page <page-id> --input <page.json|-> --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
 
@@ -52,6 +53,10 @@ Status output reports ordered sections and pages, state counts, whether a body o
 `wiki evidence` derives its query deterministically from the persisted page title, description, and `path:<relevant-file>` hints. It applies the same bounded hybrid retrieval and complete-Chunk context packing as `context`, but writes the page Evidence snapshot before emitting source text. A successful page enters `evidence_ready`; an empty bundle or repository/index retrieval failure marks only the requested page `failed` with a safe error code.
 
 The persisted snapshot records the query, repository fingerprint, index Schema/build identity, token accounting, estimator, truncation flag, retrieval/fusion parameters, generation timestamp, and included Evidence references. Every reference stores the Chunk ID, content hash, path, and inclusive line range. Build identity is audit metadata; freshness is checked against the current index Schema and each referenced Chunk identity/hash, so an unrelated index rebuild does not invalidate unaffected pages. Stale Evidence is rejected by the page/build validation boundary.
+
+`wiki page` accepts a bounded UTF-8 JSON file or `--input -` for stdin. Submission Schema `1.0` accepts exactly `schema_version`, `page_id`, Markdown `body`, and a non-empty unique `evidence_ids` array. The selected and submitted Page IDs must match; every cited ID must belong to that page's current Evidence snapshot; the snapshot must still match the published index; and the body is limited to 200,000 UTF-8 bytes. The outer input is bounded at 1,500,000 bytes so escaped JSON cannot create an unbounded read.
+
+A valid `evidence_ready` page becomes `generated`. A `failed` page with a still-valid Evidence snapshot may be corrected and submitted without touching other pages. Repeating the exact generated body and citation list is a no-write success; attempting to replace a generated page through this command is rejected. Results and diagnostics report only sizes, counts, IDs, status, and safe error codes—they do not echo the submitted body or repository source.
 
 ## Standard Streams
 

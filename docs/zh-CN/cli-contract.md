@@ -14,7 +14,7 @@
 repo-dive <command> [repository] --format json
 ```
 
-当前版本除 `--help` 和 `--version` 外，已经实现 `index`、`search`、`context`、`wiki structure`、`wiki evidence` 和 `wiki status`。
+当前版本除 `--help` 和 `--version` 外，已经实现 `index`、`search`、`context`、`wiki structure`、`wiki evidence`、`wiki page` 和 `wiki status`。
 
 ## RAG 命令边界
 
@@ -25,7 +25,7 @@ repo-dive <command> [repository] --format json
 - `context`：去重，并在调用方给定的 Token 预算下打包证据。
 - `wiki`：持久化 Agent 生成的页面状态，并汇总 `.repo-dive/wiki.md`。
 
-`index`、`search` 和 `context` 是当前可用的确定性 RAG 操作。`wiki structure`、`wiki evidence` 和 `wiki status` 提供持久、可恢复的 Wiki 状态；页面提交与最终汇总仍属于后续计划。这些命令都不会隐式调用生成模型。
+`index`、`search` 和 `context` 是确定性 RAG 操作。`wiki structure`、`wiki evidence`、`wiki page` 和 `wiki status` 提供持久、可恢复的 Wiki 状态；只有最终汇总仍属于后续计划。这些命令都不会隐式调用生成模型。
 
 `context` 命令要求正整数 Token 预算，并接受有上限的检索候选数量：
 
@@ -40,6 +40,7 @@ JSON 结果报告 `token_budget`、`estimated_tokens`、`reserved_tokens`、`est
 ```text
 repo-dive wiki structure <repository> --input structure.json --format json|markdown
 repo-dive wiki evidence <repository> --page <page-id> --token-budget N [--max-results COUNT] --format json|markdown
+repo-dive wiki page <repository> --page <page-id> --input <page.json|-> --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
 
@@ -52,6 +53,10 @@ repo-dive wiki status <repository> --format json|markdown
 `wiki evidence` 根据已持久化的页面标题、描述和 `path:<相关文件>` 提示确定性构造 Query。它使用与 `context` 相同的有界混合检索和完整 Chunk 上下文打包，但会先写入页面 Evidence 快照，再向 stdout 返回源码。成功后页面进入 `evidence_ready`；空 Bundle 或仓库/索引检索失败时，只把请求页面标为 `failed`，并保存安全错误码。
 
 持久化快照记录 Query、仓库指纹、索引 Schema/build 身份、Token 账目、估算器、截断标志、检索/融合参数和生成时间；每条引用记录 Chunk ID、内容哈希、路径和首尾都包含的行号范围。Build 身份用于审计；新鲜度依据当前索引 Schema 和逐 Chunk 身份/哈希判断，因此无关索引重建不会使未受影响页面失效。页面提交与 build 校验边界会拒绝过期 Evidence。
+
+`wiki page` 接受有界 UTF-8 JSON 文件，或通过 `--input -` 从 stdin 读取。提交 Schema `1.0` 只接受 `schema_version`、`page_id`、Markdown `body` 和非空且唯一的 `evidence_ids` 数组。命令行与输入中的 Page ID 必须一致；每个引用 ID 必须属于该页当前 Evidence 快照；快照仍须匹配已发布索引；正文最多为 200,000 个 UTF-8 字节。外层输入上限是 1,500,000 字节，避免转义后的 JSON 造成无界读取。
+
+合法的 `evidence_ready` 页面进入 `generated`。拥有仍然有效 Evidence 快照的 `failed` 页面可以修正后重提，其他页面不会变化。完全相同的正文和引用列表重复提交时成功但不写文件；通过该命令替换已生成页面会被拒绝。结果和诊断只报告大小、数量、ID、状态和安全错误码，不回显提交正文或仓库源码。
 
 ## 标准流
 
