@@ -9,6 +9,7 @@ from typing import NoReturn
 
 from repo_dive import __version__
 from repo_dive.commands import Command, CommandOutput
+from repo_dive.commands.index import INDEX_COMMAND
 from repo_dive.errors import (
     ExitCode,
     InternalOperationError,
@@ -22,7 +23,7 @@ from repo_dive.schema import (
     serialize_json_document,
 )
 
-COMMANDS: tuple[Command, ...] = ()
+COMMANDS: tuple[Command, ...] = (INDEX_COMMAND,)
 
 
 class RepoDiveArgumentParser(argparse.ArgumentParser):
@@ -71,6 +72,18 @@ def _command_name(argv: Sequence[str]) -> str:
     return "repo-dive"
 
 
+def _validate_command_name(argv: Sequence[str], commands: Sequence[Command]) -> None:
+    command_name = _command_name(argv)
+    if command_name == "repo-dive" or command_name in {
+        command.name for command in commands
+    }:
+        return
+    raise InvocationError(
+        "invalid_invocation",
+        f"unrecognized arguments: {' '.join(argv)}",
+    )
+
+
 def _write_diagnostic(message: str) -> None:
     sys.stderr.write(message.rstrip("\n") + "\n")
 
@@ -115,6 +128,7 @@ def main(
     command_name = _command_name(arguments)
     json_mode = _requested_json(arguments)
     try:
+        _validate_command_name(arguments, commands)
         args = build_parser(commands).parse_args(arguments)
         if args.version:
             print(f"repo-dive {__version__}")

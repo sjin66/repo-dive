@@ -319,13 +319,13 @@
 **Description:** 暴露 `repo-dive index <repository>`，接入 include/exclude、文件大小、Chunk 和 JSON 格式参数。
 
 **Acceptance criteria:**
-- [ ] 成功结果报告文件/Chunk/Symbol/Relationship 数、复用数、warning 和索引版本。
-- [ ] 非法仓库在创建 `.repo-dive/` 前退出 `3`；坏参数退出 `2`。
-- [ ] 相同仓库与参数重跑幂等，并明确报告 reused/rebuilt。
+- [x] 成功结果报告文件/Chunk/Symbol/Relationship 数、复用数、warning 和索引版本。
+- [x] 非法仓库在创建 `.repo-dive/` 前退出 `3`；坏参数退出 `2`。
+- [x] 相同仓库与参数重跑幂等，并明确报告 reused/rebuilt。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/integration/test_index_command.py -q`
-- [ ] Manual check: `.venv/bin/repo-dive index tests/fixtures/index_repo --format json`
+- [x] Tests pass: `.venv/bin/pytest tests/integration/test_index_command.py -q`
+- [x] Manual check: `.venv/bin/repo-dive index tests/fixtures/index_repo --format json`
 
 **Dependencies:** Tasks 2、13
 
@@ -339,9 +339,9 @@
 
 ## Checkpoint C：离线索引
 
-- [ ] `make check`
-- [ ] `make test-all`
-- [ ] `index` 在无网络和无凭据环境完成。
+- [x] `make check`
+- [x] `make test-all`
+- [x] `index` 在无网络和无凭据环境完成。
 - [ ] 故障注入证明旧索引与旧 metadata 不被破坏。
 
 ## Phase 4：检索与 `search`

@@ -62,7 +62,11 @@ class InvalidRelationshipParser:
 
 def copy_fixture(tmp_path: Path) -> Path:
     repository = tmp_path / "repository"
-    shutil.copytree(FIXTURE, repository)
+    shutil.copytree(
+        FIXTURE,
+        repository,
+        ignore=shutil.ignore_patterns(".repo-dive"),
+    )
     return repository
 
 
