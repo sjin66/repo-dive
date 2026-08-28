@@ -10,6 +10,7 @@ from typing import NoReturn
 from repo_dive import __version__
 from repo_dive.commands import Command, CommandOutput
 from repo_dive.commands.index import INDEX_COMMAND
+from repo_dive.commands.search import SEARCH_COMMAND
 from repo_dive.errors import (
     ExitCode,
     InternalOperationError,
@@ -23,7 +24,7 @@ from repo_dive.schema import (
     serialize_json_document,
 )
 
-COMMANDS: tuple[Command, ...] = (INDEX_COMMAND,)
+COMMANDS: tuple[Command, ...] = (INDEX_COMMAND, SEARCH_COMMAND)
 
 
 class RepoDiveArgumentParser(argparse.ArgumentParser):

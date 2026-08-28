@@ -634,7 +634,7 @@ def _connect(path: Path, *, read_only: bool = False) -> sqlite3.Connection:
         connection.execute("PRAGMA foreign_keys = ON")
         connection.row_factory = sqlite3.Row
         return connection
-    except sqlite3.Error as error:
+    except (OSError, ValueError, sqlite3.Error) as error:
         raise RepositoryError(
             "index_unavailable",
             "Repository index is not available.",

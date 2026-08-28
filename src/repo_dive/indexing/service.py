@@ -58,6 +58,15 @@ class IndexBuildResult:
 
 
 @dataclass(frozen=True, slots=True)
+class PublishedIndex:
+    """A validated, current index generation opened by read-only consumers."""
+
+    repository: Path
+    manifest: IndexManifest
+    database: Path
+
+
+@dataclass(frozen=True, slots=True)
 class _CurrentIndex:
     manifest: IndexManifest
     generation: Path
@@ -272,6 +281,37 @@ class IndexService:
         )
 
 
+def load_published_index(repository: str | Path) -> PublishedIndex:
+    """Load a complete current index without creating or replacing artifacts."""
+    root = resolve_repository(repository)
+    current = _load_current_index(root)
+    if current is None:
+        raise RepositoryError(
+            "index_not_found",
+            "Repository index does not exist; run `repo-dive index` first.",
+            details={"path": str(root / INDEX_DIRECTORY)},
+        )
+
+    parameters = current.manifest.parameters
+    inventory = scan_repository(
+        root,
+        include=parameters.include,
+        exclude=parameters.exclude,
+        max_file_size=parameters.max_file_size,
+    )
+    if inventory.repository_fingerprint != current.manifest.repository_fingerprint:
+        raise RepositoryError(
+            "index_stale",
+            "Repository index is stale; run `repo-dive index` first.",
+            details={"build_id": current.manifest.build_id},
+        )
+    return PublishedIndex(
+        repository=root,
+        manifest=current.manifest,
+        database=current.generation / DATABASE_NAME,
+    )
+
+
 class _GenerationFailure(Exception):
     def __init__(self, stage: str, *, path: str | None = None) -> None:
         super().__init__(stage)
@@ -332,7 +372,7 @@ def _load_current_index(root: Path) -> _CurrentIndex | None:
         )
     manifest = read_manifest(generation / MANIFEST_NAME)
     _validate_metadata(generation / METADATA_NAME, manifest)
-    with IndexStore.open(generation / DATABASE_NAME) as store:
+    with IndexStore.open_readonly(generation / DATABASE_NAME) as store:
         if store.foreign_key_violations() or store.integrity_check() != ("ok",):
             raise RepositoryError(
                 "index_integrity_error",
@@ -421,4 +461,10 @@ def _result_from_manifest(
     )
 
 
-__all__ = ["IndexBuildResult", "IndexService", "SourceParser"]
+__all__ = [
+    "IndexBuildResult",
+    "IndexService",
+    "PublishedIndex",
+    "SourceParser",
+    "load_published_index",
+]

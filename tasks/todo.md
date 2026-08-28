@@ -416,13 +416,13 @@
 **Description:** 暴露只读 `repo-dive search <repository> <query>`，返回可解释 SearchHit，不修改仓库状态。
 
 **Acceptance criteria:**
-- [ ] 强制 `--max-results` 合法上限，结果包含路径、行号、符号、文本、各通道分数和 fused score。
-- [ ] 缺失/过期索引返回退出 `3` 和稳定错误码，不自动建立索引。
-- [ ] 命令前后 `.repo-dive/` 文件摘要不变。
+- [x] 强制 `--max-results` 合法上限，结果包含路径、行号、符号、文本、各通道分数和 fused score。
+- [x] 缺失/过期索引返回退出 `3` 和稳定错误码，不自动建立索引。
+- [x] 命令前后 `.repo-dive/` 文件摘要不变。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/integration/test_search_command.py -q`
-- [ ] Manual check: `.venv/bin/repo-dive search tests/fixtures/index_repo "entrypoint" --max-results 5 --format json`
+- [x] Tests pass: `.venv/bin/pytest tests/integration/test_search_command.py -q`
+- [x] Manual check: `.venv/bin/repo-dive search tests/fixtures/index_repo "entrypoint" --max-results 5 --format json`
 
 **Dependencies:** Tasks 2、17
 
@@ -436,10 +436,10 @@
 
 ## Checkpoint D：离线 Search
 
-- [ ] `make check`
-- [ ] `make test-all`
-- [ ] Search 命中可由路径、行号、符号和分数完整解释。
-- [ ] Eval Fixture 上的基线 Recall@k 与 MRR 被记录，尚不设未经验证的高阈值。
+- [x] `make check`
+- [x] `make test-all`
+- [x] Search 命中可由路径、行号、符号和分数完整解释。
+- [x] Eval Fixture 上的基线 Recall@k 与 MRR 被记录，尚不设未经验证的高阈值。
 
 ## Phase 5：预算上下文与 `context`
 

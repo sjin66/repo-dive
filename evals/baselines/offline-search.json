@@ -1,0 +1,34 @@
+{
+  "cases": [
+    {
+      "observed_first_relevant_rank": 1,
+      "query": "greet",
+      "relevant_paths": [
+        "src/app.py"
+      ]
+    },
+    {
+      "observed_first_relevant_rank": 1,
+      "query": "format_name",
+      "relevant_paths": [
+        "src/utils.py"
+      ]
+    }
+  ],
+  "fixture": "tests/fixtures/index_repo",
+  "k": 5,
+  "metrics": {
+    "mrr": 1.0,
+    "recall_at_k": 1.0
+  },
+  "notes": "Descriptive offline baseline recorded before the executable evaluation runner; it is not a release threshold.",
+  "retrieval": {
+    "channels": [
+      "lexical",
+      "structural"
+    ],
+    "fusion": "weighted_rrf",
+    "rrf_k": 60
+  },
+  "schema_version": "1.0"
+}
