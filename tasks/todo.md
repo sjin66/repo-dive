@@ -730,13 +730,13 @@
 **Description:** 建立跨模块故障矩阵，验证路径逃逸、坏编码、损坏索引、陈旧 Evidence、写入失败和诊断脱敏。
 
 **Acceptance criteria:**
-- [ ] 每种故障都有稳定 error code、退出码和不泄露源码的 stderr。
-- [ ] 任何失败都不会留下半写 JSON/SQLite/Markdown 或删除旧有效产物。
-- [ ] 恶意文件名、符号链接和超大输入不能突破仓库与预算边界。
+- [x] 每种故障都有稳定 error code、退出码和不泄露源码的 stderr。
+- [x] 任何失败都不会留下半写 JSON/SQLite/Markdown 或删除旧有效产物。
+- [x] 恶意文件名、符号链接和超大输入不能突破仓库与预算边界。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/integration/test_security.py tests/integration/test_recovery.py -q`
-- [ ] Full suite: `make test-all`
+- [x] Tests pass: `.venv/bin/pytest tests/integration/test_security.py tests/integration/test_recovery.py -q`
+- [x] Full suite: `make test-all`
 
 **Dependencies:** Tasks 14、18、20、25、28
 
