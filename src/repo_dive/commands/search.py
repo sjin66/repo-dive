@@ -6,12 +6,24 @@ import argparse
 import json
 
 from repo_dive.commands import Command, CommandOutput, OutputFormat
-from repo_dive.commands.retrieval_arguments import query_value, result_limit
+from repo_dive.commands.retrieval_arguments import (
+    add_embedding_arguments,
+    query_value,
+    result_limit,
+    vector_failure_policy,
+    vector_search_document,
+    vector_warning,
+)
 from repo_dive.parsing.models import Symbol
+from repo_dive.providers.selection import (
+    EmbeddingSelection,
+    select_local_embedding_provider,
+)
 from repo_dive.retrieval.fusion import FusionResult, SearchHit
 from repo_dive.retrieval.service import (
     DEFAULT_MAX_RESULTS,
     MAX_RESULTS,
+    VectorSearchResult,
     search_repository,
 )
 from repo_dive.schema import JsonObject
@@ -28,6 +40,7 @@ def configure(parser: argparse.ArgumentParser) -> None:
         metavar="COUNT",
         help=f"maximum returned hits, from 1 to {MAX_RESULTS}",
     )
+    add_embedding_arguments(parser)
     parser.add_argument(
         "--format",
         choices=("json", "markdown"),
@@ -38,21 +51,35 @@ def configure(parser: argparse.ArgumentParser) -> None:
 
 def handle(args: argparse.Namespace) -> CommandOutput:
     """Query a validated current index without changing repository artifacts."""
+    selection = select_local_embedding_provider(
+        args.embedding_model,
+        failure_policy=vector_failure_policy(args.vector_failure),
+    )
     retrieved = search_repository(
         args.repository,
         args.query,
         max_results=args.max_results,
+        embedding_provider=selection.provider,
+        vector_failure=selection.failure_policy,
     )
     symbols = {symbol.id: symbol for symbol in retrieved.symbols}
 
     output_format: OutputFormat = args.format
     output = (
-        _markdown_result(args.query, retrieved.fusion, symbols=symbols)
+        _markdown_result(
+            args.query,
+            retrieved.fusion,
+            selection=selection,
+            vector=retrieved.vector,
+            symbols=symbols,
+        )
         if output_format == "markdown"
         else _json_result(
             args.query,
             retrieved.fusion,
             max_results=args.max_results,
+            selection=selection,
+            vector=retrieved.vector,
             symbols=symbols,
         )
     )
@@ -61,6 +88,11 @@ def handle(args: argparse.Namespace) -> CommandOutput:
         format=output_format,
         result=output,
         repository=str(retrieved.repository),
+        warnings=tuple(
+            warning
+            for warning in (selection.warning, vector_warning(retrieved.vector))
+            if warning is not None
+        ),
     )
 
 
@@ -69,6 +101,8 @@ def _json_result(
     result: FusionResult,
     *,
     max_results: int,
+    selection: EmbeddingSelection,
+    vector: VectorSearchResult | None,
     symbols: dict[str, Symbol],
 ) -> JsonObject:
     metadata = result.metadata
@@ -79,13 +113,16 @@ def _json_result(
         "rrf_k": metadata.rrf_k,
         "strategy": metadata.strategy,
     }
-    return {
+    document: JsonObject = {
         "fusion": fusion,
         "hits": [_json_hit(hit, symbols=symbols) for hit in result.hits],
         "max_results": max_results,
         "query": query,
         "result_count": len(result.hits),
     }
+    if selection.requested:
+        document["vector"] = vector_search_document(selection, vector)
+    return document
 
 
 def _json_hit(hit: SearchHit, *, symbols: dict[str, Symbol]) -> JsonObject:
@@ -122,6 +159,8 @@ def _markdown_result(
     query: str,
     result: FusionResult,
     *,
+    selection: EmbeddingSelection,
+    vector: VectorSearchResult | None,
     symbols: dict[str, Symbol],
 ) -> str:
     lines = [
@@ -132,6 +171,16 @@ def _markdown_result(
         f"- Fusion: {result.metadata.strategy}",
         f"- RRF k: {result.metadata.rrf_k}",
     ]
+    if selection.requested:
+        vector_document = vector_search_document(selection, vector)
+        lines.extend(
+            (
+                f"- Vector status: {vector_document['status']}",
+                f"- Vector failure policy: {vector_document['failure_policy']}",
+                f"- Indexed vectors: {vector_document['indexed_chunks']}",
+                f"- Query embeddings: {vector_document['query_embeddings']}",
+            )
+        )
     for index, hit in enumerate(result.hits, start=1):
         symbol = (
             symbols.get(hit.chunk.symbol_id)

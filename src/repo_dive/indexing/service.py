@@ -36,7 +36,7 @@ from repo_dive.indexing.vectors import (
 )
 from repo_dive.parsing.models import Chunk, ParseDiagnostic, ParseResult
 from repo_dive.parsing.pipeline import ParsingPipeline
-from repo_dive.providers.embeddings import EmbeddingProvider
+from repo_dive.providers.embeddings import EmbeddingProvider, VectorFailurePolicy
 from repo_dive.scanner.models import Inventory, ReadStatus, SourceFile
 from repo_dive.scanner.service import scan_repository
 from repo_dive.schema import JsonObject, serialize_json_document
@@ -48,7 +48,6 @@ DATABASE_NAME = "index.sqlite3"
 MANIFEST_NAME = "manifest.json"
 METADATA_NAME = "metadata.json"
 
-VectorFailurePolicy = Literal["strict", "degraded"]
 VectorBuildStatus = Literal["ready", "degraded"]
 
 

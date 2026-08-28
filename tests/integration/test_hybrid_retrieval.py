@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import json
 import shutil
 from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
+from repo_dive.cli import main
 from repo_dive.context import EvidencePacker
-from repo_dive.errors import RepositoryError
+from repo_dive.errors import InvocationError, RepositoryError
 from repo_dive.indexing.service import IndexService
 from repo_dive.indexing.vectors import EmbeddingIdentity
 from repo_dive.retrieval.service import search_repository
@@ -131,3 +133,150 @@ def test_vector_identity_mismatch_supports_strict_and_degraded_search(
     assert degraded.vector.error_code == "index_vector_identity_mismatch"
     assert degraded.vector.query_embeddings == 0
     assert "vector" not in dict(degraded.fusion.metadata.channel_weights)
+
+
+def test_cli_exposes_vector_cost_identity_and_policy_for_all_rag_commands(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = copy_fixture(tmp_path)
+    model_path = tmp_path / "model"
+    model_path.mkdir()
+    providers: list[SemanticFakeProvider] = []
+
+    def provider_factory(path: str | Path) -> SemanticFakeProvider:
+        provider = SemanticFakeProvider()
+        providers.append(provider)
+        return provider
+
+    monkeypatch.setattr(
+        "repo_dive.providers.selection.SentenceTransformersEmbeddingProvider",
+        provider_factory,
+    )
+
+    assert (
+        main(
+            [
+                "index",
+                str(repository),
+                "--embedding-model",
+                str(model_path),
+                "--vector-failure",
+                "strict",
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+    indexed = json.loads(capsys.readouterr().out)["result"]
+    assert indexed["vector"]["status"] == "ready"
+    assert indexed["vector"]["failure_policy"] == "strict"
+    assert indexed["vector"]["embedded_chunks"] == indexed["chunks"]
+    assert indexed["vector"]["identity"] == {
+        "dimensions": 2,
+        "model": "semantic-v1",
+        "provider": "fake",
+    }
+
+    assert (
+        main(
+            [
+                "search",
+                str(repository),
+                "normalize a display label",
+                "--embedding-model",
+                str(model_path),
+                "--vector-failure",
+                "strict",
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+    searched = json.loads(capsys.readouterr().out)["result"]
+    assert searched["vector"]["status"] == "ready"
+    assert searched["vector"]["query_embeddings"] == 1
+    assert searched["fusion"]["channel_weights"]["vector"] == 1.0
+    assert any(
+        hit["path"] == "src/utils.py" and hit["vector_score"] == 1.0
+        for hit in searched["hits"]
+    )
+
+    assert (
+        main(
+            [
+                "context",
+                str(repository),
+                "normalize a display label",
+                "--token-budget",
+                "600",
+                "--embedding-model",
+                str(model_path),
+                "--vector-failure",
+                "strict",
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+    context = json.loads(capsys.readouterr().out)["result"]
+    assert context["vector"]["status"] == "ready"
+    assert context["estimated_tokens"] <= context["token_budget"]
+    assert any(item["path"] == "src/utils.py" for item in context["items"])
+    assert len(providers) == 3
+
+
+def test_cli_degraded_policy_reports_provider_setup_failure_and_falls_back(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = copy_fixture(tmp_path)
+    model_path = tmp_path / "model"
+    model_path.mkdir()
+    assert main(["index", str(repository), "--format", "json"]) == 0
+    capsys.readouterr()
+
+    def fail_provider(path: str | Path) -> SemanticFakeProvider:
+        raise InvocationError(
+            "embedding_provider_unavailable",
+            "Sentence Transformers support is unavailable.",
+        )
+
+    monkeypatch.setattr(
+        "repo_dive.providers.selection.SentenceTransformersEmbeddingProvider",
+        fail_provider,
+    )
+
+    assert (
+        main(
+            [
+                "search",
+                str(repository),
+                "greet",
+                "--embedding-model",
+                str(model_path),
+                "--vector-failure",
+                "degraded",
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+
+    document = json.loads(capsys.readouterr().out)
+    assert document["warnings"] == ["vector_degraded:embedding_provider_unavailable"]
+    assert document["result"]["vector"] == {
+        "error_code": "embedding_provider_unavailable",
+        "failure_policy": "degraded",
+        "identity": None,
+        "indexed_chunks": 0,
+        "query_embeddings": 0,
+        "status": "degraded",
+    }
+    assert document["result"]["hits"]

@@ -8,15 +8,27 @@ from collections import Counter
 
 from repo_dive.commands import Command, CommandOutput, OutputFormat
 from repo_dive.commands.retrieval_arguments import (
+    add_embedding_arguments,
     positive_token_budget,
     query_value,
     result_limit,
+    vector_failure_policy,
+    vector_search_document,
+    vector_warning,
 )
 from repo_dive.context import EvidenceBundle, EvidenceItem, EvidencePacker
 from repo_dive.context.packer import ExclusionReason
 from repo_dive.parsing.models import Symbol
+from repo_dive.providers.selection import (
+    EmbeddingSelection,
+    select_local_embedding_provider,
+)
 from repo_dive.retrieval.fusion import FusionMetadata
-from repo_dive.retrieval.service import DEFAULT_MAX_RESULTS, search_repository
+from repo_dive.retrieval.service import (
+    DEFAULT_MAX_RESULTS,
+    VectorSearchResult,
+    search_repository,
+)
 from repo_dive.schema import JsonObject
 
 
@@ -42,6 +54,7 @@ def configure(parser: argparse.ArgumentParser) -> None:
         metavar="COUNT",
         help="maximum retrieval candidates before budget packing",
     )
+    add_embedding_arguments(parser)
     parser.add_argument(
         "--format",
         choices=("json", "markdown"),
@@ -52,10 +65,16 @@ def configure(parser: argparse.ArgumentParser) -> None:
 
 def handle(args: argparse.Namespace) -> CommandOutput:
     """Retrieve and pack complete evidence without mutating the index."""
+    selection = select_local_embedding_provider(
+        args.embedding_model,
+        failure_policy=vector_failure_policy(args.vector_failure),
+    )
     retrieved = search_repository(
         args.repository,
         args.query,
         max_results=args.max_results,
+        embedding_provider=selection.provider,
+        vector_failure=selection.failure_policy,
     )
     bundle = EvidencePacker().pack(
         args.query,
@@ -65,12 +84,19 @@ def handle(args: argparse.Namespace) -> CommandOutput:
     symbols = {symbol.id: symbol for symbol in retrieved.symbols}
     output_format: OutputFormat = args.format
     output = (
-        context_result_markdown(bundle, symbols=symbols)
+        context_result_markdown(
+            bundle,
+            selection=selection,
+            vector=retrieved.vector,
+            symbols=symbols,
+        )
         if output_format == "markdown"
         else context_result_document(
             bundle,
             fusion=retrieved.fusion.metadata,
             max_results=args.max_results,
+            selection=selection,
+            vector=retrieved.vector,
             symbols=symbols,
         )
     )
@@ -79,6 +105,11 @@ def handle(args: argparse.Namespace) -> CommandOutput:
         format=output_format,
         result=output,
         repository=str(retrieved.repository),
+        warnings=tuple(
+            warning
+            for warning in (selection.warning, vector_warning(retrieved.vector))
+            if warning is not None
+        ),
     )
 
 
@@ -88,8 +119,10 @@ def context_result_document(
     fusion: FusionMetadata,
     max_results: int,
     symbols: dict[str, Symbol],
+    selection: EmbeddingSelection | None = None,
+    vector: VectorSearchResult | None = None,
 ) -> JsonObject:
-    return {
+    document: JsonObject = {
         "estimated_tokens": bundle.estimated_tokens,
         "estimator": bundle.estimator,
         "excluded": _excluded_summary(bundle),
@@ -102,6 +135,9 @@ def context_result_document(
         "token_budget": bundle.token_budget,
         "truncated": bundle.truncated,
     }
+    if selection is not None and selection.requested:
+        document["vector"] = vector_search_document(selection, vector)
+    return document
 
 
 def _excluded_summary(bundle: EvidenceBundle) -> JsonObject:
@@ -159,6 +195,8 @@ def context_result_markdown(
     bundle: EvidenceBundle,
     *,
     symbols: dict[str, Symbol],
+    selection: EmbeddingSelection | None = None,
+    vector: VectorSearchResult | None = None,
 ) -> str:
     exclusions = _excluded_summary(bundle)
     lines = [
@@ -176,6 +214,16 @@ def context_result_markdown(
             f"{reason.value}={exclusions[reason.value]}" for reason in ExclusionReason
         ),
     ]
+    if selection is not None and selection.requested:
+        vector_document = vector_search_document(selection, vector)
+        lines.extend(
+            (
+                f"- Vector status: {vector_document['status']}",
+                f"- Vector failure policy: {vector_document['failure_policy']}",
+                f"- Indexed vectors: {vector_document['indexed_chunks']}",
+                f"- Query embeddings: {vector_document['query_embeddings']}",
+            )
+        )
     for index, item in enumerate(bundle.items, start=1):
         hit = item.hit
         symbol = (
