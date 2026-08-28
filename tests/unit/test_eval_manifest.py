@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-REQUIRED_FIELDS = {"id", "category", "prompt", "expected_behavior"}
-OPTIONAL_FIELDS = {"command", "assertions"}
+REQUIRED_FIELDS = {"id", "category", "mode", "prompt", "expected_behavior"}
+OPTIONAL_FIELDS = {"command", "assertions", "evaluation"}
 
 
 def _load_cases() -> list[dict[str, Any]]:
@@ -37,6 +37,12 @@ def test_evaluation_cases_follow_the_manifest_contract() -> None:
         case_id = case["id"]
         assert case_id not in seen_ids
         seen_ids.add(case_id)
+
+        assert case["mode"] in {"executable", "specification"}
+        if case["mode"] == "executable":
+            assert isinstance(case.get("evaluation"), dict)
+        else:
+            assert "evaluation" not in case
 
         if "command" in case:
             assert isinstance(case["command"], str) and case["command"]

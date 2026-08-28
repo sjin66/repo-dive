@@ -65,6 +65,7 @@ make setup
 make check
 make test-unit
 make test-all
+.venv/bin/python -m repo_dive.evaluation.runner evals/cases --format json
 ```
 
 环境创建完成后：

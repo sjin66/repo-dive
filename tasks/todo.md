@@ -706,13 +706,13 @@
 **Description:** 把 JSONL 规范用例扩展为可执行 RAG 评测，输出 Recall@k、MRR、路径/符号命中、预算遵守和引用覆盖。
 
 **Acceptance criteria:**
-- [ ] 可执行与 specification-only 用例明确分开，后者不计作通过。
-- [ ] Runner 输出带版本 JSON 和每例诊断，聚合结果可在 CI 比较。
-- [ ] 指标实现有手工可验证的 Golden Test，不评价 Markdown 文风。
+- [x] 可执行与 specification-only 用例明确分开，后者不计作通过。
+- [x] Runner 输出带版本 JSON 和每例诊断，聚合结果可在 CI 比较。
+- [x] 指标实现有手工可验证的 Golden Test，不评价 Markdown 文风。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/evaluation -q`
-- [ ] Runner check: `.venv/bin/python -m repo_dive.evaluation.runner evals/cases --format json`
+- [x] Tests pass: `.venv/bin/pytest tests/unit/evaluation -q`
+- [x] Runner check: `.venv/bin/python -m repo_dive.evaluation.runner evals/cases --format json`
 
 **Dependencies:** Tasks 18、20、25、28
 
