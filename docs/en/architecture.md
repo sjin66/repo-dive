@@ -112,11 +112,24 @@ directory, disables remote code, and allows only local model files. Its model
 identity is a SHA-256 digest of the canonical path prefixed with `local:`; this
 keeps identity comparisons stable without persisting a private absolute path.
 
+Vector indexing is incremental at the Chunk boundary. When provider identity
+and Chunk content hash still match, the next generation copies the validated
+float32 vector; new or changed Chunks enter one provider call with a bounded
+inference batch size. A provider identity change invalidates the complete
+vector set. Vector failure policy is explicit: `strict` aborts publication,
+while `degraded` publishes the complete BM25/structural generation with no
+advertised vector identity.
+
 ### Retrieval and ranking
 
 A query may come directly from the caller or from a persisted wiki-page description. Each enabled channel returns candidates with its own score. The retrieval layer fuses candidates through a documented, replaceable strategy, removes duplicate/overlapping chunks, and may expand high-confidence symbol relationships. It must preserve component scores so results remain explainable.
 
 The baseline Vector retriever performs an exact brute-force cosine scan at persisted float32 precision. `max_results` bounds returned hits, and equal scores are ordered by Chunk ID. This standard-library implementation is the deterministic reference; an ANN index is justified only after repository-scale measurements demonstrate a need.
+
+When enabled, lexical, structural, and Vector ranks enter the same weighted RRF
+fusion. Raw channel scores remain attached to each SearchHit, while RRF reasons
+record rank, weight, and contribution. A degraded query omits the Vector weight
+instead of inventing an empty Vector rank.
 
 ### Context assembly
 

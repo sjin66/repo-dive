@@ -35,9 +35,10 @@ embedding adapter:
 The adapter accepts an existing local model directory. It passes
 `local_files_only=True` and `trust_remote_code=False` to Sentence Transformers,
 so a missing model is an error rather than a download request. Provider errors
-and the persisted model identity do not expose the absolute model path. The
-current provider API is not connected to CLI indexing yet; that integration is
-tracked separately.
+and the persisted model identity do not expose the absolute model path. Use the
+same model directory for explicit `index`, `search`, and `context` commands.
+`--vector-failure strict` is the default; choose `degraded` only when an
+observable BM25/structural fallback is acceptable.
 
 ## Shared Verification Commands
 

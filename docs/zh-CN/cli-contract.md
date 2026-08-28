@@ -35,6 +35,27 @@ repo-dive context <repository> <query> --token-budget N [--max-results COUNT] --
 
 JSON 结果报告 `token_budget`、`estimated_tokens`、`reserved_tokens`、`estimator`、`truncated`、固定的 `duplicate`/`budget`/`low_score` 排除计数、融合参数和完整 Evidence 条目。每条 Evidence 包含稳定的 `evidence_id`、仓库相对路径、首尾都包含的行号范围、可用时的符号元数据、源码正文、评分和检索原因。
 
+### 显式向量增强
+
+`index`、`search` 和 `context` 接受相同的可选 Vector 参数：
+
+```text
+--embedding-model <existing-local-directory>
+--vector-failure strict|degraded
+```
+
+未提供 `--embedding-model` 时，命令不会构造 Embedding Provider、导入
+Sentence Transformers、增加 Vector 结果元数据，也不会改变 BM25/结构两通道
+输出契约。显式提供后，`index` 保存 Provider/模型/维度身份；身份一致时只为新增
+或内容变化的 Chunk 生成 Embedding，身份变化时重新生成全部 Chunk 的向量。
+
+`strict` 是默认策略：Provider 初始化、模型身份不匹配、Embedding 或 Vector
+索引错误会使命令失败，并保留此前发布的索引。`degraded` 会继续使用 BM25 与
+结构检索，并返回安全的 `vector_degraded:<error-code>` 警告。Vector 结果元数据
+报告状态、失败策略、不透明身份、已索引/新嵌入/复用 Chunk 数、Query Embedding
+次数和安全错误码。SearchHit 始终保留 `lexical_score`、`structural_score`、
+`vector_score` 与 `fused_score`；某通道未召回该 Chunk 时，对应评分为 `null`。
+
 结构命令从显式文件读取有大小上限的 UTF-8 JSON 文档：
 
 ```text

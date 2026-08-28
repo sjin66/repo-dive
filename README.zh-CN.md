@@ -17,7 +17,7 @@
 - 带原子产物的可恢复 `wiki structure`、`wiki evidence`、`wiki page`、`wiki build` 和 `wiki status` 命令；
 - 稳定的进程、Schema、评测及本地/CI Harness 契约。
 
-可选的 SQLite float32 Vector Store、确定性余弦检索器和显式本地 Sentence Transformers Provider 已经实现。三通道 CLI 集成仍属于后续计划；离线 Wiki 工作流保持完整可用。
+可选的 SQLite float32 Vector Store、确定性余弦检索器、显式本地 Sentence Transformers Provider，以及 `index`/`search`/`context` 三通道集成已经实现。离线 Wiki 工作流保持完整可用。
 
 ## 设计哲学
 
@@ -75,6 +75,8 @@ make test-all
 .venv/bin/repo-dive index /path/to/repository --format json
 .venv/bin/repo-dive search /path/to/repository "entrypoint" --max-results 10 --format json
 .venv/bin/repo-dive context /path/to/repository "architecture" --token-budget 1200 --format json
+.venv/bin/repo-dive index /path/to/repository --embedding-model /path/to/local/model --format json
+.venv/bin/repo-dive search /path/to/repository "request lifecycle" --embedding-model /path/to/local/model --format json
 .venv/bin/repo-dive wiki structure /path/to/repository --input structure.json --format json
 .venv/bin/repo-dive wiki evidence /path/to/repository --page overview --token-budget 1200 --format json
 .venv/bin/repo-dive wiki page /path/to/repository --page overview --input page.json --format json

@@ -673,13 +673,13 @@
 **Description:** 把显式 Vector Provider 接入增量索引和 RRF 融合，加入 CLI 参数、降级策略和向量收益评测。
 
 **Acceptance criteria:**
-- [ ] 未提供 `--embedding-model` 时行为与 Checkpoint F 字节兼容。
-- [ ] 提供本地模型时只重嵌入内容变化或 Provider 身份变化的 Chunk。
-- [ ] SearchHit 同时报告 lexical/structural/vector/fused 分数；strict/degraded 策略可观察。
+- [x] 未提供 `--embedding-model` 时行为与 Checkpoint F 字节兼容。
+- [x] 提供本地模型时只重嵌入内容变化或 Provider 身份变化的 Chunk。
+- [x] SearchHit 同时报告 lexical/structural/vector/fused 分数；strict/degraded 策略可观察。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/integration/test_hybrid_retrieval.py -q`
-- [ ] Eval case: 至少一个语义改写查询证明 Vector 提升 Recall@k 且不破坏预算。
+- [x] Tests pass: `.venv/bin/pytest tests/integration/test_hybrid_retrieval.py -q`
+- [x] Eval case: 至少一个语义改写查询证明 Vector 提升 Recall@k 且不破坏预算。
 
 **Dependencies:** Tasks 13、17、20、26–27
 
@@ -694,10 +694,10 @@
 
 ## Checkpoint G：Hybrid RAG
 
-- [ ] `make check`
-- [ ] `make test-all`
-- [ ] 默认安装与默认运行保持离线、轻量。
-- [ ] 向量通道的收益、成本、模型身份和失败策略均可观察。
+- [x] `make check`
+- [x] `make test-all`
+- [x] 默认安装与默认运行保持离线、轻量。
+- [x] 向量通道的收益、成本、模型身份和失败策略均可观察。
 
 ## Phase 8：评测、硬化与发布
 

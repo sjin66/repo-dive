@@ -35,6 +35,30 @@ repo-dive context <repository> <query> --token-budget N [--max-results COUNT] --
 
 Its JSON result reports `token_budget`, `estimated_tokens`, `reserved_tokens`, `estimator`, `truncated`, fixed `duplicate`/`budget`/`low_score` exclusion counts, fusion parameters, and complete Evidence items. Each item includes a stable `evidence_id`, repository-relative path, inclusive line range, symbol metadata when available, source text, scores, and retrieval reasons.
 
+### Explicit vector enhancement
+
+`index`, `search`, and `context` accept the same optional vector controls:
+
+```text
+--embedding-model <existing-local-directory>
+--vector-failure strict|degraded
+```
+
+Without `--embedding-model`, commands do not construct an embedding provider,
+import Sentence Transformers, add Vector result metadata, or change the
+two-channel BM25/structural output contract. With the option, `index` stores the
+provider/model/dimensions identity and embeds only new or changed Chunks when
+the identity still matches. A changed identity re-embeds every Chunk.
+
+`strict` is the default: provider setup, model mismatch, embedding, or Vector
+index errors fail the command and preserve the previous published index.
+`degraded` continues with BM25 and structural retrieval and emits a safe
+`vector_degraded:<error-code>` warning. Vector result metadata reports status,
+failure policy, opaque identity, indexed/embedded/reused Chunk counts, query
+embedding count, and safe error code. Search hits always retain
+`lexical_score`, `structural_score`, `vector_score`, and `fused_score`; a score
+is `null` when that channel did not retrieve the Chunk.
+
 The structure command reads a bounded UTF-8 JSON document from an explicit file:
 
 ```text

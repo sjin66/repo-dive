@@ -34,7 +34,9 @@ Embedding 适配器时才安装显式的 Vector Extra：
 适配器只接受已经存在的本地模型目录，并向 Sentence Transformers 传入
 `local_files_only=True` 和 `trust_remote_code=False`；模型缺失时直接报错，
 不会发起下载。Provider 错误与持久化模型身份都不会暴露模型绝对路径。
-当前 Provider API 尚未接入 CLI 索引，该集成由后续任务单独跟踪。
+显式执行 `index`、`search` 和 `context` 时应使用同一个模型目录。
+`--vector-failure strict` 是默认策略；只有接受可观察的 BM25/结构降级时才选择
+`degraded`。
 
 ## 统一验证命令
 
