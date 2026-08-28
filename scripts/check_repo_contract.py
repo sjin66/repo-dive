@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import sys
 from pathlib import Path
 
@@ -13,6 +15,38 @@ COMPATIBILITY_FILES = (
     Path("GEMINI.md"),
 )
 MAX_COMPATIBILITY_LINES = 20
+CLI_CONTRACT_PATHS = (
+    Path("docs/en/cli-contract.md"),
+    Path("docs/zh-CN/cli-contract.md"),
+)
+CONTRACT_EXAMPLE_MARKERS = (
+    "index-success",
+    "search-success",
+    "context-success",
+    "wiki-success",
+    "error",
+    "stdin",
+    "recovery",
+)
+AGENT_WORKFLOW_LITERALS = (
+    "repo-dive index",
+    "repo-dive wiki structure",
+    "repo-dive wiki evidence",
+    "repo-dive wiki page",
+    "repo-dive wiki build",
+    "--input -",
+    "MCP is not required",
+)
+JSON_FENCE = re.compile(r"```json\s*\n(.*?)\n```", re.DOTALL)
+TECHNICAL_FENCE = re.compile(
+    r"```(bash|json|markdown|text)\s*\n(.*?)\n```",
+    re.DOTALL,
+)
+README_COMMAND_PREFIXES = (
+    ".venv/bin/python -m repo_dive.evaluation.runner",
+    ".venv/bin/repo-dive",
+    "make ",
+)
 
 
 def _relative(path: Path, root: Path) -> str:
@@ -28,6 +62,15 @@ def validate_repository_contract(root: Path) -> list[str]:
         if not (root / filename).is_file():
             errors.append(f"{filename} is missing")
 
+    agents_path = root / "AGENTS.md"
+    if agents_path.is_file():
+        agents_content = agents_path.read_text(encoding="utf-8")
+        for literal in AGENT_WORKFLOW_LITERALS:
+            if literal not in agents_content:
+                errors.append(
+                    f"AGENTS.md is missing required agent workflow literal: {literal}"
+                )
+
     english_dir = root / "docs/en"
     chinese_dir = root / "docs/zh-CN"
     english_files = {path.name for path in english_dir.glob("*.md") if path.is_file()}
@@ -37,6 +80,52 @@ def validate_repository_contract(root: Path) -> list[str]:
         errors.append(f"docs/zh-CN/{filename} is missing for docs/en/{filename}")
     for filename in sorted(chinese_files - english_files):
         errors.append(f"docs/en/{filename} is missing for docs/zh-CN/{filename}")
+
+    for relative_path in CLI_CONTRACT_PATHS:
+        path = root / relative_path
+        if not path.is_file():
+            continue
+        content = path.read_text(encoding="utf-8")
+        for marker in CONTRACT_EXAMPLE_MARKERS:
+            if f"<!-- contract-example:{marker} -->" not in content:
+                errors.append(
+                    f"{relative_path.as_posix()} is missing contract example marker: "
+                    f"{marker}"
+                )
+        for index, example in enumerate(JSON_FENCE.findall(content), start=1):
+            try:
+                json.loads(example)
+            except json.JSONDecodeError:
+                errors.append(
+                    f"{relative_path.as_posix()} contains invalid JSON example {index}"
+                )
+
+    english_contract = root / CLI_CONTRACT_PATHS[0]
+    chinese_contract = root / CLI_CONTRACT_PATHS[1]
+    if english_contract.is_file() and chinese_contract.is_file():
+        english_blocks = TECHNICAL_FENCE.findall(
+            english_contract.read_text(encoding="utf-8")
+        )
+        chinese_blocks = TECHNICAL_FENCE.findall(
+            chinese_contract.read_text(encoding="utf-8")
+        )
+        if english_blocks != chinese_blocks:
+            errors.append("bilingual CLI contract technical fenced blocks differ")
+
+    english_readme = root / "README.md"
+    chinese_readme = root / "README.zh-CN.md"
+    if english_readme.is_file() and chinese_readme.is_file():
+        command_lines = []
+        for path in (english_readme, chinese_readme):
+            command_lines.append(
+                tuple(
+                    line.strip()
+                    for line in path.read_text(encoding="utf-8").splitlines()
+                    if line.strip().startswith(README_COMMAND_PREFIXES)
+                )
+            )
+        if command_lines[0] != command_lines[1]:
+            errors.append("bilingual README CLI command lines differ")
 
     for relative_path in COMPATIBILITY_FILES:
         path = root / relative_path

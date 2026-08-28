@@ -776,14 +776,14 @@
 **Description:** 更新 AGENTS 调用规范、README 和 CLI 契约，给出 GitHub Copilot 完整命令序列、JSON/Markdown 输入输出样例、错误处理与限制。
 
 **Acceptance criteria:**
-- [ ] README 和 CLI 契约不再把已实现命令标作规划中，且中英文技术常量一致。
-- [ ] AGENTS.md 包含 Agent 的 `index -> context -> generate -> wiki page -> build` 调用规范，不要求 MCP。
-- [ ] 文档包含四个命令族的成功、错误、stdin 文件和恢复示例，示例可由契约测试解析。
+- [x] README 和 CLI 契约不再把已实现命令标作规划中，且中英文技术常量一致。
+- [x] AGENTS.md 包含 Agent 的 `index -> context -> generate -> wiki page -> build` 调用规范，不要求 MCP。
+- [x] 文档包含四个命令族的成功、错误、stdin 文件和恢复示例，示例可由契约测试解析。
 
 **Verification:**
-- [ ] Contract check: `.venv/bin/pytest tests/unit/test_repo_contract.py -q`
-- [ ] CLI smoke: `.venv/bin/repo-dive --help`、`--version`、四个功能命令的 `--help`
-- [ ] Bilingual check: 中英文 CLI 标题、命令、字段、退出码和路径逐项相同。
+- [x] Contract check: `.venv/bin/pytest tests/unit/test_repo_contract.py -q`
+- [x] CLI smoke: `.venv/bin/repo-dive --help`、`--version`、四个功能命令的 `--help`
+- [x] Bilingual check: 中英文 CLI 标题、命令、字段、退出码和路径逐项相同。
 
 **Dependencies:** Tasks 29–31
 
