@@ -66,6 +66,46 @@ DOCUMENT_SECTION_MARKERS = {
     "wiki-workflow.md": ("commands", "page-state", "single-page-recovery"),
 }
 
+DEVELOPMENT_LITERALS = (
+    "Python 3.11",
+    "Python 3.12",
+    "Python 3.13",
+    "make package",
+    "make package-smoke",
+    ".[vector]",
+    "local_files_only=True",
+)
+
+VALID_PYPROJECT = """\
+[project]
+dependencies = ["tree-sitter>=0.25"]
+
+[project.optional-dependencies]
+vector = ["sentence-transformers>=6.0"]
+dev = ["build>=1.2", "pytest>=8.3"]
+"""
+
+VALID_MAKEFILE = """\
+setup:\n\tpython -m pip install -e \".[dev]\"\n
+check:\n\tpython scripts/check_repo_contract.py\n
+test-all:\n\tpython -m pytest -q\n
+package:\n\tpython -m build --wheel --sdist\n
+package-smoke: package\n\tpython scripts/package_smoke.py\n
+"""
+
+VALID_CI = """\
+jobs:
+  verify:
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - run: make setup
+      - run: make check
+      - run: make test-all
+      - run: make package-smoke
+"""
+
 
 def _write(path: Path, content: str = "# Contract\n") -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -88,6 +128,8 @@ def _create_valid_contract(root: Path) -> None:
             content += "\n".join(ARCHITECTURE_LITERALS) + "\n"
         elif filename == "wiki-workflow.md":
             content += "\n".join(WIKI_WORKFLOW_LITERALS) + "\n"
+        elif filename == "development.md":
+            content += "\n".join(DEVELOPMENT_LITERALS) + "\n"
         if filename in DOCUMENT_SECTION_MARKERS:
             content += "\n".join(
                 f"<!-- contract-section:{marker} -->"
@@ -103,6 +145,9 @@ def _create_valid_contract(root: Path) -> None:
         root / ".github/copilot-instructions.md",
         "Follow @../AGENTS.md.\n",
     )
+    _write(root / "pyproject.toml", VALID_PYPROJECT)
+    _write(root / "Makefile", VALID_MAKEFILE)
+    _write(root / ".github/workflows/ci.yml", VALID_CI)
 
 
 def test_valid_repository_contract_has_no_errors(tmp_path: Path) -> None:
@@ -259,4 +304,89 @@ def test_architecture_and_wiki_docs_require_shared_section_markers(
     assert validate_repository_contract(tmp_path) == [
         "docs/en/wiki-workflow.md is missing contract section marker: "
         "single-page-recovery"
+    ]
+
+
+def test_ci_requires_python_311_through_313_matrix(tmp_path: Path) -> None:
+    _create_valid_contract(tmp_path)
+    workflow = tmp_path / ".github/workflows/ci.yml"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8").replace(', "3.13"', ""),
+        encoding="utf-8",
+    )
+
+    assert validate_repository_contract(tmp_path) == [
+        ".github/workflows/ci.yml is missing Python version: 3.13"
+    ]
+
+
+def test_ci_rejects_tool_commands_outside_shared_make_targets(tmp_path: Path) -> None:
+    _create_valid_contract(tmp_path)
+    workflow = tmp_path / ".github/workflows/ci.yml"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8") + "      - run: python -m pytest -q\n",
+        encoding="utf-8",
+    )
+
+    assert validate_repository_contract(tmp_path) == [
+        ".github/workflows/ci.yml must invoke verification through shared Make "
+        "targets: python -m pytest -q"
+    ]
+
+
+def test_default_dependencies_must_not_include_vector_provider(tmp_path: Path) -> None:
+    _create_valid_contract(tmp_path)
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8").replace(
+            'dependencies = ["tree-sitter>=0.25"]',
+            'dependencies = ["tree-sitter>=0.25", "sentence-transformers>=6.0"]',
+        ),
+        encoding="utf-8",
+    )
+
+    assert validate_repository_contract(tmp_path) == [
+        "pyproject.toml default dependencies must not include sentence-transformers"
+    ]
+
+
+def test_development_extra_must_include_package_builder(tmp_path: Path) -> None:
+    _create_valid_contract(tmp_path)
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8").replace('"build>=1.2", ', ""),
+        encoding="utf-8",
+    )
+
+    assert validate_repository_contract(tmp_path) == [
+        "pyproject.toml dev extra must include build"
+    ]
+
+
+def test_release_harness_requires_package_smoke_make_target(tmp_path: Path) -> None:
+    _create_valid_contract(tmp_path)
+    makefile = tmp_path / "Makefile"
+    makefile.write_text(
+        makefile.read_text(encoding="utf-8").replace("package-smoke: package", ""),
+        encoding="utf-8",
+    )
+
+    assert validate_repository_contract(tmp_path) == [
+        "Makefile is missing required target: package-smoke"
+    ]
+
+
+def test_development_docs_require_release_commands_and_supported_pythons(
+    tmp_path: Path,
+) -> None:
+    _create_valid_contract(tmp_path)
+    development = tmp_path / "docs/zh-CN/development.md"
+    development.write_text(
+        development.read_text(encoding="utf-8").replace("make package-smoke", ""),
+        encoding="utf-8",
+    )
+
+    assert validate_repository_contract(tmp_path) == [
+        "docs/zh-CN/development.md is missing required release literal: "
+        "make package-smoke"
     ]

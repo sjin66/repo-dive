@@ -1,8 +1,9 @@
 PYTHON ?= python3
 VENV ?= .venv
 VENV_PYTHON := $(VENV)/bin/python
+DIST_DIR ?= dist
 
-.PHONY: setup check test-unit test-all
+.PHONY: setup check test-unit test-all package package-smoke
 
 setup:
 	$(PYTHON) -c 'import sys; assert sys.version_info >= (3, 11), "Python 3.11+ is required"'
@@ -22,3 +23,8 @@ test-unit:
 test-all:
 	$(VENV_PYTHON) -m pytest -q
 
+package:
+	$(VENV_PYTHON) -m build --wheel --sdist --outdir "$(DIST_DIR)"
+
+package-smoke: package
+	$(VENV_PYTHON) scripts/package_smoke.py --dist-dir "$(DIST_DIR)"

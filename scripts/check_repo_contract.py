@@ -6,6 +6,7 @@ import argparse
 import json
 import re
 import sys
+import tomllib
 from pathlib import Path
 
 REQUIRED_ROOT_FILES = ("AGENTS.md", "README.md", "README.zh-CN.md")
@@ -85,6 +86,24 @@ README_COMMAND_PREFIXES = (
     ".venv/bin/repo-dive",
     "make ",
 )
+SUPPORTED_PYTHONS = ("3.11", "3.12", "3.13")
+REQUIRED_MAKE_TARGETS = ("setup", "check", "test-all", "package", "package-smoke")
+REQUIRED_CI_MAKE_COMMANDS = (
+    "make setup",
+    "make check",
+    "make test-all",
+    "make package-smoke",
+)
+DEVELOPMENT_LITERALS = (
+    "Python 3.11",
+    "Python 3.12",
+    "Python 3.13",
+    "make package",
+    "make package-smoke",
+    ".[vector]",
+    "local_files_only=True",
+)
+CI_RUN_COMMAND = re.compile(r"^\s*(?:-\s*)?run:\s*(.+?)\s*$", re.MULTILINE)
 
 
 def _relative(path: Path, root: Path) -> str:
@@ -118,6 +137,19 @@ def validate_repository_contract(root: Path) -> list[str]:
         errors.append(f"docs/zh-CN/{filename} is missing for docs/en/{filename}")
     for filename in sorted(chinese_files - english_files):
         errors.append(f"docs/en/{filename} is missing for docs/zh-CN/{filename}")
+
+    for language in ("en", "zh-CN"):
+        relative_path = Path("docs") / language / "development.md"
+        path = root / relative_path
+        if not path.is_file():
+            continue
+        content = path.read_text(encoding="utf-8")
+        for literal in DEVELOPMENT_LITERALS:
+            if literal not in content:
+                errors.append(
+                    f"{relative_path.as_posix()} is missing required release "
+                    f"literal: {literal}"
+                )
 
     for language in ("en", "zh-CN"):
         for filename, requirements in TECHNICAL_DOCUMENTS.items():
@@ -185,6 +217,49 @@ def validate_repository_contract(root: Path) -> list[str]:
         if command_lines[0] != command_lines[1]:
             errors.append("bilingual README CLI command lines differ")
 
+    pyproject_path = root / "pyproject.toml"
+    if pyproject_path.is_file():
+        project = tomllib.loads(pyproject_path.read_text(encoding="utf-8")).get(
+            "project", {}
+        )
+        dependencies = project.get("dependencies", [])
+        optional = project.get("optional-dependencies", {})
+        if "sentence-transformers" in {_dependency_name(item) for item in dependencies}:
+            errors.append(
+                "pyproject.toml default dependencies must not include "
+                "sentence-transformers"
+            )
+        if "build" not in {_dependency_name(item) for item in optional.get("dev", [])}:
+            errors.append("pyproject.toml dev extra must include build")
+
+    makefile_path = root / "Makefile"
+    if makefile_path.is_file():
+        makefile = makefile_path.read_text(encoding="utf-8")
+        for target in REQUIRED_MAKE_TARGETS:
+            if re.search(rf"(?m)^{re.escape(target)}(?:\s+[^:]*)?:", makefile) is None:
+                errors.append(f"Makefile is missing required target: {target}")
+
+    workflow_path = root / ".github/workflows/ci.yml"
+    if workflow_path.is_file():
+        workflow = workflow_path.read_text(encoding="utf-8")
+        for version in SUPPORTED_PYTHONS:
+            if f'"{version}"' not in workflow and f"'{version}'" not in workflow:
+                errors.append(
+                    f".github/workflows/ci.yml is missing Python version: {version}"
+                )
+        run_commands = CI_RUN_COMMAND.findall(workflow)
+        for command in run_commands:
+            if not command.startswith("make "):
+                errors.append(
+                    ".github/workflows/ci.yml must invoke verification through "
+                    f"shared Make targets: {command}"
+                )
+        for command in REQUIRED_CI_MAKE_COMMANDS:
+            if command not in run_commands:
+                errors.append(
+                    f".github/workflows/ci.yml is missing shared command: {command}"
+                )
+
     for relative_path in COMPATIBILITY_FILES:
         path = root / relative_path
         display_path = _relative(path, root)
@@ -202,6 +277,12 @@ def validate_repository_contract(root: Path) -> list[str]:
             )
 
     return errors
+
+
+def _dependency_name(requirement: object) -> str:
+    if not isinstance(requirement, str):
+        return ""
+    return re.split(r"[<>=!~;\s\[]", requirement, maxsplit=1)[0].lower()
 
 
 def build_parser() -> argparse.ArgumentParser:

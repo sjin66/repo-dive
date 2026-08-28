@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       - name: Check out repository
@@ -34,3 +34,6 @@ jobs:
 
       - name: Run complete test suite
         run: make test-all
+
+      - name: Build and smoke-test distributions
+        run: make package-smoke

@@ -824,16 +824,16 @@
 **Description:** 更新开发文档和发布 Harness，从全新环境构建 wheel/sdist，在 Python 3.11–3.13 执行共享验证与 CLI smoke test。
 
 **Acceptance criteria:**
-- [ ] 默认安装不包含 Vector extra；`.[vector]` 安装路径和本地模型限制有文档说明。
-- [ ] CI 的 Python 3.11、3.12、3.13 矩阵只调用共享 Make 目标，不复制 Ruff/mypy/pytest 命令。
-- [ ] wheel 与 sdist 均包含所需 SQL/Schema 资源；从 wheel 安装后四个命令族可启动。
+- [x] 默认安装不包含 Vector extra；`.[vector]` 安装路径和本地模型限制有文档说明。
+- [x] CI 的 Python 3.11、3.12、3.13 矩阵只调用共享 Make 目标，不复制 Ruff/mypy/pytest 命令。
+- [x] wheel 与 sdist 均包含所需 SQL/Schema 资源；从 wheel 安装后四个命令族可启动。
 
 **Verification:**
-- [ ] Fresh harness: `make setup`
-- [ ] Fresh harness: `make check`
-- [ ] Fresh harness: `make test-all`
-- [ ] Package smoke: 从构建 wheel 的临时 venv 执行 `repo-dive --version` 和四个功能命令的 `--help`。
-- [ ] Repository review: `git status --short` 与 `git diff --check`。
+- [x] Fresh harness: `make setup`
+- [x] Fresh harness: `make check`
+- [x] Fresh harness: `make test-all`
+- [x] Package smoke: 从构建 wheel 的临时 venv 执行 `repo-dive --version` 和四个功能命令的 `--help`。
+- [x] Repository review: `git status --short` 与 `git diff --check`。
 
 **Dependencies:** Task 33
 
@@ -848,9 +848,9 @@
 
 ## Checkpoint H：Release Candidate
 
-- [ ] 所有 Task 验收条件完成并可追溯到测试或评测。
-- [ ] `make check`、`make test-unit`、`make test-all` 全部通过。
-- [ ] 离线 Wiki E2E、可选 Vector E2E、安全/恢复和评测 Runner 全部通过。
-- [ ] 中英文文档与真实 CLI 输出一致。
-- [ ] 未实现非目标：无前端、无 MCP、无隐式生成模型调用、无远程仓库克隆。
+- [x] 所有 Task 验收条件完成并可追溯到测试或评测。
+- [x] `make check`、`make test-unit`、`make test-all` 全部通过。
+- [x] 离线 Wiki E2E、可选 Vector E2E、安全/恢复和评测 Runner 全部通过。
+- [x] 中英文文档与真实 CLI 输出一致。
+- [x] 未实现非目标：无前端、无 MCP、无隐式生成模型调用、无远程仓库克隆。
 - [ ] 人工审阅并批准 Release Candidate。
