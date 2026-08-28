@@ -14,6 +14,7 @@ from repo_dive.indexing.manifest import (
     read_manifest,
     write_manifest,
 )
+from repo_dive.indexing.vectors import EmbeddingIdentity
 
 
 def manifest() -> IndexManifest:
@@ -65,6 +66,36 @@ def test_manifest_round_trip_is_stable_and_metadata_points_to_generation(
             "repository_fingerprint": "fingerprint",
         },
     }
+
+
+def test_manifest_round_trip_records_optional_embedding_identity(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "manifest.json"
+    configured = manifest()
+    expected = IndexManifest(
+        build_id=configured.build_id,
+        repository_fingerprint=configured.repository_fingerprint,
+        scan_mode=configured.scan_mode,
+        parameters=configured.parameters,
+        files=configured.files,
+        counts=configured.counts,
+        embedding=EmbeddingIdentity(
+            provider="fake",
+            model="fixture-v1",
+            dimensions=2,
+        ),
+    )
+
+    write_manifest(path, expected)
+
+    assert read_manifest(path) == expected
+    assert expected.to_document()["embedding"] == {
+        "dimensions": 2,
+        "model": "fixture-v1",
+        "provider": "fake",
+    }
+    assert "embedding" not in manifest().to_document()
 
 
 def test_manifest_rejects_unknown_schema_version(tmp_path: Path) -> None:

@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import sqlite3
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ from repo_dive.errors import InternalOperationError, RepositoryError
 from repo_dive.indexing.manifest import read_manifest
 from repo_dive.indexing.service import IndexService
 from repo_dive.indexing.store import IndexStore
+from repo_dive.indexing.vectors import EmbeddingIdentity
 from repo_dive.parsing.models import ParseResult, create_relationship
 from repo_dive.parsing.pipeline import ParsingPipeline
 from repo_dive.scanner.models import SourceFile
@@ -58,6 +60,34 @@ class InvalidRelationshipParser:
                 ),
             ),
             diagnostics=parsed.diagnostics,
+        )
+
+
+class RecordingEmbeddingProvider:
+    def __init__(self, *, model: str = "fixture-v1", fail: bool = False) -> None:
+        self.identity = EmbeddingIdentity(
+            provider="fake",
+            model=model,
+            dimensions=2,
+        )
+        self.fail = fail
+        self.calls: list[tuple[str, ...]] = []
+
+    def embed(
+        self,
+        texts: Sequence[str],
+        *,
+        batch_size: int = 32,
+    ) -> tuple[tuple[float, ...], ...]:
+        self.calls.append(tuple(texts))
+        if self.fail:
+            raise InternalOperationError(
+                "embedding_failed",
+                "Could not compute local embeddings.",
+            )
+        return tuple(
+            (float(len(text) or 1), float(sum(text.encode("utf-8")) % 997 or 1))
+            for text in texts
         )
 
 
@@ -170,6 +200,105 @@ def test_unchanged_build_reuses_current_generation_without_parsing(
     assert second.deleted_files == 0
     assert parser.calls == []
     assert len(list((repository / ".repo-dive/index-generations").iterdir())) == 1
+
+
+def test_vector_build_reuses_unchanged_chunks_and_rebuilds_on_identity_change(
+    tmp_path: Path,
+) -> None:
+    repository = copy_fixture(tmp_path)
+    service = IndexService()
+    provider = RecordingEmbeddingProvider()
+
+    first = service.build(repository, embedding_provider=provider)
+
+    assert first.vector is not None
+    assert first.vector.status == "ready"
+    assert first.vector.embedded_chunks == first.counts.chunks
+    assert first.vector.reused_chunks == 0
+    assert first.vector.identity == provider.identity
+    assert len(provider.calls) == 1
+    with IndexStore.open(repository / ".repo-dive/index/index.sqlite3") as store:
+        assert len(store.get_vector_index(provider.identity)) == first.counts.chunks
+
+    app = repository / "src" / "app.py"
+    app.write_text(
+        app.read_text(encoding="utf-8").replace("Hello,", "Welcome,"),
+        encoding="utf-8",
+    )
+    second_provider = RecordingEmbeddingProvider()
+    second = service.build(repository, embedding_provider=second_provider)
+
+    assert second.vector is not None
+    assert 0 < second.vector.embedded_chunks < second.counts.chunks
+    assert second.vector.reused_chunks > 0
+    assert (
+        second.vector.embedded_chunks + second.vector.reused_chunks
+        == second.counts.chunks
+    )
+    assert len(second_provider.calls) == 1
+    assert len(second_provider.calls[0]) == second.vector.embedded_chunks
+
+    replacement = RecordingEmbeddingProvider(model="fixture-v2")
+    third = service.build(repository, embedding_provider=replacement)
+
+    assert third.build_id != second.build_id
+    assert third.rebuilt_files == 0
+    assert third.reused_files == third.counts.files
+    assert third.vector is not None
+    assert third.vector.embedded_chunks == third.counts.chunks
+    assert third.vector.reused_chunks == 0
+    assert len(replacement.calls) == 1
+    assert (
+        read_manifest(repository / ".repo-dive/index/manifest.json").embedding
+        == replacement.identity
+    )
+
+
+def test_degraded_vector_failure_publishes_observable_lexical_index(
+    tmp_path: Path,
+) -> None:
+    repository = copy_fixture(tmp_path)
+    provider = RecordingEmbeddingProvider(fail=True)
+
+    result = IndexService().build(
+        repository,
+        embedding_provider=provider,
+        vector_failure="degraded",
+    )
+
+    assert result.vector is not None
+    assert result.vector.status == "degraded"
+    assert result.vector.failure_policy == "degraded"
+    assert result.vector.error_code == "embedding_failed"
+    assert result.vector.embedded_chunks == 0
+    assert result.vector.reused_chunks == 0
+    assert (
+        read_manifest(repository / ".repo-dive/index/manifest.json").embedding is None
+    )
+    with IndexStore.open(repository / ".repo-dive/index/index.sqlite3") as store:
+        assert store.get_vector_index(provider.identity) == ()
+
+
+def test_strict_vector_failure_preserves_current_generation(tmp_path: Path) -> None:
+    repository = copy_fixture(tmp_path)
+    service = IndexService()
+    first = service.build(repository)
+    original_generation = (repository / ".repo-dive/index").resolve(strict=True)
+
+    with pytest.raises(InternalOperationError) as exc_info:
+        service.build(
+            repository,
+            embedding_provider=RecordingEmbeddingProvider(fail=True),
+            vector_failure="strict",
+        )
+
+    assert exc_info.value.code == "index_build_failed"
+    assert exc_info.value.details == {"stage": "embedding"}
+    assert (repository / ".repo-dive/index").resolve(strict=True) == original_generation
+    assert (
+        read_manifest(repository / ".repo-dive/index/manifest.json").build_id
+        == first.build_id
+    )
 
 
 def test_build_parameter_change_forces_full_reparse(tmp_path: Path) -> None:

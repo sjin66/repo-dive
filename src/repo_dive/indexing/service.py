@@ -10,9 +10,14 @@ import uuid
 from contextlib import ExitStack, suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
-from repo_dive.errors import InternalOperationError, InvocationError, RepositoryError
+from repo_dive.errors import (
+    InternalOperationError,
+    InvocationError,
+    RepoDiveError,
+    RepositoryError,
+)
 from repo_dive.indexing.bm25 import BM25Parameters, build_bm25_index
 from repo_dive.indexing.manifest import (
     BuildParameters,
@@ -24,8 +29,14 @@ from repo_dive.indexing.manifest import (
     write_manifest,
 )
 from repo_dive.indexing.store import INDEX_SCHEMA_VERSION, IndexStore
+from repo_dive.indexing.vectors import (
+    ChunkVector,
+    EmbeddingIdentity,
+    create_chunk_vector,
+)
 from repo_dive.parsing.models import Chunk, ParseDiagnostic, ParseResult
 from repo_dive.parsing.pipeline import ParsingPipeline
+from repo_dive.providers.embeddings import EmbeddingProvider
 from repo_dive.scanner.models import Inventory, ReadStatus, SourceFile
 from repo_dive.scanner.service import scan_repository
 from repo_dive.schema import JsonObject, serialize_json_document
@@ -36,6 +47,9 @@ GENERATIONS_DIRECTORY = ".repo-dive/index-generations"
 DATABASE_NAME = "index.sqlite3"
 MANIFEST_NAME = "manifest.json"
 METADATA_NAME = "metadata.json"
+
+VectorFailurePolicy = Literal["strict", "degraded"]
+VectorBuildStatus = Literal["ready", "degraded"]
 
 
 class SourceParser(Protocol):
@@ -54,7 +68,21 @@ class IndexBuildResult:
     reused_files: int
     rebuilt_files: int
     deleted_files: int
+    vector: VectorBuildResult | None = None
     diagnostics: tuple[ParseDiagnostic, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class VectorBuildResult:
+    """Observable cost and failure state for one requested vector build."""
+
+    status: VectorBuildStatus
+    failure_policy: VectorFailurePolicy
+    identity: EmbeddingIdentity
+    total_chunks: int
+    embedded_chunks: int
+    reused_chunks: int
+    error_code: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,8 +112,12 @@ class IndexService:
         max_file_size: int = 1_000_000,
         max_chunk_lines: int = 200,
         parser: SourceParser | None = None,
+        embedding_provider: EmbeddingProvider | None = None,
+        vector_failure: VectorFailurePolicy = "strict",
     ) -> IndexBuildResult:
         """Build or incrementally replace the selected repository index."""
+        if vector_failure not in ("strict", "degraded"):
+            raise ValueError("vector_failure must be strict or degraded")
         root = resolve_repository(repository)
         parameters = BuildParameters(
             include=tuple(sorted(set(include))),
@@ -93,9 +125,13 @@ class IndexService:
             max_file_size=max_file_size,
             max_chunk_lines=max_chunk_lines,
         )
-        stage = "scan"
+        stage = "embedding_setup"
         staging: Path | None = None
         try:
+            embedding_identity = (
+                embedding_provider.identity if embedding_provider is not None else None
+            )
+            stage = "scan"
             inventory = scan_repository(
                 root,
                 include=parameters.include,
@@ -108,10 +144,16 @@ class IndexService:
                 and current.manifest.parameters == parameters
                 and current.manifest.repository_fingerprint
                 == inventory.repository_fingerprint
+                and (
+                    embedding_provider is None
+                    or current.manifest.embedding == embedding_identity
+                )
             ):
                 return _result_from_manifest(
                     current.manifest,
                     reused_files=current.manifest.counts.files,
+                    embedding_identity=embedding_identity,
+                    vector_failure=vector_failure,
                 )
 
             stage = "prepare"
@@ -126,6 +168,9 @@ class IndexService:
                 parameters=parameters,
                 current=current,
                 parser=active_parser,
+                embedding_provider=embedding_provider,
+                embedding_identity=embedding_identity,
+                vector_failure=vector_failure,
             )
 
             stage = "manifest"
@@ -172,6 +217,9 @@ class IndexService:
         parameters: BuildParameters,
         current: _CurrentIndex | None,
         parser: SourceParser,
+        embedding_provider: EmbeddingProvider | None,
+        embedding_identity: EmbeddingIdentity | None,
+        vector_failure: VectorFailurePolicy,
     ) -> tuple[IndexBuildResult, IndexManifest]:
         compatible = current is not None and current.manifest.parameters == parameters
         previous_paths = (
@@ -188,6 +236,7 @@ class IndexService:
         chunks: list[Chunk] = []
         symbol_count = 0
         relationship_count = 0
+        vector_result: VectorBuildResult | None = None
 
         with ExitStack() as stack:
             store = stack.enter_context(IndexStore.initialize(staging / DATABASE_NAME))
@@ -243,6 +292,18 @@ class IndexService:
                 )
             except Exception as error:
                 raise _GenerationFailure("bm25") from error
+            if embedding_provider is not None and embedding_identity is not None:
+                vector_result = _build_vector_index(
+                    store=store,
+                    previous_store=previous_store,
+                    previous_identity=(
+                        current.manifest.embedding if current is not None else None
+                    ),
+                    chunks=tuple(chunks),
+                    provider=embedding_provider,
+                    identity=embedding_identity,
+                    failure_policy=vector_failure,
+                )
             if store.foreign_key_violations() or store.integrity_check() != ("ok",):
                 raise _GenerationFailure("validate")
 
@@ -266,6 +327,11 @@ class IndexService:
             parameters=parameters,
             files=tuple(manifest_files),
             counts=counts,
+            embedding=(
+                embedding_identity
+                if vector_result is not None and vector_result.status == "ready"
+                else None
+            ),
         )
         return (
             IndexBuildResult(
@@ -275,6 +341,7 @@ class IndexService:
                 reused_files=reused_files,
                 rebuilt_files=rebuilt_files,
                 deleted_files=deleted_files,
+                vector=vector_result,
                 diagnostics=tuple(diagnostics),
             ),
             manifest,
@@ -330,6 +397,75 @@ def _parse_or_reuse(
         if previous_record == source.record:
             return previous_store.get_parse_result(source.record.path), True
     return parser.parse(source), False
+
+
+def _build_vector_index(
+    *,
+    store: IndexStore,
+    previous_store: IndexStore | None,
+    previous_identity: EmbeddingIdentity | None,
+    chunks: tuple[Chunk, ...],
+    provider: EmbeddingProvider,
+    identity: EmbeddingIdentity,
+    failure_policy: VectorFailurePolicy,
+) -> VectorBuildResult:
+    try:
+        reusable = _reusable_vectors(
+            previous_store=previous_store,
+            previous_identity=previous_identity,
+            identity=identity,
+        )
+        reused = tuple(
+            reusable[chunk.id]
+            for chunk in chunks
+            if chunk.id in reusable
+            and reusable[chunk.id].chunk_hash == chunk.content_hash
+        )
+        reused_ids = {vector.chunk_id for vector in reused}
+        pending = tuple(chunk for chunk in chunks if chunk.id not in reused_ids)
+        embeddings = provider.embed(tuple(chunk.text for chunk in pending))
+        embedded = tuple(
+            create_chunk_vector(chunk, identity, embedding)
+            for chunk, embedding in zip(pending, embeddings, strict=True)
+        )
+        store.replace_vector_index(identity, (*reused, *embedded))
+    except Exception as error:
+        if failure_policy == "strict":
+            raise _GenerationFailure("embedding") from error
+        return VectorBuildResult(
+            status="degraded",
+            failure_policy=failure_policy,
+            identity=identity,
+            total_chunks=len(chunks),
+            embedded_chunks=0,
+            reused_chunks=0,
+            error_code=_safe_error_code(error),
+        )
+    return VectorBuildResult(
+        status="ready",
+        failure_policy=failure_policy,
+        identity=identity,
+        total_chunks=len(chunks),
+        embedded_chunks=len(embedded),
+        reused_chunks=len(reused),
+    )
+
+
+def _reusable_vectors(
+    *,
+    previous_store: IndexStore | None,
+    previous_identity: EmbeddingIdentity | None,
+    identity: EmbeddingIdentity,
+) -> dict[str, ChunkVector]:
+    if previous_store is None or previous_identity != identity:
+        return {}
+    return {
+        vector.chunk_id: vector for vector in previous_store.get_vector_index(identity)
+    }
+
+
+def _safe_error_code(error: Exception) -> str:
+    return error.code if isinstance(error, RepoDiveError) else "embedding_failed"
 
 
 def _prepare_generations_directory(root: Path) -> Path:
@@ -459,7 +595,21 @@ def _result_from_manifest(
     manifest: IndexManifest,
     *,
     reused_files: int,
+    embedding_identity: EmbeddingIdentity | None = None,
+    vector_failure: VectorFailurePolicy = "strict",
 ) -> IndexBuildResult:
+    vector = (
+        VectorBuildResult(
+            status="ready",
+            failure_policy=vector_failure,
+            identity=embedding_identity,
+            total_chunks=manifest.counts.chunks,
+            embedded_chunks=0,
+            reused_chunks=manifest.counts.chunks,
+        )
+        if embedding_identity is not None and manifest.embedding == embedding_identity
+        else None
+    )
     return IndexBuildResult(
         build_id=manifest.build_id,
         repository_fingerprint=manifest.repository_fingerprint,
@@ -467,6 +617,7 @@ def _result_from_manifest(
         reused_files=reused_files,
         rebuilt_files=0,
         deleted_files=0,
+        vector=vector,
     )
 
 
@@ -475,5 +626,7 @@ __all__ = [
     "IndexService",
     "PublishedIndex",
     "SourceParser",
+    "VectorBuildResult",
+    "VectorFailurePolicy",
     "load_published_index",
 ]

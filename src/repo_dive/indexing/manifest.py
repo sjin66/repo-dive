@@ -10,6 +10,7 @@ from typing import Literal, cast
 from repo_dive.errors import InternalOperationError, RepositoryError
 from repo_dive.indexing.bm25 import DEFAULT_B, DEFAULT_K1, TOKENIZER_VERSION
 from repo_dive.indexing.store import INDEX_SCHEMA_VERSION
+from repo_dive.indexing.vectors import EmbeddingIdentity
 from repo_dive.schema import JsonObject, JsonValue, serialize_json_document
 
 INDEX_MANIFEST_VERSION = "1.0"
@@ -123,6 +124,7 @@ class IndexManifest:
     parameters: BuildParameters
     files: tuple[ManifestFile, ...]
     counts: IndexCounts
+    embedding: EmbeddingIdentity | None = None
     schema_version: str = INDEX_MANIFEST_VERSION
 
     def __post_init__(self) -> None:
@@ -137,7 +139,7 @@ class IndexManifest:
             raise ValueError("manifest file count does not match files")
 
     def to_document(self) -> JsonObject:
-        return {
+        document: JsonObject = {
             "build_id": self.build_id,
             "counts": self.counts.to_document(),
             "files": [item.to_document() for item in self.files],
@@ -146,6 +148,13 @@ class IndexManifest:
             "scan_mode": self.scan_mode,
             "schema_version": self.schema_version,
         }
+        if self.embedding is not None:
+            document["embedding"] = {
+                "dimensions": self.embedding.dimensions,
+                "model": self.embedding.model,
+                "provider": self.embedding.provider,
+            }
+        return document
 
 
 def write_manifest(path: Path, manifest: IndexManifest) -> None:
@@ -232,6 +241,7 @@ def _manifest_from_document(document: JsonObject) -> IndexManifest:
             symbols=_integer(counts["symbols"]),
             relationships=_integer(counts["relationships"]),
         ),
+        embedding=_embedding_identity(document.get("embedding")),
         schema_version=_string(document["schema_version"]),
     )
 
@@ -245,6 +255,17 @@ def _manifest_file_from_document(document: JsonObject) -> ManifestFile:
         content_hash=content_hash_value,
         status=cast(ManifestStatus, _enum(document["status"], {"read", "skipped"})),
         chunk_ids=_string_tuple(document["chunk_ids"]),
+    )
+
+
+def _embedding_identity(value: JsonValue | None) -> EmbeddingIdentity | None:
+    if value is None:
+        return None
+    document = _object(value)
+    return EmbeddingIdentity(
+        provider=_string(document["provider"]),
+        model=_string(document["model"]),
+        dimensions=_integer(document["dimensions"]),
     )
 
 
