@@ -105,8 +105,11 @@ def _heading_text(value: str) -> str:
 
 
 def _link_text(value: str) -> str:
-    return _heading_text(value).replace("\\", "\\\\").replace("[", "\\[").replace(
-        "]", "\\]"
+    return (
+        _heading_text(value)
+        .replace("\\", "\\\\")
+        .replace("[", "\\[")
+        .replace("]", "\\]")
     )
 
 

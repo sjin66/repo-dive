@@ -79,8 +79,7 @@ def wiki() -> Wiki:
 
 def test_stable_anchor_has_a_safe_type_prefix_and_full_identifier_hash() -> None:
     assert stable_anchor("page", "overview") == (
-        "page-bd445c462b7eebbc242e27f08c7d981e"
-        "97fb28faf17ea73862bf95119b60e0f7"
+        "page-bd445c462b7eebbc242e27f08c7d981e97fb28faf17ea73862bf95119b60e0f7"
     )
     assert stable_anchor("section", "overview") != stable_anchor("page", "overview")
 

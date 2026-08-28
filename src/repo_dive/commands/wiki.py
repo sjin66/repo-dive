@@ -438,9 +438,7 @@ def _json_build(update: WikiBuildUpdate) -> JsonObject:
         "artifact_path": update.artifact_path,
         "bytes": len(data),
         "changed": update.changed,
-        "page_count": sum(
-            len(section.pages) for section in update.wiki.sections
-        ),
+        "page_count": sum(len(section.pages) for section in update.wiki.sections),
         "section_count": len(update.wiki.sections),
         "sha256": hashlib.sha256(data).hexdigest(),
         "source_count": sum(
