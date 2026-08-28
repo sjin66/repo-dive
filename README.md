@@ -14,10 +14,10 @@ The current offline RAG core provides:
 - Python AST and Tree-sitter parsing with stable chunks, symbols, and relationships;
 - atomic local SQLite indexing with BM25 and structural retrieval;
 - read-only `search` and token-budgeted `context` commands in JSON or Markdown;
-- resumable `wiki structure`, `wiki evidence`, `wiki page`, and `wiki status` commands with atomic JSON state;
+- resumable `wiki structure`, `wiki evidence`, `wiki page`, `wiki build`, and `wiki status` commands with atomic artifacts;
 - stable process, schema, evaluation, and local/CI harness contracts.
 
-Optional vector retrieval and final wiki assembly remain planned work.
+Optional vector retrieval remains planned work; the offline Wiki workflow is complete.
 
 ## Design Philosophy
 
@@ -34,7 +34,7 @@ See [Architecture](docs/en/architecture.md) for the complete rationale.
 
 ## Agent Workflow
 
-The available retrieval flow and planned wiki stages are:
+The available end-to-end Wiki RAG flow is:
 
 ```text
 calling agent
@@ -78,6 +78,7 @@ After setup:
 .venv/bin/repo-dive wiki structure /path/to/repository --input structure.json --format json
 .venv/bin/repo-dive wiki evidence /path/to/repository --page overview --token-budget 1200 --format json
 .venv/bin/repo-dive wiki page /path/to/repository --page overview --input page.json --format json
+.venv/bin/repo-dive wiki build /path/to/repository --format markdown
 .venv/bin/repo-dive wiki status /path/to/repository --format json
 ```
 

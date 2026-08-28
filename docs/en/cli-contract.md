@@ -14,7 +14,7 @@ Functional commands support:
 repo-dive <command> [repository] --format json
 ```
 
-The current build implements `index`, `search`, `context`, `wiki structure`, `wiki evidence`, `wiki page`, and `wiki status` in addition to `--help` and `--version`.
+The current build implements `index`, `search`, `context`, `wiki structure`, `wiki evidence`, `wiki page`, `wiki build`, and `wiki status` in addition to `--help` and `--version`.
 
 ## RAG Command Boundary
 
@@ -25,7 +25,7 @@ Command families expose each RAG stage independently:
 - `context`: deduplicate and package evidence under a caller-supplied token budget.
 - `wiki`: persist agent-generated page state and assemble `.repo-dive/wiki.md`.
 
-`index`, `search`, and `context` are deterministic RAG operations. `wiki structure`, `wiki evidence`, `wiki page`, and `wiki status` provide persistent, resumable Wiki state; only final assembly remains planned. None of these commands implicitly calls a generative model.
+`index`, `search`, and `context` are deterministic RAG operations. `wiki structure`, `wiki evidence`, `wiki page`, `wiki build`, and `wiki status` provide the complete persistent, resumable offline Wiki workflow. None of these commands implicitly calls a generative model.
 
 The context command requires a positive token budget and accepts a bounded retrieval-candidate count:
 
@@ -41,6 +41,7 @@ The structure command reads a bounded UTF-8 JSON document from an explicit file:
 repo-dive wiki structure <repository> --input structure.json --format json|markdown
 repo-dive wiki evidence <repository> --page <page-id> --token-budget N [--max-results COUNT] --format json|markdown
 repo-dive wiki page <repository> --page <page-id> --input <page.json|-> --format json|markdown
+repo-dive wiki build <repository> --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
 
@@ -57,6 +58,12 @@ The persisted snapshot records the query, repository fingerprint, index Schema/b
 `wiki page` accepts a bounded UTF-8 JSON file or `--input -` for stdin. Submission Schema `1.0` accepts exactly `schema_version`, `page_id`, Markdown `body`, and a non-empty unique `evidence_ids` array. The selected and submitted Page IDs must match; every cited ID must belong to that page's current Evidence snapshot; the snapshot must still match the published index; and the body is limited to 200,000 UTF-8 bytes. The outer input is bounded at 1,500,000 bytes so escaped JSON cannot create an unbounded read.
 
 A valid `evidence_ready` page becomes `generated`. A `failed` page with a still-valid Evidence snapshot may be corrected and submitted without touching other pages. Repeating the exact generated body and citation list is a no-write success; attempting to replace a generated page through this command is rejected. Results and diagnostics report only sizes, counts, IDs, status, and safe error codes—they do not echo the submitted body or repository source.
+
+`wiki build` requires every page to be `generated` with a body and at least one current citation. It validates all page Evidence against one current published-index view and verifies that build identity again immediately before writing. Incomplete pages return `wiki_build_incomplete`; stale pages return `wiki_evidence_stale`; a concurrent index publication returns `index_changed_during_operation`. These failures preserve any existing `.repo-dive/wiki.md`, and page-related errors include only ordered Page IDs.
+
+The assembled document preserves Section/Page order and contains the Wiki title and description, a table of contents, explicit stable anchors, page headings, caller-generated bodies, related-page links, and source links with inclusive line ranges. Anchors are the `section-` or `page-` prefix plus the full SHA-256 of the persisted ID. Source targets are URL-encoded paths relative to `.repo-dive/wiki.md`. Callers should submit page body content without repeating the CLI-owned page heading. The CLI stores Markdown as data and does not execute or HTML-sanitize page bodies; consumers that render HTML must use a trusted Markdown renderer and an appropriate HTML sanitization policy.
+
+JSON output reports `artifact_path`, UTF-8 `bytes`, `changed`, Section/Page/source counts, and `sha256` without returning the assembled body. Markdown output writes the exact assembled document to stdout, while both formats first obey the same atomic artifact write. Rebuilding identical state is a no-write success with `changed: false`.
 
 ## Standard Streams
 

@@ -69,6 +69,7 @@ CLI 校验引用，并把接受的结构持久化到 `wiki.json`。它不能自�
 repo-dive wiki structure <repository> --input structure.json --format json|markdown
 repo-dive wiki evidence <repository> --page <page-id> --token-budget N --format json|markdown
 repo-dive wiki page <repository> --page <page-id> --input <page.json|-> --format json|markdown
+repo-dive wiki build <repository> --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
 
@@ -107,15 +108,17 @@ Agent 针对每个页面，使用页面主题和相关文件提示请求证据�
 
 ## 阶段 6：汇总
 
-所有必需页面准备完成后，CLI 汇总：
+所有必需页面准备完成后，`wiki build` 校验每个页面并汇总：
 
-1. 文档标题与生成元数据；
+1. 文档标题与描述；
 2. 目录；
 3. 有序页面锚点和标题；
 4. 相关页面链接；
 5. 页面正文和来源引用。
 
-汇总先写入同目录临时文件，校验通过后原子替换 `.repo-dive/wiki.md`。校验或替换失败时，旧文档保持完整。
+Section 和 Page 锚点使用类型前缀加稳定持久化 ID 的完整 SHA-256，因此排序、标题和不同 Markdown 渲染器的 Slug 规则不会改变链接目标。来源链接使用相对于产物的仓库路径，并包含从 1 开始、首尾都包含的行号片段。调用方生成正文插入 CLI 统一生成的页面标题之后；调用方不应在正文中重复该标题。
+
+汇总会拒绝任何非 `generated` 页面、缺失的正文/引用数据，或不再匹配已发布索引的 Evidence。只有全部检查通过后，命令才写入同目录临时文件并原子替换 `.repo-dive/wiki.md`。校验或替换失败时，旧文档保持完整。对相同状态重复 build 不会写文件。`--format markdown` 返回与落盘完全相同的 Markdown；JSON 模式只返回路径、大小、哈希、数量和 changed 标志。
 
 ## 状态模型
 

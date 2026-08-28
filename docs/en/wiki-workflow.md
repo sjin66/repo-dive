@@ -69,6 +69,7 @@ The available command boundary is:
 repo-dive wiki structure <repository> --input structure.json --format json|markdown
 repo-dive wiki evidence <repository> --page <page-id> --token-budget N --format json|markdown
 repo-dive wiki page <repository> --page <page-id> --input <page.json|-> --format json|markdown
+repo-dive wiki build <repository> --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
 
@@ -107,15 +108,17 @@ This is the generation step of RAG. It runs in the calling Copilot session rathe
 
 ## Stage 6: Assembly
 
-When all required pages are ready, the CLI assembles:
+When all required pages are ready, `wiki build` validates every page and assembles:
 
-1. document title and generation metadata;
+1. document title and description;
 2. table of contents;
 3. ordered page anchors and headings;
 4. related-page links;
 5. page bodies and source references.
 
-Assembly writes a temporary sibling file, verifies it, and atomically replaces `.repo-dive/wiki.md`. The previous document remains intact if validation or replacement fails.
+Section and page anchors use a type prefix plus the full SHA-256 of the stable persisted ID, so ordering, titles, and renderer-specific slug rules cannot change link targets. Source links are repository paths relative to the artifact and include one-based inclusive line fragments. The caller-generated body is inserted beneath the CLI-owned page heading; callers should not repeat that heading in the body.
+
+Assembly rejects any non-`generated` page, missing body/citation data, or Evidence that no longer matches the published index. Only after all checks pass does it write a temporary sibling file and atomically replace `.repo-dive/wiki.md`. The previous document remains intact if validation or replacement fails. Rebuilding the same state performs no write. `--format markdown` returns the exact persisted Markdown; JSON mode returns only its path, size, hash, counts, and changed flag.
 
 ## State Model
 

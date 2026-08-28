@@ -595,13 +595,13 @@
 **Description:** 实现 `wiki build`，按结构顺序生成标题、目录、稳定锚点、页面正文、相关页面和来源，原子替换 `wiki.md`。
 
 **Acceptance criteria:**
-- [ ] 必需页面未 generated 或 Evidence 过期时拒绝 build，并保留旧 `wiki.md`。
-- [ ] 成功 Markdown 的目录、锚点、章节顺序和来源在重复构建时稳定。
-- [ ] `--format markdown` 向 stdout 返回 Markdown，但仓库写入仍遵守原子产物契约。
+- [x] 必需页面未 generated 或 Evidence 过期时拒绝 build，并保留旧 `wiki.md`。
+- [x] 成功 Markdown 的目录、锚点、章节顺序和来源在重复构建时稳定。
+- [x] `--format markdown` 向 stdout 返回 Markdown，但仓库写入仍遵守原子产物契约。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/wiki/test_assembler.py tests/integration/test_wiki_workflow.py -q`
-- [ ] E2E check: `index -> structure -> evidence -> page -> build -> status` 全流程通过。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/wiki/test_assembler.py tests/integration/test_wiki_workflow.py -q`
+- [x] E2E check: `index -> structure -> evidence -> page -> build -> status` 全流程通过。
 
 **Dependencies:** Tasks 22–24
 
@@ -616,10 +616,10 @@
 
 ## Checkpoint F：Wiki MVP
 
-- [ ] `make check`
-- [ ] `make test-all`
-- [ ] 无网络、无 Vector 的 Fixture 仓库可以产出完整 `.repo-dive/wiki.md`。
-- [ ] 中断、单页失败、过期 Evidence 和汇总失败均可恢复，旧产物保持完整。
+- [x] `make check`
+- [x] `make test-all`
+- [x] 无网络、无 Vector 的 Fixture 仓库可以产出完整 `.repo-dive/wiki.md`。
+- [x] 中断、单页失败、过期 Evidence 和汇总失败均可恢复，旧产物保持完整。
 
 ## Phase 7：可选向量增强
 

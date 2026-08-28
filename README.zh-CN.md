@@ -14,10 +14,10 @@
 - Python AST 与 Tree-sitter 解析，以及稳定的 Chunk、符号和关系；
 - 原子发布的本地 SQLite 索引、BM25 与结构检索；
 - 支持 JSON 或 Markdown 的只读 `search` 和 Token 预算 `context` 命令；
-- 带原子 JSON 状态的可恢复 `wiki structure`、`wiki evidence`、`wiki page` 和 `wiki status` 命令；
+- 带原子产物的可恢复 `wiki structure`、`wiki evidence`、`wiki page`、`wiki build` 和 `wiki status` 命令；
 - 稳定的进程、Schema、评测及本地/CI Harness 契约。
 
-可选向量检索和最终 Wiki 汇总仍属于后续计划。
+可选向量检索仍属于后续计划；离线 Wiki 工作流已经完整可用。
 
 ## 设计哲学
 
@@ -34,7 +34,7 @@
 
 ## Agent 工作流
 
-当前可用的检索流程与规划中的 Wiki 阶段是：
+当前可用的端到端 Wiki RAG 流程是：
 
 ```text
 调用方 Agent
@@ -78,6 +78,7 @@ make test-all
 .venv/bin/repo-dive wiki structure /path/to/repository --input structure.json --format json
 .venv/bin/repo-dive wiki evidence /path/to/repository --page overview --token-budget 1200 --format json
 .venv/bin/repo-dive wiki page /path/to/repository --page overview --input page.json --format json
+.venv/bin/repo-dive wiki build /path/to/repository --format markdown
 .venv/bin/repo-dive wiki status /path/to/repository --format json
 ```
 
