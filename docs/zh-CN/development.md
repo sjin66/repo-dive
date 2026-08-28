@@ -2,7 +2,7 @@
 
 ## 环境要求
 
-- Python 3.11 或更高版本
+- Python 3.11、Python 3.12 或 Python 3.13
 - GNU Make
 - Git
 
@@ -44,13 +44,59 @@ Embedding 适配器时才安装显式的 Vector Extra：
 make check
 make test-unit
 make test-all
+make package
+make package-smoke
 ```
 
 - `check` 执行格式检查、Lint、类型检查和仓库契约校验。
 - `test-unit` 执行 `tests/unit/` 下的聚焦测试。
 - `test-all` 执行完整测试集，包括存在时的集成测试。
+- `package` 在 `dist/` 下构建一个 Wheel 和一个 sdist。
+- `package-smoke` 校验两种 Archive，并把 Wheel 安装到全新的临时虚拟环境。
 
 CI 调用相同目标。除非先把工具命令加入对应 Make 目标，否则不能直接写入 CI。
+
+## Distribution 与 Release Candidate
+
+默认项目依赖包含 Tree-sitter Runtime，但不包含 Sentence Transformers，
+因此普通安装不会带入 Vector 支持：
+
+```bash
+.venv/bin/python -m pip install repo-dive
+```
+
+只有显式 Extra 才会安装可选 Provider：
+
+```bash
+.venv/bin/python -m pip install "repo-dive[vector]"
+```
+
+安装后的 Distribution 仍然遵循相同本地模型限制：`--embedding-model` 必须指向
+已经存在的本地目录，并设置 `local_files_only=True` 与
+`trust_remote_code=False`。安装 Extra 不会下载模型，也不会启用网络 Provider。
+
+通过共享 Harness 构建 Release Candidate：
+
+```bash
+make package
+make package-smoke
+```
+
+`make package` 使用 `dev` Extra 中的 PEP 517 Frontend 创建 Wheel 与 sdist。
+`make package-smoke` 随后检查两种 Archive 都包含
+`repo_dive/indexing/schema.sql`，把 Wheel 及默认依赖安装进新的临时虚拟环境，
+证明 `sentence_transformers` 不存在，并运行 `repo-dive --version`、根 Help，
+以及 `index`、`search`、`context`、`wiki` 的 Help。
+
+这里只执行 Release Candidate 验收，不创建 Git Tag、不发布到 PyPI，也不修改外部
+Release。候选版本批准后，仍需显式的版本与发布决策才能执行这些动作。
+
+## 持续集成
+
+GitHub Actions 在 Python 3.11、Python 3.12 和 Python 3.13 上调用相同的
+`make setup`、`make check`、`make test-all` 与 `make package-smoke`。CI 不能重复
+Ruff、mypy、pytest、Build 或 Package Smoke 内部命令；这些命令属于 Make，确保
+本地开发与 CI 执行同一条路径。
 
 ## 测试驱动变更
 
@@ -141,6 +187,7 @@ Scanner 使用固定的 64 KiB 数据块读取源码并对完整文件计算 Has
 ```bash
 make check
 make test-all
+make package-smoke
 .venv/bin/repo-dive --help
 .venv/bin/repo-dive --version
 git status --short

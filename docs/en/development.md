@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Python 3.11 or newer
+- Python 3.11, Python 3.12, or Python 3.13
 - GNU Make
 - Git
 
@@ -46,13 +46,62 @@ observable BM25/structural fallback is acceptable.
 make check
 make test-unit
 make test-all
+make package
+make package-smoke
 ```
 
 - `check` runs formatting checks, linting, type checking, and repository contract validation.
 - `test-unit` runs focused tests under `tests/unit/`.
 - `test-all` runs the complete test suite, including integration tests when present.
+- `package` builds one wheel and one sdist under `dist/`.
+- `package-smoke` validates both archives and installs the wheel into a fresh temporary virtual environment.
 
 CI invokes the same targets. Do not add a tool command directly to CI without adding it to the relevant Make target first.
+
+## Distribution and Release Candidate
+
+The default project dependencies contain Tree-sitter runtimes but do not contain
+Sentence Transformers. A normal installation therefore keeps Vector support out:
+
+```bash
+.venv/bin/python -m pip install repo-dive
+```
+
+Only an explicit Extra installs the optional provider:
+
+```bash
+.venv/bin/python -m pip install "repo-dive[vector]"
+```
+
+The same local-model restriction applies to installed distributions:
+`--embedding-model` must name an existing local directory,
+`local_files_only=True`, and `trust_remote_code=False`. Installing the Extra
+does not download a model and does not enable a network-backed provider.
+
+Build the Release Candidate through the shared Harness:
+
+```bash
+make package
+make package-smoke
+```
+
+`make package` uses the PEP 517 frontend from the `dev` Extra and creates a
+wheel plus sdist. `make package-smoke` then verifies that both archives contain
+`repo_dive/indexing/schema.sql`, installs the wheel with default dependencies
+into a new temporary virtual environment, proves `sentence_transformers` is
+absent, and runs `repo-dive --version`, root help, and help for `index`,
+`search`, `context`, and `wiki`.
+
+This is Release Candidate validation only. It does not create a Git tag,
+publish to PyPI, or mutate an external release. Those actions require an
+explicit version/release decision after the candidate is approved.
+
+## Continuous Integration
+
+GitHub Actions runs the same `make setup`, `make check`, `make test-all`, and
+`make package-smoke` targets on Python 3.11, Python 3.12, and Python 3.13. CI
+must not duplicate Ruff, mypy, pytest, build, or package-smoke internals; those
+commands belong to Make so local development and CI exercise one path.
 
 ## Test-Driven Changes
 
@@ -149,6 +198,7 @@ Run fresh commands from the repository root:
 ```bash
 make check
 make test-all
+make package-smoke
 .venv/bin/repo-dive --help
 .venv/bin/repo-dive --version
 git status --short
