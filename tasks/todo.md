@@ -351,13 +351,13 @@
 **Description:** 使用索引统计计算 BM25 分数，返回稳定排序、命中词和原始 lexical score。
 
 **Acceptance criteria:**
-- [ ] 固定 Corpus 的分数与手工公式结果在容差内一致。
-- [ ] 相同分数按路径、行号和 Chunk ID 稳定打破平局。
-- [ ] 空查询、未知词和 `max_results` 边界返回可预测结果。
+- [x] 固定 Corpus 的分数与手工公式结果在容差内一致。
+- [x] 相同分数按路径、行号和 Chunk ID 稳定打破平局。
+- [x] 空查询、未知词和 `max_results` 边界返回可预测结果。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/retrieval/test_lexical.py -q`
-- [ ] Formula check: 固定 `k1`/`b` Golden Test 通过。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/retrieval/test_lexical.py -q`
+- [x] Formula check: 固定 `k1`/`b` Golden Test 通过。
 
 **Dependencies:** Tasks 11、13
 
