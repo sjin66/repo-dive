@@ -296,13 +296,13 @@
 **Description:** 编排扫描、解析、BM25 和结构写入；依据内容哈希和构建参数决定复用、增量或全量重建。
 
 **Acceptance criteria:**
-- [ ] 首次索引构建临时数据库并原子发布 index + manifest + metadata。
-- [ ] 未变化文件不重新解析；变化/删除文件只失效相关记录。
-- [ ] 构建失败保留旧有效索引，并返回失败阶段与安全诊断。
+- [x] 首次索引构建临时数据库并原子发布 index + manifest + metadata。
+- [x] 未变化文件不重新解析；变化/删除文件只失效相关记录。
+- [x] 构建失败保留旧有效索引，并返回失败阶段与安全诊断。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/indexing/test_service.py -q`
-- [ ] Incremental check: 修改一个 Fixture 文件，只对应文件的 Chunk ID 集发生变化。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/indexing/test_service.py -q`
+- [x] Incremental check: 修改一个 Fixture 文件，只对应文件的 Chunk ID 集发生变化。
 
 **Dependencies:** Tasks 6、9–12
 
