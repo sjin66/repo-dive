@@ -394,13 +394,13 @@
 **Description:** 融合 lexical/structural 候选，删除 ID 重复与高比例行区间重叠，同时保留每通道分数和原因。
 
 **Acceptance criteria:**
-- [ ] Weighted RRF 参数进入结果元数据；缺失通道不被当作零分伪排名。
-- [ ] 包含/重叠 Chunk 只保留信息量更高者，除非二者来自不同符号。
-- [ ] 排序与去重在输入通道顺序变化时仍确定。
+- [x] Weighted RRF 参数进入结果元数据；缺失通道不被当作零分伪排名。
+- [x] 包含/重叠 Chunk 只保留信息量更高者，除非二者来自不同符号。
+- [x] 排序与去重在输入通道顺序变化时仍确定。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/retrieval/test_fusion.py -q`
-- [ ] Eval case: 增加一个 BM25 单独失败、结构融合成功的固定用例。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/retrieval/test_fusion.py -q`
+- [x] Eval case: 增加一个 BM25 单独失败、结构融合成功的固定用例。
 
 **Dependencies:** Tasks 15–16
 
