@@ -3,4 +3,3 @@
 from repo_dive.cli import entrypoint
 
 entrypoint()
-

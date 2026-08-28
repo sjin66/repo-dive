@@ -34,4 +34,3 @@ def main(argv: Sequence[str] | None = None) -> int:
 def entrypoint() -> NoReturn:
     """Translate the testable return code into a console-script exit."""
     raise SystemExit(main())
-
