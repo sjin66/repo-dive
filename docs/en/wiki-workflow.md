@@ -27,7 +27,17 @@ The CLI validates the repository root, applies include/exclude rules, scans supp
 
 Inventory results include paths, sizes, detected languages, content fingerprints, and source commit when available. Binary and unreadable files are reported as skipped evidence rather than silently treated as empty text.
 
-## Stage 2: Wiki Structure
+## Stage 2: RAG Index Construction
+
+The CLI parses supported source files, creates symbol-aligned chunks, and builds the local RAG indexes:
+
+- a structural index for files, symbols, imports, calls, inheritance, and containment;
+- a BM25 lexical index for identifiers, exact strings, configuration, and domain terms;
+- an optional vector index for semantic recall when an embedding provider is explicitly configured.
+
+Each indexed chunk keeps its repository-relative path, line range, symbol metadata, content fingerprint, and relationships. BM25 plus structural retrieval form the offline baseline; vector retrieval is an optional enhancement rather than a prerequisite.
+
+## Stage 3: Wiki Structure
 
 The calling agent receives the inventory and proposes a versioned structure containing:
 
@@ -39,19 +49,21 @@ The calling agent receives the inventory and proposes a versioned structure cont
 
 The CLI validates references and persists the accepted structure to `wiki.json`. It does not invent missing pages or silently repair unknown file paths.
 
-## Stage 3: Page Evidence
+## Stage 4: RAG Page Evidence
 
-For each page, the agent requests evidence using the page topic and relevant-file hints. The retrieval pipeline combines structural, lexical, and optional vector signals, then applies a context budget.
+For each page, the agent requests evidence using the page topic and relevant-file hints. The RAG retrieval pipeline queries structural, BM25, and optional vector channels; fuses their candidates; removes duplicate or overlapping chunks; optionally expands symbol relationships; and applies an explicit context budget.
 
 Every evidence item records its repository-relative path, line range when trustworthy, symbol when known, score components, and content fingerprint. Evidence is stored with the page state before prose generation starts.
 
-## Stage 4: Page Generation and Persistence
+## Stage 5: Augmented Generation and Persistence
 
 The calling agent uses its current model and the returned evidence to write one Markdown page. The page is returned to the CLI through stdin or a structured input file. The CLI validates page identity, evidence citations, encoding, and size before persisting it.
 
 Page generation is independently retryable. Completing one page must not require regenerating other completed pages.
 
-## Stage 5: Assembly
+This is the generation step of RAG. It runs in the calling Copilot session rather than inside the CLI, so it can reuse the caller's selected model and conversation while the evidence remains a versioned, inspectable CLI result.
+
+## Stage 6: Assembly
 
 When all required pages are ready, the CLI assembles:
 
@@ -68,9 +80,9 @@ Assembly writes a temporary sibling file, verifies it, and atomically replaces `
 The workflow uses explicit states:
 
 ```text
-uninitialized -> inventoried -> structured -> generating -> complete
-                                    |              |
-                                    +-> failed <---+
+uninitialized -> inventoried -> indexed -> structured -> retrieving -> generating -> complete
+                                  |           |             |             |
+                                  +-----------+-------------+-> failed <--+
 ```
 
 Page states are `pending`, `evidence_ready`, `generated`, or `failed`. Retrying a failed page does not reset successful pages. A source fingerprint change marks affected evidence and pages stale without deleting their previous content.
@@ -86,4 +98,3 @@ Regeneration compares repository fingerprints with metadata. Unchanged inventori
 - Invalid agent-provided structure or page content is rejected with structured diagnostics.
 - Partial generation remains resumable in `wiki.json`.
 - Assembly failure never truncates the previous `wiki.md`.
-

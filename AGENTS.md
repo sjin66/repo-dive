@@ -6,7 +6,7 @@ This file is the authoritative repository-wide instruction set. Tool-specific in
 
 ## Product Boundary
 
-`repo-dive` is a pure-Python, agent-friendly CLI for collecting grounded evidence from local repositories and assembling repository-owned knowledge artifacts. The calling agent performs interpretation and prose generation. The CLI must never invoke a generative model implicitly.
+`repo-dive` is a pure-Python, agent-friendly local RAG CLI for collecting grounded evidence from repositories and assembling repository-owned knowledge artifacts. The CLI owns ingestion, indexing, retrieval, ranking, context packaging, and artifact persistence. The calling agent performs interpretation and prose generation. The CLI must never invoke a generative model implicitly.
 
 The current foundation contains only the package shell, documentation, and verification harness. Do not present planned scanning, parsing, indexing, retrieval, context, or wiki commands as implemented.
 
@@ -14,6 +14,7 @@ The current foundation contains only the package shell, documentation, and verif
 
 - Keep the core deterministic and move probabilistic reasoning to the calling agent.
 - Return evidence before narrative: repository-relative paths, symbols, and one-based line ranges.
+- Treat RAG as an explicit pipeline: parse and chunk, build lexical/structural/optional-vector indexes, retrieve and fuse candidates, apply a context budget, then hand evidence to the caller.
 - Persist explicit stage outputs so interrupted workflows can resume.
 - Prefer stable, versioned machine contracts over prompt conventions.
 - Keep repository data and generated knowledge local by default.
@@ -90,4 +91,3 @@ Before claiming completion, run `make check` and `make test-all` from a freshly 
 Agent and harness instructions are written in English. User-facing and developer-facing CLI documentation is maintained in matched pairs under `docs/en/` and `docs/zh-CN/`. Update both files in a pair in the same change and preserve equivalent headings and technical contracts.
 
 Implementation plans live in `docs/superpowers/plans/`; approved design specifications live in `docs/superpowers/specs/`.
-

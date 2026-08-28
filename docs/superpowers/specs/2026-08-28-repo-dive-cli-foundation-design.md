@@ -26,6 +26,10 @@ The project follows seven design principles:
 6. **Replaceable retrieval components.** Parsing, lexical search, vector search, ranking, and context assembly communicate through narrow interfaces so one strategy can evolve without rewriting the workflow.
 7. **One harness for humans, agents, and CI.** The same documented commands set up, check, and test the project in every environment.
 
+## RAG Boundary
+
+`repo-dive` implements the retrieval side of retrieval-augmented generation: syntax-aware chunking, structural and BM25 indexes, optional vector retrieval, candidate fusion, relationship expansion, and token-budgeted evidence packaging. The calling coding agent implements the generation side with its current model and conversation. Splitting the two processes keeps evidence inspectable and prevents hidden nested model sessions.
+
 ## Wiki Workflow
 
 The future wiki workflow applies those principles through an evidence-first pipeline:

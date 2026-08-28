@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-`repo-dive` is a pure-Python CLI that helps coding agents collect grounded evidence from a local repository and assemble repository-owned knowledge artifacts.
+`repo-dive` is a pure-Python local-repository RAG CLI. It helps coding agents index source code, retrieve grounded evidence, and assemble repository-owned knowledge artifacts.
 
 The CLI is intentionally not another agent. It performs deterministic repository work; GitHub Copilot or another calling agent interprets the evidence and writes the prose.
 
@@ -22,6 +22,7 @@ Repository scanning, syntax parsing, indexing, retrieval, context assembly, and 
 
 - deterministic core, probabilistic edge;
 - evidence before narrative;
+- hybrid RAG across syntax structure, BM25 lexical search, and optional vectors;
 - inspectable and resumable stages;
 - stable JSON, exit-code, and filesystem contracts;
 - local-first ownership of source and generated artifacts;
@@ -36,8 +37,9 @@ The planned workflow is:
 
 ```text
 calling agent
-  -> invoke repo-dive to scan/index a local repository
-  -> request structured evidence for one wiki page
+  -> invoke repo-dive to scan and parse a local repository
+  -> build structural, BM25, and optional vector indexes
+  -> retrieve and budget structured evidence for one wiki page
   -> generate prose using the caller's current model
   -> return the page to repo-dive for persistence
   -> ask repo-dive to assemble the final Markdown
@@ -50,6 +52,8 @@ The stable final artifact is:
 ```
 
 See [Wiki Workflow](docs/en/wiki-workflow.md) for stage and artifact details.
+
+In this design, RAG means **retrieval-augmented generation with a split execution boundary**: `repo-dive` owns ingestion, indexing, retrieval, ranking, and context packaging; the calling Copilot session owns generation. The CLI does not launch a second hidden model session.
 
 ## Development Setup
 
@@ -78,4 +82,3 @@ See [Development](docs/en/development.md) and [CLI Contract](docs/en/cli-contrac
 - [Wiki Workflow](docs/en/wiki-workflow.md)
 - [Development](docs/en/development.md)
 - [Agent Guide](AGENTS.md)
-

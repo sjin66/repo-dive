@@ -16,6 +16,17 @@ repo-dive <command> [repository] --format json
 
 基础版本当前只实现 `repo-dive --help` 和 `repo-dive --version`。
 
+## 规划中的 RAG 命令边界
+
+规划中的命令族分别暴露每个 RAG 阶段：
+
+- `index`：扫描、解析、切分，并建立结构/BM25/可选向量索引。
+- `search`：检索排序后的证据，并保留各通道评分。
+- `context`：去重，并在调用方给定的 Token 预算下打包证据。
+- `wiki`：持久化 Agent 生成的页面状态，并汇总 `.repo-dive/wiki.md`。
+
+`index`、`search` 和 `context` 是确定性的 RAG 操作。`wiki` 接受调用方 Copilot 会话生成的内容；这些命令都不会隐式调用生成模型。这些名称描述已批准的接口方向，在基础版本中尚不可用。
+
 ## 标准流
 
 ### JSON 模式
@@ -98,4 +109,3 @@ JSON 模式下的错误在 `stdout` 输出完整错误信封，同时在 `stderr
 ## 兼容性
 
 新增可选字段属于向后兼容。字段重命名或删除、类型变化、退出码语义变化以及产物路径变化，都要求升级 Schema 或命令版本。
-

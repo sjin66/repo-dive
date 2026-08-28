@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-`repo-dive` 是一个纯 Python CLI，帮助编码 Agent 从本地仓库收集可追溯证据，并在仓库内生成知识产物。
+`repo-dive` 是一个纯 Python 的本地代码仓库 RAG CLI，帮助编码 Agent 索引源码、检索可追溯证据，并在仓库内生成知识产物。
 
 这个 CLI 刻意不充当另一个 Agent。它负责确定性的仓库处理；GitHub Copilot 或其他调用方 Agent 负责理解证据和撰写内容。
 
@@ -22,6 +22,7 @@
 
 - 确定性核心，概率性边缘；
 - 先证据，后叙述；
+- 结合语法结构、BM25 关键词检索和可选向量检索的混合 RAG；
 - 阶段可检查、流程可恢复；
 - 稳定的 JSON、退出码和文件系统契约；
 - 源码和生成产物默认归本地仓库所有；
@@ -36,8 +37,9 @@
 
 ```text
 调用方 Agent
-  -> 调用 repo-dive 扫描并索引本地仓库
-  -> 请求某个 Wiki 页面的结构化证据
+  -> 调用 repo-dive 扫描并解析本地仓库
+  -> 建立结构、BM25 和可选向量索引
+  -> 为某个 Wiki 页面检索并按预算组装结构化证据
   -> 使用调用方当前模型生成内容
   -> 把页面交给 repo-dive 持久化
   -> 要求 repo-dive 汇总最终 Markdown
@@ -50,6 +52,8 @@
 ```
 
 阶段与产物细节见 [Wiki 工作流](docs/zh-CN/wiki-workflow.md)。
+
+这里的 RAG 是一种**执行边界分离的检索增强生成**：`repo-dive` 负责摄取、索引、检索、排序和上下文打包；调用方 Copilot 会话负责生成。CLI 不会再启动一个隐藏的模型会话。
 
 ## 开发环境
 
@@ -78,4 +82,3 @@ make test-all
 - [Wiki 工作流](docs/zh-CN/wiki-workflow.md)
 - [开发指南](docs/zh-CN/development.md)
 - [Agent 指南](AGENTS.md)
-
