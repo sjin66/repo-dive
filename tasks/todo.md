@@ -130,13 +130,13 @@
 **Description:** 读取候选文件，检测二进制、编码、大小和语言，生成内容哈希与跳过原因明确的 Inventory。
 
 **Acceptance criteria:**
-- [ ] 每个 `FileRecord` 包含相对路径、大小、语言、SHA-256 与读取状态。
-- [ ] 二进制、超限、不可读和坏编码文件以结构化 skip reason 报告，不当成空文本。
-- [ ] 同一仓库和参数重复扫描产生相同有序清单与仓库指纹。
+- [x] 每个 `FileRecord` 包含相对路径、大小、语言、SHA-256 与读取状态。
+- [x] 二进制、超限、不可读和坏编码文件以结构化 skip reason 报告，不当成空文本。
+- [x] 同一仓库和参数重复扫描产生相同有序清单与仓库指纹。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/scanner/test_service.py -q`
-- [ ] Determinism check: 对同一 Fixture 扫描两次并比较除耗时外的完整结果。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/scanner/test_service.py -q`
+- [x] Determinism check: 对同一 Fixture 扫描两次并比较除耗时外的完整结果。
 
 **Dependencies:** Task 5
 

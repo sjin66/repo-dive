@@ -168,4 +168,11 @@ def test_fixture_has_same_recorded_paths_in_git_and_filesystem_modes(
 
     assert filesystem_candidates.mode == "filesystem"
     assert git_candidates.mode == "git"
-    assert filesystem_candidates.paths == git_candidates.paths == ("README.md",)
+    assert (
+        filesystem_candidates.paths
+        == git_candidates.paths
+        == (
+            "README.md",
+            "binary.dat",
+        )
+    )
