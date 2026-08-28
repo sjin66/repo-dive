@@ -2,153 +2,154 @@
 
 ## 系统边界
 
-`repo-dive` 是由人或编码 Agent 调用的本地进程。它读取明确指定的仓库，只写入该仓库的 `.repo-dive/` 目录，并返回结构化命令结果。语言模型推理由调用方负责。
+`repo-dive` 是由人或编码 Agent 调用的本地非交互进程。它读取一个明确指定的仓库，在 `.repo-dive/` 下写入仓库自有产物，并在 stdout 输出一个完整的 JSON 或 Markdown 结果。语言模型生成由调用方 Agent 负责；CLI 不会启动嵌套模型会话。
 
 ```text
 调用方 Agent
     | argv / stdin
     v
-CLI 边界
-    |
-    +--> 扫描与解析仓库
-    +--> 建立和查询索引
-    +--> 组装有预算限制的证据
-    +--> 持久化 Wiki 状态
-    |
+CLI 命令
+    |-- 扫描 -> 解析 -> 索引
+    |-- 检索 -> 融合 -> 打包上下文
+    `-- 持久化 Wiki 状态 -> 汇总 Markdown
     v
-stdout JSON/Markdown + .repo-dive 产物
+stdout JSON/Markdown + <repository>/.repo-dive/
 ```
 
-CLI 不会继承调用方的模型会话，也不能在确定性命令背后隐藏第二次模型调用。
+实现遵循本地优先。默认关键词和结构路径不需要凭据或网络。Vector 支持必须显式启用，当前 Provider 只接受已经存在的本地 Sentence Transformers 模型目录。
 
 ## 设计原则
 
-### 确定性核心，概率性边缘
+- **确定性核心，概率性调用方：**扫描、解析、索引、检索、校验和汇总都能由仓库字节与显式选项复现；理解和内容生成保留在调用模型中。
+- **先证据，后叙述：**上下文和 Wiki 命令保留仓库相对 POSIX 路径、从 1 开始且首尾都包含的行号、Chunk 身份、哈希和可解释评分。
+- **工作量有界：**文件大小、Chunk 行数、结果数量、图遍历、Embedding Batch 和上下文 Token 都有明确上限。
+- **产物可恢复：**索引以完整代际发布；Wiki 页面拥有独立持久化状态；相同提交和 Build 不写入新字节。
+- **进程契约稳定：**JSON Schema 版本、退出码、stdout/stderr 分离和公开产物路径是集成边界。Prompt 文案不是 API。
 
-能够由仓库字节稳定复现的操作属于 CLI。对模糊概念的理解、优先级判断和内容撰写属于调用方。这个边界让失败可观察，也避免嵌套 Agent 循环。
+<!-- contract-section:packages -->
+## 包与依赖边界
 
-### 先证据，后叙述
-
-检索结果包含源码、仓库相对路径、符号以及从 1 开始的行号范围。Wiki 页面只有在证据集合被记录后才进入汇总，因此生成内容能够回溯到支撑它的输入。
-
-### 阶段显式且可恢复
-
-扫描、解析、索引、检索、页面持久化和文档汇总分别拥有独立产物与状态转换。已完成阶段可幂等重跑；中断后从持久状态继续。
-
-### 稳定契约
-
-Agent 通过带版本的 JSON Schema、明确退出码、严格的 stdout/stderr 分离和稳定文件路径进行集成。Prompt 文案不是 API。
-
-### 本地优先的所有权
-
-源码和生成产物默认保留在本地。未来的网络 Embedding Provider 必须显式选择，并说明会传输哪些数据。被分析仓库拥有 `.repo-dive/`，由仓库自行决定忽略还是提交。
-
-### 组件可替换
-
-关键词检索、向量检索、排序、语法解析器和持久化适配器通过类型化领域模型连接。默认实现可以演进，而不改变命令 Schema 或 Wiki 状态。
-
-### 统一验证 Harness
-
-人、编码 Agent 和 CI 使用相同的 Make 目标。只在专用 CI 脚本中通过的命令不属于受支持工作流。
-
-## 规划中的包边界
+以下是已经实现的包边界，不是未来规划：
 
 ```text
 src/repo_dive/
-├── cli.py
-├── scanner/
-├── parsing/
-├── indexing/
-├── retrieval/
-├── context/
-└── wiki/
+├── cli.py                 进程边界与错误/结果序列化
+├── commands/              index、search、context、wiki 适配器
+├── scanner/               确定性候选发现与文件读取
+├── parsing/               提取 Chunk、Symbol、Relationship
+├── indexing/              SQLite、BM25、图、Vector、代际发布
+├── providers/             可选本地 Embedding Provider 选择
+├── retrieval/             关键词、结构、Vector 与加权融合
+├── context/               Token 估算与完整 Evidence 打包
+├── wiki/                  状态、新鲜度、页面提交、汇总
+├── storage/               仓库路径校验与原子写入
+├── evaluation/            离线检索与上下文评测 Runner
+├── errors.py              稳定错误类别与退出语义
+└── schema.py              带版本的 JSON 结果信封
 ```
 
-- `cli.py` 把进程输入转换为应用请求，并序列化结果。
-- `scanner` 选择文件，不解释语言语法。
-- `parsing` 提取语言感知的 Chunk、符号和结构关系。
-- `indexing` 持久化关键词、向量和关系表示。
-- `retrieval` 对证据排序，不负责格式化模型 Prompt。
-- `context` 在明确预算下选择并序列化证据。
-- `wiki` 持久化结构和页面，并原子汇总 `wiki.md`。
-
-共享领域类型应靠近拥有其行为的模块，避免通用的 `utils` 或 `models` 大杂烩。
-
-## 本地 RAG 架构
-
-RAG（检索增强生成）被划分到确定性的 CLI 与概率性的调用方 Agent 两侧：
+真实依赖方向如下：
 
 ```text
-本地仓库
-    -> 扫描与过滤
-    -> 语法感知的解析与切分
-    -> 结构 + BM25 + 可选向量索引
-    -> 查询候选召回
-    -> 评分融合、去重与关系扩展
-    -> 受 Token 预算约束的证据包
-    -> 调用方 Copilot 模型生成页面
-    -> repo-dive 校验引用并持久化页面
+cli -> commands
+commands -> indexing / retrieval / context / wiki
+scanner -> storage
+parsing -> scanner
+indexing -> scanner / parsing / providers / storage
+retrieval -> indexing / parsing / providers
+context -> retrieval / parsing
+wiki -> indexing / retrieval / context / storage
+evaluation -> indexing / retrieval / context
 ```
 
-### 数据摄取
+底层领域模型不会反向导入命令或 CLI 模块。需要替换实现的运行时边界使用窄 Protocol：`SourceParser`、`EmbeddingProvider`、`StructuralGraph` 和 `TokenEstimator`。文件系统和 SQLite 持久化是具体的本地适配器，不是尚未实现的远程抽象。
 
-扫描器创建可复现的文件清单。语言适配器优先使用 Tree-sitter 或语言原生 AST，在符号边界切分代码；不支持的语言和文档可以回退到文本切分。每个 Chunk 携带内容指纹、仓库相对路径、行号范围、已知时的符号身份以及结构关系。
+## 扫描与解析流水线
 
-### 索引
+对于 Git 根目录，候选发现运行 `git ls-files --cached --others --exclude-standard`；否则执行确定性的文件系统遍历。两种模式都会排序仓库相对路径，排除包含 `.repo-dive/` 在内的生成或 Vendor 目录，应用显式 Include/Exclude Pattern，拒绝非普通文件和符号链接穿越，并在平台支持时使用 `O_NOFOLLOW` 读取。
 
-默认 RAG 设计使用三个互补的证据通道：
+扫描器记录 SHA-256 内容哈希，并把文件分类为 `read` 或 `skipped`。稳定跳过原因覆盖文件过大、二进制、非法 UTF-8 和无法读取。仓库清单指纹包含扫描模式、有序文件元数据、哈希、状态和最大文件大小。
 
-- **结构索引：**文件、符号、Import、调用、继承和包含关系。
-- **BM25 关键词索引：**精确标识符、错误字符串、配置键和领域术语。
-- **可选向量索引：**用户显式配置本地或远程 Embedding Provider 后提供语义相似度。
+Parser 选择实现如下：
 
-BM25 和结构检索必须在没有凭据、没有网络的情况下工作。向量检索用于提高召回率，但不能成为基本仓库理解的必需条件。
+- Python 使用标准库 AST 适配器。
+- JavaScript、JSX、TypeScript 和 TSX 使用 Tree-sitter 适配器。
+- 不支持的语言、文档和语法失败回退到文本 Parser，并保留诊断。
+- 标准化流水线把每个 Chunk 拆到不超过 `max_chunk_lines`（默认 `200`），去除重复身份，并确定性排序 Chunk、Symbol、Relationship 和诊断。
 
-索引 Schema 4 将每个可选 Embedding 保存为固定长度、小端序 float32 SQLite BLOB，并绑定 Chunk ID 与内容哈希。Provider、模型和维度共同构成明确的 Embedding 身份；混合身份、过期 Chunk 哈希、错误维度和非有限值会在替换前被拒绝。空 Vector 表是合法状态，不会改变关键词或结构索引。
+## 本地 RAG 数据流
 
-首个具体 Provider 是 Sentence Transformers 的边缘适配器。它从 `vector`
-Extra 延迟加载，要求模型目录已经存在于本地，禁用远程代码，并且只允许读取
-本地模型文件。模型身份使用规范化路径的 SHA-256 摘要并添加 `local:` 前缀；
-这样既能稳定比较身份，又不会持久化私有绝对路径。
+<!-- contract-section:rag-boundary -->
 
-Vector 索引以 Chunk 为增量边界。Provider 身份与 Chunk 内容哈希都一致时，
-下一代索引复制已经校验的 float32 向量；新增或变化的 Chunk 进入一次 Provider
-调用，并由有界推理 Batch Size 处理。Provider 身份变化会使整组向量失效。
-Vector 失败策略是显式的：`strict` 中止发布，`degraded` 则发布完整 BM25/结构
-索引，但不声明 Vector 身份。
+```text
+仓库字节
+  -> 候选清单 + repository_fingerprint
+  -> 语言 Parser -> Chunk + Symbol + Relationship
+  -> SQLite BM25 + 图 + 可选 Vector Row
+  -> 关键词 + 结构 + 可选 Vector 候选
+  -> weighted_rrf + 重叠去重
+  -> token_budget 内的完整 Evidence
+  -> 调用模型生成内容
+  -> CLI 校验 Evidence ID 并持久化 Wiki 页面状态
+```
 
-### 检索与排序
+这种拆分仍然是 RAG：检索增强了调用模型的生成，只是确定性检索进程与概率性生成进程被有意分离。
 
-查询可以直接来自调用方，也可以来自持久化的 Wiki 页面描述。每个启用通道返回带独立评分的候选项。检索层通过有文档记录且可替换的策略融合候选项，移除重复或重叠 Chunk，并可以扩展高置信度符号关系。结果必须保留各项评分，保证可解释性。
+### BM25 通道
 
-基础 Vector 检索器以持久化的 float32 精度执行精确暴力余弦扫描。`max_results` 限制返回结果数量，同分按 Chunk ID 排序。这个仅依赖标准库的实现是确定性基准；只有仓库规模测量证明有必要时，才引入 ANN 索引。
+每个新索引代际都从当前 Chunk 重建关键词语料。代码感知 Tokenizer 是 `code-v1`；它保留完整代码 Token，同时生成大小写折叠、分隔符拆分和 Camel Case 变体。默认值是 `k1 = 1.2` 与 `b = 0.75`。SQLite 保存 Term、文档频率、Posting、文档长度和聚合统计。
 
-启用后，关键词、结构与 Vector 排名进入同一个加权 RRF 融合。每个 SearchHit
-保留原始通道评分，RRF 原因记录排名、权重与贡献。降级查询会移除 Vector 权重，
-而不是为缺失通道虚构空排名。
+### 结构通道
 
-### 上下文组装
+SQLite 保存 Symbol 以及 `calls`、`contains`、`imports`、`inherits` Relationship。结构检索先执行规范化的精确/前缀/子串 Symbol 匹配，再以默认最小置信度 `0.75` 执行深度 `1` 的有界双向图遍历。它优先返回定义 Chunk，并保留 Relationship Path 原因。
 
-上下文层在明确 Token 预算下选择多样化证据。它为稳定元数据预留空间，优先选择主要实现而不是重复或生成内容，并报告被排除或截断的证据。输出是带版本的证据包，而不是不透明的 Prompt 字符串。
+### Vector 通道
 
-### 生成边界
+Vector 检索是可选项。`--embedding-model` 选择当前 Sentence Transformers 适配器；该适配器从 `vector` Extra 延迟加载，并设置 `local_files_only=True` 和 `trust_remote_code=False`。Provider 名、不可逆的 `local:<sha256>` 模型身份和维度定义向量空间，同时避免持久化私有模型绝对路径。
 
-证据包返回调用方 Copilot 会话。Copilot 使用当前模型和对话上下文生成目标页面，再把页面交回 CLI 校验并持久化。这仍然属于 RAG：检索增强了生成，只是检索与生成运行在不同进程。CLI 不能隐式创建嵌套模型会话。
+索引 Schema 4 为每个 Chunk 保存一个固定长度、小端序 float32 BLOB。Row 同时绑定 `chunk_id`、`chunk_hash`、Provider、模型和维度。非有限值、维度不匹配、混合身份和过期 Chunk 哈希都会被拒绝。基于持久化 float32 精度的精确暴力余弦检索是确定性参考实现，同分按 Chunk ID 排序。
 
-### 证据落地与评测
+只有 Provider 身份和 Chunk 内容哈希都一致时才复用 Vector。`strict` Vector 失败会中止发布或检索；`degraded` 会移除 Vector 身份/通道，继续使用关键词加结构证据，并返回安全的 Warning/Error Code。
 
-生成内容中的重要结论引用证据路径和行号范围。检索改动必须增加召回、排序、预算利用和引用覆盖率的评测用例。文章风格不属于检索质量指标。
+`search` 和 `context` 命令可以选择该 Provider。当前 `wiki evidence` Application Service 不会注入 Embedding Provider，因此即使已发布索引包含 Vector，它的实际检索路径仍是 BM25 加结构检索。
 
-## 依赖方向
+### 融合与上下文
 
-领域与应用行为依赖 Protocol，而不是具体客户端。文件系统、Embedding、向量库、Tokenizer 和终端实现位于边缘，并通过显式注入连接。环境变量只在 CLI/配置边界解析一次。
+关键词和结构排名始终以权重 `1.0` 参与；准备完成的 Vector 通道增加权重 `1.0`。策略名是 `weighted_rrf`，`rrf_k = 60`，重叠阈值是 `0.8`。结果保留原始通道评分，以及 Rank、Weight、Contribution、Symbol Match 和 Relationship Path 原因。融合完成后对重叠 Chunk 去重。
 
-## 数据与状态
+`EvidencePacker` 为信封和条目元数据预留 Token，优先选择实现 Chunk 而非文件级回退 Chunk，默认每个文件最多选择两项，并且绝不切开 Chunk。输出报告 `estimated_tokens`、`reserved_tokens`、`truncated`，以及原因是 `duplicate`、`budget` 或 `low_score` 的排除候选。
 
-被分析仓库是身份边界。元数据包括规范化仓库根目录、可用时的源码 Commit、Schema 版本、索引版本、输出语言和时间戳。索引有效性由仓库指纹判断，而不只依赖目录名。
+<!-- contract-section:index-storage -->
+## SQLite 与索引发布
 
-Wiki 写入先生成同目录临时文件，再原子替换。汇总失败时，旧的 `wiki.md` 必须仍然可读。
+活动索引是指向不可变代际的符号链接：
 
-## 安全边界
+```text
+<repository>/.repo-dive/
+├── index -> index-generations/<build-id>
+└── index-generations/
+    └── <build-id>/
+        ├── index.sqlite3
+        ├── manifest.json
+        └── metadata.json
+```
 
-所有请求路径都要解析并校验是否仍位于选定仓库根目录。拒绝符号链接和路径穿越逃逸。诊断信息必须隐藏凭据，不能转储源码内容。除非显式命令或 Provider 请求，否则不访问网络。
+物理数据库路径是 `.repo-dive/index-generations/<build-id>/index.sqlite3`；消费者使用稳定指针路径 `.repo-dive/index/index.sqlite3`。`manifest.json` 记录 Schema `1.0`、Build ID、仓库指纹、扫描模式、构建参数、File-to-Chunk Membership、数量以及可选 Embedding 身份。代际内的 `metadata.json` 是该索引代际的公开指针摘要，与 `.repo-dive/metadata.json` 的 Wiki Metadata 不同。
+
+SQLite Schema 4 由 `PRAGMA user_version = 4` 声明，包含 `files`、`symbols`、`chunks`、`relationships`、`terms`、`postings`、`stats` 和 `vectors`。发布前必须通过外键和完整性检查。
+
+索引构建先创建 Staging 目录，从兼容的旧代际复用未变化文件的解析结果，写入并校验完整的新数据库和元数据，把 Staging 移到 `index-generations/<build-id>`，然后原子替换 `.repo-dive/index -> index-generations/<build-id>` 符号链接。构建或指针替换失败时保留上一代并删除临时数据。只读命令使用持久化构建参数重新扫描，仓库指纹不一致时返回 `index_stale`。
+
+## Wiki 持久化与恢复边界
+
+Wiki 状态使用 `.repo-dive/wiki.json` 和 `.repo-dive/metadata.json` 中的严格 Schema `1.0` JSON。完整文件先序列化再原子替换；损坏、不支持或不完整的状态会被拒绝且不会修复。只有全部页面和 Evidence 校验通过后才替换 `.repo-dive/wiki.md`；字节相同时返回 `changed: false`。
+
+Evidence 新鲜度以页面为单位：索引 Schema 必须仍是 `4`，每个持久化引用的 Chunk ID、内容哈希、路径和首尾都包含的行号都必须匹配当前索引。Index Build ID 用于审计溯源，本身不是全局失效信号。
+
+## 错误与安全边界
+
+- 退出码 `2` 表示非法调用或输入，`3` 表示仓库/状态条件，`4` 表示安全的内部失败。
+- stdout 始终是一个机器可读文档；stderr 只包含简短安全诊断，绝不包含源码 Evidence。
+- 仓库相对输入拒绝绝对路径、Windows Drive、`..` 和符号链接逃逸。
+- 损坏的 SQLite/JSON 不会被静默重写。索引和 Wiki 发布失败时保留最后有效产物。
+- 网络访问不属于当前默认路径或 Vector 路径；当前 Embedding Provider 只接受本地模型文件。

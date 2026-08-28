@@ -2,157 +2,154 @@
 
 ## System Boundary
 
-`repo-dive` is a local process invoked by a human or coding agent. It reads an explicitly selected repository, writes only to that repository's `.repo-dive/` directory, and emits structured command results. The caller owns language-model reasoning.
+`repo-dive` is a local, non-interactive process invoked by a human or coding agent. It reads one explicitly selected repository, writes repository-owned artifacts under `.repo-dive/`, and emits one complete JSON or Markdown result on stdout. The calling agent owns language-model generation; the CLI never starts a nested model session.
 
 ```text
-Calling agent
+calling agent
     | argv / stdin
     v
-CLI boundary
-    |
-    +--> scan and parse repository
-    +--> build and query indexes
-    +--> assemble bounded evidence
-    +--> persist wiki state
-    |
+CLI commands
+    |-- scan -> parse -> index
+    |-- retrieve -> fuse -> pack context
+    `-- persist Wiki state -> assemble Markdown
     v
-stdout JSON/Markdown + .repo-dive artifacts
+stdout JSON/Markdown + <repository>/.repo-dive/
 ```
 
-The CLI does not inherit the caller's model session and must not hide a second model call behind a deterministic command.
+The implementation is local-first. The default lexical and structural paths require neither credentials nor network access. Vector support is opt-in and the implemented provider accepts only an existing local Sentence Transformers model directory.
 
 ## Design Principles
 
-### Deterministic core, probabilistic edge
+- **Deterministic core, probabilistic caller:** scanning, parsing, indexing, retrieval, validation, and assembly are reproducible from repository bytes and explicit options; interpretation and prose generation remain in the calling model.
+- **Evidence before narrative:** context and Wiki commands preserve repository-relative POSIX paths, one-based inclusive line ranges, Chunk identities, hashes, and explainable scores.
+- **Bounded work:** file size, Chunk line count, result count, graph traversal, embedding batch size, and context tokens all have explicit limits.
+- **Resumable artifacts:** an index is published as a complete generation; Wiki pages have independent persisted states; identical submissions and builds are no-write operations.
+- **Stable process contracts:** JSON Schema versions, exit codes, stdout/stderr separation, and public artifact paths are integration boundaries. Prompt wording is not an API.
 
-Operations that can be reproduced from repository bytes belong in the CLI. Interpretation, prioritization of ambiguous concepts, and prose generation belong to the caller. This split makes failures observable and avoids nested agent loops.
+<!-- contract-section:packages -->
+## Package and Dependency Boundaries
 
-### Evidence before narrative
-
-Retrieval returns source text with repository-relative paths, symbols, and one-based line ranges. A wiki page is assembled only after its evidence set is recorded. Generated prose is therefore reviewable against the inputs that supported it.
-
-### Explicit and resumable stages
-
-Scanning, parsing, indexing, retrieval, page persistence, and document assembly have independent artifacts and state transitions. Re-running a completed stage is idempotent; an interrupted workflow resumes from durable state.
-
-### Stable contracts
-
-Agents integrate through versioned JSON schemas, documented exit codes, strict stdout/stderr separation, and stable filesystem paths. Prompt wording is not an API.
-
-### Local-first ownership
-
-Source code and generated artifacts remain local by default. A future network-backed embedder must be selected explicitly and disclose what data it transmits. The analyzed repository owns `.repo-dive/` and decides whether to ignore or commit it.
-
-### Replaceable components
-
-Lexical retrieval, vector retrieval, ranking, syntax parsers, and persistence adapters meet at typed domain models. The default implementation can evolve without changing command schemas or wiki state.
-
-### One verification harness
-
-Humans, coding agents, and CI use the same Make targets. A command that passes only in a bespoke CI script is not a supported workflow.
-
-## Planned Package Boundaries
+These are implemented package boundaries, not a future plan:
 
 ```text
 src/repo_dive/
-├── cli.py
-├── scanner/
-├── parsing/
-├── indexing/
-├── retrieval/
-├── context/
-└── wiki/
+├── cli.py                 process boundary and error/result serialization
+├── commands/              index, search, context, and wiki adapters
+├── scanner/               deterministic candidate discovery and file reads
+├── parsing/               Chunk, Symbol, Relationship extraction
+├── indexing/              SQLite store, BM25, graph, vectors, generations
+├── providers/             optional local embedding provider selection
+├── retrieval/             lexical, structural, vector, and weighted fusion
+├── context/               token estimation and complete-Evidence packing
+├── wiki/                  state, freshness, page submission, assembly
+├── storage/               repository path validation and atomic writes
+├── evaluation/            offline retrieval and context evaluation runner
+├── errors.py              stable error categories and exit semantics
+└── schema.py              versioned JSON result envelopes
 ```
 
-- `cli.py` translates process input into application requests and serializes results.
-- `scanner` selects files without interpreting language syntax.
-- `parsing` extracts language-aware chunks, symbols, and structural relationships.
-- `indexing` persists lexical, vector, and relationship representations.
-- `retrieval` ranks evidence without formatting a model prompt.
-- `context` selects and serializes evidence under an explicit budget.
-- `wiki` persists structures/pages and atomically assembles `wiki.md`.
-
-Shared domain types belong next to the behavior that owns them. Avoid a catch-all `utils` or `models` module.
-
-## Local RAG Architecture
-
-RAG (retrieval-augmented generation) is divided across the deterministic CLI and the probabilistic calling agent:
+The concrete dependency direction is:
 
 ```text
-local repository
-    -> scan and filter
-    -> syntax-aware parse and chunk
-    -> structural + BM25 + optional vector indexes
-    -> query candidate retrieval
-    -> score fusion, deduplication, and relationship expansion
-    -> token-budgeted evidence package
-    -> calling Copilot model generates a page
-    -> repo-dive validates citations and persists the page
+cli -> commands
+commands -> indexing / retrieval / context / wiki
+scanner -> storage
+parsing -> scanner
+indexing -> scanner / parsing / providers / storage
+retrieval -> indexing / parsing / providers
+context -> retrieval / parsing
+wiki -> indexing / retrieval / context / storage
+evaluation -> indexing / retrieval / context
 ```
 
-### Ingestion
+Lower-level domain models do not import command or CLI modules. Replaceable runtime boundaries are narrow Protocols where the implementation needs substitution: `SourceParser`, `EmbeddingProvider`, `StructuralGraph`, and `TokenEstimator`. Filesystem and SQLite persistence are concrete local adapters, not hypothetical remote abstractions.
 
-The scanner creates a reproducible file inventory. Language adapters then prefer Tree-sitter or a language-native AST to split code at symbol boundaries. A fallback text splitter is allowed for unsupported languages and documentation. Each chunk carries a content fingerprint, repository-relative path, line range, symbol identity when known, and structural relationships.
+## Scan and Parse Pipeline
 
-### Indexes
+For a Git root, candidate discovery runs `git ls-files --cached --others --exclude-standard`; otherwise it performs a deterministic filesystem walk. Both modes sort repository-relative paths, exclude generated/vendor directories including `.repo-dive/`, apply explicit include/exclude patterns, reject non-regular files and symlink traversal, and read with `O_NOFOLLOW` when the platform provides it.
 
-The default RAG design uses three complementary evidence channels:
+The scanner records SHA-256 content hashes and classifies files as `read` or `skipped`. Stable skip reasons cover oversized, binary, invalid UTF-8, and unreadable files. The inventory fingerprint includes scan mode, ordered file metadata, hashes, statuses, and the maximum file size.
 
-- **Structural index:** files, symbols, imports, calls, inheritance, and containment relationships.
-- **BM25 lexical index:** exact identifiers, error strings, configuration keys, and domain terminology.
-- **Optional vector index:** semantic similarity when the user explicitly configures a local or remote embedding provider.
+Parser selection is implemented as follows:
 
-BM25 and structural retrieval must work without credentials or a network connection. Vector retrieval enhances recall but cannot be required for basic repository understanding.
+- Python uses the standard-library AST adapter.
+- JavaScript, JSX, TypeScript, and TSX use Tree-sitter adapters.
+- Unsupported languages, documentation, and syntax failures fall back to the text parser with diagnostics.
+- The normalization pipeline splits every Chunk to at most `max_chunk_lines` (default `200`), removes duplicate identities, and sorts Chunks, Symbols, Relationships, and diagnostics deterministically.
 
-Index Schema 4 represents each optional embedding as a fixed-length little-endian float32 SQLite BLOB bound to its Chunk ID and content hash. Provider, model, and dimensions form an explicit embedding identity; mixed identities, stale Chunk hashes, wrong dimensions, and non-finite values are rejected before replacement. An empty Vector table is valid and leaves the lexical and structural indexes unchanged.
+## Local RAG Data Flow
 
-The first concrete provider is an edge adapter for Sentence Transformers. It is
-loaded lazily from the `vector` extra, requires an existing local model
-directory, disables remote code, and allows only local model files. Its model
-identity is a SHA-256 digest of the canonical path prefixed with `local:`; this
-keeps identity comparisons stable without persisting a private absolute path.
+<!-- contract-section:rag-boundary -->
 
-Vector indexing is incremental at the Chunk boundary. When provider identity
-and Chunk content hash still match, the next generation copies the validated
-float32 vector; new or changed Chunks enter one provider call with a bounded
-inference batch size. A provider identity change invalidates the complete
-vector set. Vector failure policy is explicit: `strict` aborts publication,
-while `degraded` publishes the complete BM25/structural generation with no
-advertised vector identity.
+```text
+repository bytes
+  -> candidate inventory + repository_fingerprint
+  -> language parser -> Chunks + Symbols + Relationships
+  -> SQLite BM25 + graph + optional Vector rows
+  -> lexical + structural + optional vector candidates
+  -> weighted_rrf + overlap deduplication
+  -> complete Evidence items under token_budget
+  -> calling model generates prose
+  -> CLI validates Evidence IDs and persists Wiki page state
+```
 
-### Retrieval and ranking
+This split is still RAG: retrieval augments the calling model's generation, but the deterministic retrieval process and probabilistic generation process are intentionally separate.
 
-A query may come directly from the caller or from a persisted wiki-page description. Each enabled channel returns candidates with its own score. The retrieval layer fuses candidates through a documented, replaceable strategy, removes duplicate/overlapping chunks, and may expand high-confidence symbol relationships. It must preserve component scores so results remain explainable.
+### BM25 channel
 
-The baseline Vector retriever performs an exact brute-force cosine scan at persisted float32 precision. `max_results` bounds returned hits, and equal scores are ordered by Chunk ID. This standard-library implementation is the deterministic reference; an ANN index is justified only after repository-scale measurements demonstrate a need.
+The lexical corpus is rebuilt for every new index generation from current Chunks. The code-aware tokenizer is `code-v1`; it preserves whole code tokens and also emits case-folded, separator-split, and camel-case variants. Defaults are `k1 = 1.2` and `b = 0.75`. SQLite stores terms, document frequencies, postings, document lengths, and aggregate statistics.
 
-When enabled, lexical, structural, and Vector ranks enter the same weighted RRF
-fusion. Raw channel scores remain attached to each SearchHit, while RRF reasons
-record rank, weight, and contribution. A degraded query omits the Vector weight
-instead of inventing an empty Vector rank.
+### Structural channel
 
-### Context assembly
+SQLite stores Symbols and `calls`, `contains`, `imports`, and `inherits` Relationships. Structural retrieval first performs normalized exact/prefix/substring Symbol matching, then expands a bounded, bidirectional graph traversal of depth `1` with a default minimum confidence of `0.75`. It returns definition Chunks when available and preserves relationship-path reasons.
 
-The context layer selects diverse evidence under an explicit token budget. It reserves space for stable metadata, prioritizes primary implementation over duplicated/generated content, and reports excluded or truncated evidence. Its output is a versioned evidence package, not an opaque prompt string.
+### Vector channel
 
-### Generation boundary
+Vector retrieval is optional. `--embedding-model` selects the implemented Sentence Transformers adapter, which is lazy-loaded from the `vector` extra with `local_files_only=True` and `trust_remote_code=False`. Provider name, an opaque `local:<sha256>` model identity, and dimensions define the vector space without persisting the private absolute model path.
 
-The evidence package is returned to the calling Copilot session. Copilot uses its current model and conversation context to generate the requested page, then sends the page back to the CLI for validation and persistence. This is still RAG: retrieval augments generation, but retrieval and generation execute in different processes. The CLI must not create an implicit nested model session.
+Index Schema 4 stores one fixed-length little-endian float32 BLOB per Chunk. The row also binds `chunk_id`, `chunk_hash`, provider, model, and dimensions. Non-finite values, dimension mismatches, mixed identities, and stale Chunk hashes are rejected. Exact brute-force cosine search at persisted float32 precision is the deterministic reference, with ties ordered by Chunk ID.
 
-### Grounding and evaluation
+Unchanged vectors are reused only when both provider identity and Chunk content hash match. `strict` vector failure aborts publication or search; `degraded` omits the vector identity/channel and continues with lexical plus structural evidence while returning a safe warning/error code.
 
-Generated claims cite evidence paths and line ranges. Retrieval changes require evaluation cases for recall, ranking, budget use, and citation coverage. Prose style is not a retrieval-quality metric.
+The `search` and `context` commands can select this provider. The current `wiki evidence` application service does not inject an Embedding Provider, so its implemented retrieval path is BM25 plus structural search even when the published index contains vectors.
 
-## Dependency Direction
+### Fusion and context
 
-Domain and application behavior depend on protocols, not concrete clients. Filesystem, embedding, vector-store, tokenizer, and terminal implementations sit at the edge and are injected explicitly. Environment variables are resolved once at the CLI/configuration boundary.
+Lexical and structural ranks always participate with weight `1.0`; a ready vector channel adds weight `1.0`. The strategy name is `weighted_rrf`, with `rrf_k = 60` and overlap threshold `0.8`. Results retain raw channel scores plus rank, weight, contribution, symbol-match, and relationship-path reasons. Overlapping Chunks are deduplicated after fusion.
 
-## Data and State
+`EvidencePacker` reserves tokens for the envelope and item metadata, ranks implementation Chunks before file-level fallback Chunks, limits each file to two selected items by default, and never slices a Chunk. It reports `estimated_tokens`, `reserved_tokens`, `truncated`, and excluded candidates with `duplicate`, `budget`, or `low_score` reasons.
 
-The analyzed repository is the identity boundary. Metadata includes a normalized repository root, source commit when available, schema version, index version, output language, and timestamps. Index validity is derived from repository fingerprints rather than directory names alone.
+<!-- contract-section:index-storage -->
+## SQLite and Index Publication
 
-Wiki writes use a temporary sibling file followed by an atomic replace. A failed assembly must leave the previous `wiki.md` readable.
+The active index is a symlink to an immutable generation:
 
-## Security Boundary
+```text
+<repository>/.repo-dive/
+├── index -> index-generations/<build-id>
+└── index-generations/
+    └── <build-id>/
+        ├── index.sqlite3
+        ├── manifest.json
+        └── metadata.json
+```
 
-All requested paths are resolved and checked against the selected repository root. Symlink and traversal escapes are rejected. Diagnostics redact credentials and do not dump source content. Network access is off unless an explicit command/provider requests it.
+The physical database path is `.repo-dive/index-generations/<build-id>/index.sqlite3`; consumers use the stable pointer path `.repo-dive/index/index.sqlite3`. `manifest.json` records Schema `1.0`, build ID, repository fingerprint, scan mode, build parameters, file-to-Chunk membership, counts, and optional embedding identity. The generation-local `metadata.json` is the public pointer summary for that index generation and is distinct from the Wiki metadata file at `.repo-dive/metadata.json`.
+
+SQLite Schema 4 is declared by `PRAGMA user_version = 4` and contains `files`, `symbols`, `chunks`, `relationships`, `terms`, `postings`, `stats`, and `vectors`. Foreign keys and integrity checks must pass before publication.
+
+An index build creates a staging directory, reuses unchanged parse results from a compatible previous generation, writes and validates the complete new database and metadata, moves staging to `index-generations/<build-id>`, then atomically replaces the `.repo-dive/index -> index-generations/<build-id>` symlink. A failed build or pointer replacement preserves the previous generation and removes temporary data. Read-only commands rescan with the persisted build parameters and return `index_stale` when the repository fingerprint differs.
+
+## Wiki Persistence and Recovery Boundary
+
+Wiki state uses strict Schema `1.0` JSON in `.repo-dive/wiki.json` and `.repo-dive/metadata.json`. Complete files are serialized and atomically replaced; malformed, unsupported, or incomplete state is rejected without repair. `.repo-dive/wiki.md` is replaced only after all pages and Evidence are validated, and identical bytes produce `changed: false`.
+
+Evidence freshness is page-local: the index Schema must still be `4`, and every persisted reference must match its current Chunk ID, content hash, path, and inclusive line range. The index build ID is audit provenance, not by itself a global invalidation signal.
+
+## Error and Security Boundaries
+
+- Exit code `2` represents invalid invocation or input, `3` a repository/state condition, and `4` a safe internal failure.
+- stdout remains one machine-readable document; stderr contains only a concise safe diagnostic and never source Evidence.
+- Repository-relative inputs reject absolute paths, Windows drives, `..`, and symlink escapes.
+- Corrupt SQLite/JSON is never silently rewritten. Index and Wiki publication preserve the last valid artifact on failure.
+- Network access is not part of the implemented default or Vector path; the current embedding provider accepts local model files only.

@@ -1,156 +1,198 @@
 # Wiki 工作流
 
-## 目标
+## 目标与所有权
 
-Wiki 工作流把本地仓库证据转换成一个稳定的 Markdown 文档，同时不要求 CLI 持有语言模型会话。调用方 Agent 编排理解过程；`repo-dive` 负责确定性状态、证据、校验和汇总。
+Wiki 工作流把已经索引的本地仓库 Evidence 转换成一个稳定的 Markdown 产物，同时不让 CLI 持有语言模型会话。`repo-dive` 负责结构校验、检索、Evidence Snapshot、页面状态、引用校验和原子汇总；调用方 Agent 使用当前模型负责页面规划与内容生成。
+
+最新索引是前置条件：
+
+```bash
+repo-dive index <repository> --format json
+```
+
+完整生成路径是 `structure -> evidence -> page -> build -> status`。`status` 也可以在任意检查点安全执行，是恢复流程的正常入口。
+
+<!-- contract-section:commands -->
+## 命令序列
+
+```bash
+repo-dive wiki structure <repository> --input structure.json --format json
+repo-dive wiki status <repository> --format json
+repo-dive wiki evidence <repository> --page <page-id> --token-budget 1200 --max-results 10 --format json
+repo-dive wiki page <repository> --page <page-id> --input page.json --format json
+repo-dive wiki page <repository> --page <page-id> --input - --format json < page.json
+repo-dive wiki build <repository> --format json
+repo-dive wiki status <repository> --format json
+```
+
+使用以下 Smoke 命令验证已安装的命令面，而不修改仓库：
+
+```bash
+repo-dive wiki structure --help
+repo-dive wiki evidence --help
+repo-dive wiki page --help
+repo-dive wiki build --help
+repo-dive wiki status --help
+```
+
+对每个页面重复 `evidence -> 调用模型生成 -> page`。仅当每页都是 `generated` 后执行 `build`，最后用 `status` 读取持久化摘要。`complete: true` 只表示全部页面已经生成；因为 Build 状态没有单独保存，它不能证明 `wiki.md` 已经构建。
 
 ## 产物布局
 
 ```text
 <repository>/.repo-dive/
-├── wiki.md
+├── index -> index-generations/<build-id>
+├── index-generations/<build-id>/
+│   ├── index.sqlite3
+│   ├── manifest.json
+│   └── metadata.json
 ├── wiki.json
 ├── metadata.json
-└── index/
+└── wiki.md
 ```
 
-- `wiki.md`：原子汇总的当前文档。
-- `wiki.json`：带版本的 Wiki 结构、页面状态、相关文件、证据引用和已生成页面正文。
-- `metadata.json`：仓库身份、源码 Commit、输出语言、时间戳、Schema 版本和索引版本。
-- `index/`：实现私有的关键词、向量和关系数据。
+- `.repo-dive/wiki.json` 是严格 Schema `1.0` Wiki 结构和页面状态。
+- `.repo-dive/metadata.json` 是严格 Schema `1.0` Wiki/仓库/索引身份，与代际内的索引 Metadata 不同。
+- `.repo-dive/wiki.md` 只由成功的 `wiki build` 创建或替换。
+- `.repo-dive/index` 是经过校验的当前索引指针。调用方可以读取已记录的 Metadata，但不能修改索引内部数据。
 
-只有 `wiki.md`、`wiki.json` 和 `metadata.json` 属于公开产物契约。调用方不能依赖 `index/` 内部文件。
+`wiki.json` 与根目录 Wiki Metadata 必须同时存在或同时不存在。只存在一份时命令返回 `wiki_state_incomplete`，不会猜测或修复另一份。非法 JSON、未知/缺失字段和不支持的版本会保持原始字节供诊断。
 
-### 公开 JSON 状态
+## 1. 提交结构
 
-`wiki.json` 使用独立的 `schema_version`，并保存 `title`、`description` 和有序 `sections`。每个 Section 包含稳定 `id`、`title` 和有序 `pages`。每个页面记录：
+调用方提交无状态的结构提案，刻意不包含生命周期字段：
 
-- 稳定的 `id`、`title` 和 `description`；
-- `status`、`relevant_files` 和 `related_page_ids`；
-- 完整的 `evidence` 引用，包括 `evidence_id`、`chunk_id`、仓库相对 POSIX `path` 和首尾都包含的行号范围；
-- 生成页面从已持久化引用中选择的 `citation_ids`；
-- 可为空的已生成 `body` 和安全 `error` 摘要。
-
-`metadata.json` 拥有可独立演进的 `schema_version`。它记录规范化仓库身份与指纹、可选源码 Commit、输出语言、时间戳、`wiki_schema_version`、`index_schema_version` 和 `index_build_id`。
-
-读取方拒绝不支持的产物 Schema 版本，以及缺少必填字段或包含未知字段的文档。非法或损坏 JSON 保持原始字节不变，供后续诊断。每个公开 JSON 文件都先完整序列化再原子替换；替换失败时，该文件的旧字节保持不变。
-
-## 阶段 1：仓库清单
-
-CLI 校验仓库根目录，应用包含/排除规则，扫描支持的文件，读取项目级文档，并记录确定性清单。隐藏的生成目录和 `.repo-dive/` 自身会被排除。
-
-清单结果包括路径、大小、检测语言、内容指纹，以及可用时的源码 Commit。二进制或不可读文件作为跳过证据报告，不能静默当成空文本。
-
-## 阶段 2：构建 RAG 索引
-
-CLI 解析支持的源文件，创建与符号边界对齐的 Chunk，并建立本地 RAG 索引：
-
-- 用于文件、符号、Import、调用、继承和包含关系的结构索引；
-- 用于标识符、精确字符串、配置和领域术语的 BM25 关键词索引；
-- 显式配置 Embedding Provider 后，用于语义召回的可选向量索引。
-
-每个索引 Chunk 保留仓库相对路径、行号范围、符号元数据、内容指纹和关系。BM25 加结构检索构成离线基线；向量检索是可选增强，不是前置条件。
-
-## 阶段 3：Wiki 结构
-
-调用方 Agent 接收清单，并提出带版本的结构，其中包含：
-
-- Wiki 标题和描述；
-- 有序章节和页面；
-- 在重新生成时保持稳定的页面 ID；
-- 页面描述和关系；
-- 初始相关文件候选。
-
-CLI 校验引用，并把接受的结构持久化到 `wiki.json`。它不能自行虚构缺失页面，也不能静默修复未知文件路径。
-
-当前可用的命令边界是：
-
-```text
-repo-dive wiki structure <repository> --input structure.json --format json|markdown
-repo-dive wiki evidence <repository> --page <page-id> --token-budget N --format json|markdown
-repo-dive wiki page <repository> --page <page-id> --input <page.json|-> --format json|markdown
-repo-dive wiki build <repository> --format json|markdown
-repo-dive wiki status <repository> --format json|markdown
+```json
+{
+  "schema_version": "1.0",
+  "title": "Repository Wiki",
+  "description": "Grounded local repository documentation.",
+  "output_language": "en",
+  "sections": [
+    {
+      "id": "guide",
+      "title": "Guide",
+      "pages": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Explain the application entrypoint.",
+          "relevant_files": ["src/app.py"],
+          "related_page_ids": []
+        }
+      ]
+    }
+  ]
+}
 ```
 
-结构提交是无状态输入：调用方只提供标题、描述、输出语言、有序 Section/Page ID、页面关系和相关文件提示。持久化生命周期字段由 CLI 管理。重复提交相同结构不会写文件；页面结构改变时，该页重置为 `pending`；未受影响的稳定 Page ID 保留证据与生成状态，包括只重新排序或移动到其他 Section 的情况。
+Section 与 Page ID 必须唯一且非空。`related_page_ids` 必须引用同一提案中的页面。`relevant_files` 必须是当前索引中存在的仓库相对 POSIX 路径。未知字段、未知路径、绝对路径、`..` 和反斜杠都会被拒绝。
 
-## 阶段 4：RAG 页面证据
+首次提交后每页进入 `pending`。重复应用相同结构不会写文件。只要 Title、Description、Relevant File、Relationship 和输出语言不变，稳定页面即使重排或移动 Section 也保留原状态。新页面被创建；结构变化页面、过期页面以及输出语言变化后的所有页面都会失效为 `pending`。
 
-Agent 针对每个页面，使用页面主题和相关文件提示请求证据。RAG 检索流水线查询结构、BM25 和可选向量通道，融合候选项，移除重复或重叠 Chunk，按需扩展符号关系，然后应用明确的上下文预算。
+结果报告 `changed`、`created_page_ids`、`invalidated_page_ids`、`preserved_page_ids`、Schema 版本、数量和 Index Build 身份。
 
-每条证据记录仓库相对路径、可信时的行号范围、已知时的符号、各项评分以及内容指纹。在内容生成开始前，证据先与页面状态一起保存。
+## 2. 收集并持久化 Evidence
 
-`wiki evidence` 是该阶段当前可用的边界。它根据页面标题、描述和相关文件提示构造可复现 Query，然后执行结构/BM25 检索与预算打包。持久化快照包含 Query、索引身份、预算和估算器账目、融合参数、生成时间以及每个入选 Chunk 的哈希。只有原子页面状态写入成功后，完整 Evidence Bundle 才返回调用方。
+`wiki evidence` 根据已持久化的页面 Title、Description 和 `path:<relevant-file>` Hint 构造 Query。当前命令只使用 BM25 关键词与结构通道；与 `search`、`context` 不同，它不接受或注入 Embedding Provider。因此 Vector 索引不会改变该命令当前的排序路径。
 
-新鲜度以页面为单位。索引 Schema 变化会使已保存 Evidence 全局失效；普通仓库重建则逐一校验引用的 Chunk ID、哈希、路径和行号范围。因此，变化的 Chunk 只使真正引用它的页面失效；记录的索引 build ID 仅用于审计溯源，不作为全局失效开关。
+候选项通过 `weighted_rrf` 融合、重叠去重，再交给 `EvidencePacker`。只有完整且能放入 `token_budget` 的 Chunk 才会返回。CLI 先原子持久化 Evidence Reference 和 Snapshot，再把完整 Evidence 文本输出到 stdout。成功后页面进入 `evidence_ready`。
 
-## 阶段 5：增强生成与持久化
+每个持久化 Evidence Reference 包含：
 
-调用方 Agent 使用当前模型和返回证据撰写单个 Markdown 页面。页面通过 stdin 或结构化输入文件交回 CLI。CLI 在保存前校验页面身份、证据引用、编码和大小。
+- `evidence_id`、`chunk_id`、`content_hash`；
+- 仓库相对 POSIX `path`；
+- 从 1 开始且首尾都包含的 `start_line` 与 `end_line`。
 
-输入是严格的 Schema `1.0` JSON 对象：
+页面级 `evidence_snapshot` 包含 `query`、`repository_fingerprint`、`index_schema_version`、`index_build_id`、`token_budget`、`estimated_tokens`、`reserved_tokens`、`estimator`、`truncated`、`generated_at`，以及检索参数（`max_results`、`strategy`、`rrf_k`、`channel_weights`、`overlap_threshold`）。
+
+收集期间发生仓库状态错误时，页面进入 `failed`，并且只保存安全错误码。非法 CLI 选项在进入收集前失败，不修改页面状态。
+
+## 3. 生成并提交单页
+
+调用模型接收 Evidence 结果并撰写页面正文 Markdown。它必须引用返回结果中精确 `evidence_id` 的非空子集。CLI 不生成或重写这段内容。
 
 ```json
 {
   "schema_version": "1.0",
   "page_id": "overview",
-  "body": "# Overview\n\n基于证据的说明。\n",
-  "evidence_ids": ["evidence:..."]
+  "body": "The entrypoint delegates application startup.\n",
+  "evidence_ids": ["evidence:<sha256>"]
 }
 ```
 
-只有当每个引用 ID 都属于该页，并且保存的 Chunk 哈希、路径和行号范围仍然有效时，CLI 才接受 Evidence 子集。正文和选中的引用 ID 一起保存，随后页面进入 `generated`。成功摘要和诊断都不会返回完整正文。
+提交是严格的：只接受 `schema_version`、`page_id`、`body` 和 `evidence_ids`。正文必须是非空 UTF-8 Markdown，并处于 CLI 字节上限内。Evidence ID 必须唯一、非空、属于该页，并仍能通过 Chunk ID、哈希、路径和行号范围匹配当前索引。
 
-每个页面可以独立重试。修正后的 `failed` 页面可以复用仍然有效的 Evidence 快照，完成它不会重写其他已生成页面。完全相同的已生成提交是保持字节不变的空操作；修改已生成页面需要后续显式失效/重新生成流程，不能意外覆盖。
+合法提交把正文与 `citation_ids` 一起保存，并把页面移动到 `generated`。成功结果只报告正文字节数和引用元数据，不返回正文。重复提交完全相同的 Generated 页面不会写文件；向已生成页面提交不同内容会被拒绝。显式重新生成先再次运行 `wiki evidence`，它清除旧引用，并使用新 Snapshot 把页面恢复到 `evidence_ready`。
 
-这是 RAG 的生成阶段。它运行在调用方 Copilot 会话中，而不是 CLI 内部，因此能够复用调用方选择的模型和对话，同时证据仍然是带版本、可检查的 CLI 结果。
+汇总文档拥有 Page Heading；调用方应只提供正文，不要重复该标题。
 
-## 阶段 6：汇总
+<!-- contract-section:page-state -->
+## 页面状态机与 Status
 
-所有必需页面准备完成后，`wiki build` 校验每个页面并汇总：
-
-1. 文档标题与描述；
-2. 目录；
-3. 有序页面锚点和标题；
-4. 相关页面链接；
-5. 页面正文和来源引用。
-
-Section 和 Page 锚点使用类型前缀加稳定持久化 ID 的完整 SHA-256，因此排序、标题和不同 Markdown 渲染器的 Slug 规则不会改变链接目标。来源链接使用相对于产物的仓库路径，并包含从 1 开始、首尾都包含的行号片段。调用方生成正文插入 CLI 统一生成的页面标题之后；调用方不应在正文中重复该标题。
-
-汇总会拒绝任何非 `generated` 页面、缺失的正文/引用数据，或不再匹配已发布索引的 Evidence。只有全部检查通过后，命令才写入同目录临时文件并原子替换 `.repo-dive/wiki.md`。校验或替换失败时，旧文档保持完整。对相同状态重复 build 不会写文件。`--format markdown` 返回与落盘完全相同的 Markdown；JSON 模式只返回路径、大小、哈希、数量和 changed 标志。
-
-## 状态模型
-
-工作流使用显式状态：
+不存在单独持久化的仓库级状态机。持久生命周期以页面为单位：
 
 ```text
-uninitialized -> inventoried -> indexed -> structured -> retrieving -> generating -> complete
-                                  |           |             |             |
-                                  +-----------+-------------+-> failed <--+
+pending -> evidence_ready
+pending -> failed
+evidence_ready -> generated
+evidence_ready -> failed
+evidence_ready -> pending
+generated -> failed
+generated -> pending
+failed -> pending
 ```
 
-页面状态是 `pending`、`evidence_ready`、`generated` 或 `failed`。重试失败页面不会重置成功页面。源码指纹变化会把受影响证据和页面标记为过期，但不删除旧内容。
+自转换和跨越模型状态的转换会被拒绝。Service 操作可以在一个原子操作中组合多个合法转换；例如使用仍然有效的 Evidence 从 `failed` 重新提交修正内容时，会经过 `pending` 和 `evidence_ready`，最后持久化为 `generated`。
 
-`wiki status` 在不返回已生成正文的前提下暴露这些状态。对应下一步动作依次为 `collect_evidence`、`generate_page`、`complete` 和 `retry`，使非交互调用方能够确定性地恢复流程。
+`wiki status` 是只读命令，不返回生成正文或已保存的错误码。它报告 Wiki/Index Schema 身份、四种状态的 Count、`complete`，并为每页报告 `status`、`next_action`、`evidence_count`、`citation_count`、`has_body` 和 `has_error`。
 
-合法页面转换是显式的：
+```text
+pending        -> collect_evidence
+evidence_ready -> generate_page
+generated      -> complete
+failed         -> retry
+```
 
-- `pending -> evidence_ready | failed`；
-- `evidence_ready -> generated | failed | pending`；
-- `generated -> failed | pending`；
-- `failed -> pending`。
+Status 只反映持久化状态；它不会重新扫描仓库或校验 Evidence 新鲜度。新鲜度由 `wiki evidence`、`wiki page` 和 `wiki build` 强制检查。
 
-回到 `pending` 表示重试或失效；在后续命令替换正文前，可以保留旧正文供诊断。所有自转换和跨越生命周期阶段的转换都会被拒绝。
+## 4. 构建 Markdown
 
-## 重新生成
+`wiki build` 要求每页都是 `generated`，拥有正文，并至少有一项引用。随后它根据当前已发布索引校验每个引用的 Evidence，并确认汇总期间索引没有变化。
 
-重新生成时比较仓库指纹与元数据。未变化的清单和索引继续复用；变化文件使对应 Chunk 和依赖页面证据失效。稳定页面 ID 允许调用方只更新受影响内容，然后重新构建单一 Markdown 产物。
+确定性 Markdown 包含 Wiki Title/Description、目录、有序 Section 与 Page Heading、相关页面链接、调用方生成的正文和来源链接。Section/Page Anchor 使用类型前缀加稳定 ID 的完整 SHA-256。Source Link 相对于 `.repo-dive/wiki.md`，并带 `#Lx` 或 `#Lx-Ly` Fragment。
 
-## 失败语义
+所有检查通过后 Store 才原子替换 `.repo-dive/wiki.md`。失败时保留旧 Markdown。对相同状态重复构建返回 `changed: false`；`--format markdown` 返回精确的持久化文档，JSON 返回路径、字节数、SHA-256、Section/Page/Source 数量和 `changed`。
 
-- 非法仓库输入在创建产物前失败。
-- 索引失败时保留旧的有效索引和 Wiki。
-- 非法的 Agent 结构或页面内容以结构化诊断拒绝。
-- 部分生成状态保留在 `wiki.json`，可继续执行。
-- 汇总失败绝不能截断旧的 `wiki.md`。
+<!-- contract-section:single-page-recovery -->
+## 单页恢复
+
+每次恢复都从以下命令开始：
+
+```bash
+repo-dive wiki status <repository> --format json
+```
+
+然后只恢复受影响页面：
+
+1. 对 `pending`，运行 `wiki evidence`，根据返回 Evidence 生成正文，再用 `wiki page` 提交。
+2. 对 `evidence_ready`，直接根据已保存/当前 Evidence 结果生成并提交。
+3. 对 `failed`，检查失败命令返回的错误，或 `.repo-dive/wiki.json` 中公开 Page 的 `error`：
+   - 如果页面校验失败但 Evidence 仍然有效，修正 `page.json` 后直接重新提交；
+   - 如果 Evidence 缺失/过期或收集失败，按需修复/重建索引，再运行 `wiki evidence` 后生成。
+4. 不改动无关的 `generated` 页面。
+5. 全部页面生成后运行 `wiki build`，然后运行 `wiki status`。
+
+源码变化后先运行 `repo-dive index`。后续 Build 可能返回 `wiki_evidence_stale`，并且只列出受影响的 `page_ids`；旧 `.repo-dive/wiki.md` 保持有效且不变。只重新收集并生成这些页面。仅在 `wiki status` 中看到 `generated` 不能保证 Evidence 仍然新鲜。
+
+如果 Evidence 收集或页面校验把页面设为 `failed`，成功恢复会清除安全 `error` 字段。旧正文或 Evidence Reference 可能保留在持久化状态中供诊断，但消费者必须遵循 `status`/`next_action`，不能把它们当作当前输出。
+
+## 失败保证
+
+- `index_not_found` 与 `index_stale`：运行 `repo-dive index`，再继续受影响的 Wiki 阶段。
+- `wiki_not_initialized`：索引完成后提交合法结构。
+- `wiki_build_incomplete`：只生成列出的页面。
+- `wiki_evidence_stale`：只重新收集并生成列出的页面。
+- `wiki_page_state_invalid`：遵循当前页面状态；Generated 内容不能直接覆盖。
+- `wiki_state_invalid`、`wiki_metadata_invalid` 或不支持版本：保留原字节供诊断；命令不会修复。
+- 原子写入或汇总失败绝不会截断旧的公开 JSON 或 Markdown 产物。
