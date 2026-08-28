@@ -58,6 +58,7 @@ class GraphReader(Protocol):
         direction: Literal["outgoing", "incoming", "both"],
         edge_kinds: tuple[str, ...] | None,
         limit: int,
+        min_confidence: float = 0.0,
     ) -> tuple[Relationship, ...]: ...
 
 
@@ -94,9 +95,15 @@ class SymbolGraph:
         edge_kinds: tuple[str, ...] | None = None,
         max_nodes: int = 100,
         max_edges: int = 400,
+        min_confidence: float = 0.0,
     ) -> GraphTraversal:
         """Breadth-first traversal with explicit depth, node, and edge budgets."""
-        _validate_limits(depth=depth, max_nodes=max_nodes, max_edges=max_edges)
+        _validate_limits(
+            depth=depth,
+            max_nodes=max_nodes,
+            max_edges=max_edges,
+            min_confidence=min_confidence,
+        )
         normalized_kinds = (
             tuple(sorted(set(edge_kinds))) if edge_kinds is not None else None
         )
@@ -127,6 +134,7 @@ class SymbolGraph:
                 direction=direction.value,
                 edge_kinds=normalized_kinds,
                 limit=remaining_edges + 1,
+                min_confidence=min_confidence,
             )
             if len(relationships) > remaining_edges:
                 relationships = relationships[:remaining_edges]
@@ -200,13 +208,21 @@ class SymbolGraph:
         )
 
 
-def _validate_limits(*, depth: int, max_nodes: int, max_edges: int) -> None:
+def _validate_limits(
+    *,
+    depth: int,
+    max_nodes: int,
+    max_edges: int,
+    min_confidence: float,
+) -> None:
     if depth < 0:
         raise ValueError("depth must not be negative")
     if max_nodes <= 0:
         raise ValueError("max_nodes must be positive")
     if max_edges <= 0:
         raise ValueError("max_edges must be positive")
+    if not 0.0 <= min_confidence <= 1.0:
+        raise ValueError("min_confidence must be between 0 and 1")
 
 
 def _relationship_key(

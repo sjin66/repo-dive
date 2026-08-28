@@ -337,16 +337,21 @@ class IndexStore:
         direction: Literal["outgoing", "incoming", "both"],
         edge_kinds: tuple[str, ...] | None,
         limit: int,
+        min_confidence: float = 0.0,
     ) -> tuple[Relationship, ...]:
         """Read a stable, bounded relationship frontier for graph traversal."""
         self._ensure_open()
         if not symbol_ids:
             return ()
-        if direction not in {"outgoing", "incoming", "both"} or limit <= 0:
-            raise ValueError("relationship direction and limit must be valid")
+        if (
+            direction not in {"outgoing", "incoming", "both"}
+            or limit <= 0
+            or not 0.0 <= min_confidence <= 1.0
+        ):
+            raise ValueError("relationship query parameters must be valid")
 
         placeholders = ", ".join("?" for _ in symbol_ids)
-        parameters: list[str | int] = []
+        parameters: list[str | int | float] = []
         if direction == "outgoing":
             frontier_clause = f"source_id IN ({placeholders})"
             parameters.extend(symbol_ids)
@@ -367,10 +372,11 @@ class IndexStore:
             kind_placeholders = ", ".join("?" for _ in edge_kinds)
             kind_clause = f" AND kind IN ({kind_placeholders})"
             parameters.extend(edge_kinds)
-        parameters.append(limit)
+        parameters.extend((min_confidence, limit))
         rows = self._connection.execute(
             "SELECT source_id, target_id, kind, confidence, source "
             f"FROM relationships WHERE {frontier_clause}{kind_clause} "
+            "AND confidence >= ? "
             "ORDER BY source_id, target_id, kind, source LIMIT ?",
             parameters,
         )

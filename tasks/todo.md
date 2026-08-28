@@ -373,13 +373,13 @@
 **Description:** 从查询中的路径/符号线索召回定义与相邻实现，并对 Import、调用、继承和包含关系进行受限扩展。
 
 **Acceptance criteria:**
-- [ ] 精确 qualified name 优先于模糊名称；定义 Chunk 优先于仅引用 Chunk。
-- [ ] 扩展遵守深度、节点数和最小 confidence 上限。
-- [ ] 每个命中说明 symbol match 或 relationship path，不隐藏扩展来源。
+- [x] 精确 qualified name 优先于模糊名称；定义 Chunk 优先于仅引用 Chunk。
+- [x] 扩展遵守深度、节点数和最小 confidence 上限。
+- [x] 每个命中说明 symbol match 或 relationship path，不隐藏扩展来源。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/retrieval/test_structural.py -q`
-- [ ] Cycle check: 循环调用图不产生重复或无限扩展。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/retrieval/test_structural.py -q`
+- [x] Cycle check: 循环调用图不产生重复或无限扩展。
 
 **Dependencies:** Tasks 12–13
 
