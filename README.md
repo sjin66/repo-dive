@@ -17,9 +17,10 @@ The current offline RAG core provides:
 - resumable `wiki structure`, `wiki evidence`, `wiki page`, `wiki build`, and `wiki status` commands with atomic artifacts;
 - stable process, schema, evaluation, and local/CI harness contracts.
 
-The optional SQLite float32 Vector Store and deterministic cosine retriever are
-implemented. Local embedding-provider and three-channel CLI integration remain
-planned; the offline Wiki workflow is complete and unchanged.
+The optional SQLite float32 Vector Store, deterministic cosine retriever, and
+explicit local Sentence Transformers provider are implemented. Three-channel
+CLI integration remains planned; the offline Wiki workflow is complete and
+unchanged.
 
 ## Design Philosophy
 

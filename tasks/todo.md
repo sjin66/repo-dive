@@ -651,13 +651,13 @@
 **Description:** 定义 `EmbeddingProvider` Protocol 和延迟导入的 Sentence Transformers 适配器；只接受本地模型目录且禁止隐式下载。
 
 **Acceptance criteria:**
-- [ ] 默认安装不包含/导入 Sentence Transformers；`.[vector]` extra 才安装它。
-- [ ] Provider 要求存在的本地模型路径，并以 `local_files_only=True` 加载。
-- [ ] Fake Provider 单元测试覆盖批处理、维度、模型身份和错误脱敏。
+- [x] 默认安装不包含/导入 Sentence Transformers；`.[vector]` extra 才安装它。
+- [x] Provider 要求存在的本地模型路径，并以 `local_files_only=True` 加载。
+- [x] Fake Provider 单元测试覆盖批处理、维度、模型身份和错误脱敏。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/providers/test_embeddings.py -q`
-- [ ] Offline check: 未配置 Provider 的完整测试不访问网络或导入重型模块。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/providers/test_embeddings.py -q`
+- [x] Offline check: 未配置 Provider 的完整测试不访问网络或导入重型模块。
 
 **Dependencies:** Tasks 3、26
 

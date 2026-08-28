@@ -106,6 +106,12 @@ BM25 and structural retrieval must work without credentials or a network connect
 
 Index Schema 4 represents each optional embedding as a fixed-length little-endian float32 SQLite BLOB bound to its Chunk ID and content hash. Provider, model, and dimensions form an explicit embedding identity; mixed identities, stale Chunk hashes, wrong dimensions, and non-finite values are rejected before replacement. An empty Vector table is valid and leaves the lexical and structural indexes unchanged.
 
+The first concrete provider is an edge adapter for Sentence Transformers. It is
+loaded lazily from the `vector` extra, requires an existing local model
+directory, disables remote code, and allows only local model files. Its model
+identity is a SHA-256 digest of the canonical path prefixed with `local:`; this
+keeps identity comparisons stable without persisting a private absolute path.
+
 ### Retrieval and ranking
 
 A query may come directly from the caller or from a persisted wiki-page description. Each enabled channel returns candidates with its own score. The retrieval layer fuses candidates through a documented, replaceable strategy, removes duplicate/overlapping chunks, and may expand high-confidence symbol relationships. It must preserve component scores so results remain explainable.

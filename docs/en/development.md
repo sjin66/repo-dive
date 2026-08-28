@@ -22,6 +22,23 @@ The environment lives at `.venv/`. Override the bootstrap interpreter when neces
 make setup PYTHON=/path/to/python3.12
 ```
 
+### Optional local embeddings
+
+The default development installation does not include or import Sentence
+Transformers. Install the explicit vector extra only when developing the local
+embedding adapter:
+
+```bash
+.venv/bin/python -m pip install -e ".[vector]"
+```
+
+The adapter accepts an existing local model directory. It passes
+`local_files_only=True` and `trust_remote_code=False` to Sentence Transformers,
+so a missing model is an error rather than a download request. Provider errors
+and the persisted model identity do not expose the absolute model path. The
+current provider API is not connected to CLI indexing yet; that integration is
+tracked separately.
+
 ## Shared Verification Commands
 
 ```bash
@@ -67,7 +84,7 @@ Update the English and Simplified Chinese files in the same commit. Keep technic
 
 ## Dependency Changes
 
-Runtime dependencies must support Python 3.11 and have a clear boundary-owned purpose. Record the decision in the feature design, add it to `pyproject.toml`, and cover the adapter behavior without testing the dependency's own internals.
+Runtime dependencies must support Python 3.11 and have a clear boundary-owned purpose. Record the decision in the feature design, add it to `pyproject.toml`, and cover the adapter behavior without testing the dependency's own internals. Heavy or provider-specific dependencies belong in a named optional extra and must be imported lazily at their adapter boundary.
 
 Development-only tools belong in the `dev` optional dependency. Keep `make setup` as the single installation path for contributors and CI.
 
@@ -88,4 +105,3 @@ git status --short
 ```
 
 Report actual command output and any remaining limitations. Do not claim planned commands are available.
-

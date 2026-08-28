@@ -34,6 +34,14 @@ precision. Results are ordered by descending cosine score, then ascending
 Chunk ID, and truncated to `max_results`. An empty vector table returns no
 vector hits and does not alter BM25, structural retrieval, or indexed Chunks.
 
+The first provider adapter uses Sentence Transformers behind the optional
+`vector` extra. Import is lazy, the model path must resolve to an existing local
+directory, and loading sets `local_files_only=True` and
+`trust_remote_code=False`. The persisted model identifier is an opaque
+`local:`-prefixed SHA-256 digest of the canonical path instead of the path
+itself. Replacing model files in place therefore requires an explicit reindex;
+using a versioned model directory makes identity changes automatic.
+
 ## Alternatives Considered
 
 ### Add FAISS or another ANN index immediately
@@ -59,6 +67,10 @@ summarize the configured provider when vector indexing is integrated.
 
 - Default installation and empty-vector operation remain dependency-free and
   offline.
+- Sentence Transformers is not imported unless the local provider is
+  constructed, and it cannot fall back to an implicit model download.
+- Absolute model paths do not enter vector identity records or user-facing
+  provider errors.
 - Scores and tie ordering are reproducible across input and SQLite row order.
 - Changing provider, model, dimensions, or Chunk content requires replacement
   or re-embedding before the record is accepted.

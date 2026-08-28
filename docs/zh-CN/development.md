@@ -22,6 +22,20 @@ make setup
 make setup PYTHON=/path/to/python3.12
 ```
 
+### 可选本地 Embedding
+
+默认开发安装不会包含或导入 Sentence Transformers。只有开发本地
+Embedding 适配器时才安装显式的 Vector Extra：
+
+```bash
+.venv/bin/python -m pip install -e ".[vector]"
+```
+
+适配器只接受已经存在的本地模型目录，并向 Sentence Transformers 传入
+`local_files_only=True` 和 `trust_remote_code=False`；模型缺失时直接报错，
+不会发起下载。Provider 错误与持久化模型身份都不会暴露模型绝对路径。
+当前 Provider API 尚未接入 CLI 索引，该集成由后续任务单独跟踪。
+
 ## 统一验证命令
 
 ```bash
@@ -67,7 +81,7 @@ docs/superpowers/     已批准的规范和实施计划
 
 ## 依赖变更
 
-运行时依赖必须支持 Python 3.11，并拥有边界清晰的用途。把决策写入功能设计，在 `pyproject.toml` 中添加依赖，并测试适配器行为，而不是重复测试依赖自身内部实现。
+运行时依赖必须支持 Python 3.11，并拥有边界清晰的用途。把决策写入功能设计，在 `pyproject.toml` 中添加依赖，并测试适配器行为，而不是重复测试依赖自身内部实现。重型依赖或 Provider 专用依赖必须放入命名的可选 Extra，并在适配器边界延迟导入。
 
 仅开发使用的工具放入 `dev` 可选依赖。贡献者和 CI 都以 `make setup` 作为唯一安装路径。
 
@@ -88,4 +102,3 @@ git status --short
 ```
 
 报告真实命令输出和剩余限制，不能声称规划中的命令已经可用。
-
