@@ -71,7 +71,9 @@ CREATE TABLE stats (
 CREATE TABLE vectors (
     chunk_id TEXT PRIMARY KEY REFERENCES chunks(id) ON DELETE CASCADE,
     provider TEXT NOT NULL,
+    model TEXT NOT NULL,
     dimensions INTEGER NOT NULL CHECK (dimensions > 0),
+    chunk_hash TEXT NOT NULL,
     embedding BLOB NOT NULL,
     CHECK (length(embedding) = dimensions * 4)
 );
@@ -88,5 +90,5 @@ ON relationships (source_id, kind, target_id);
 CREATE INDEX relationships_target_lookup
 ON relationships (target_id, kind, source_id);
 
-PRAGMA user_version = 3;
+PRAGMA user_version = 4;
 COMMIT;

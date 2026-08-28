@@ -162,7 +162,7 @@ def test_wiki_evidence_persists_reproducible_bundle_before_returning_source(
     )
     assert result["token_budget"] == 1_200
     assert result["max_results"] == 5
-    assert result["index_schema_version"] == 3
+    assert result["index_schema_version"] == 4
     assert result["index_build_id"]
     assert result["generated_at"].endswith("Z")
     assert result["items"]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from importlib import resources
 from math import isclose
@@ -13,6 +13,12 @@ from typing import Literal, cast
 
 from repo_dive.errors import InternalOperationError, RepositoryError
 from repo_dive.indexing.bm25 import BM25Index, BM25Parameters, Posting
+from repo_dive.indexing.vectors import (
+    ChunkVector,
+    EmbeddingIdentity,
+    pack_float32,
+    unpack_float32,
+)
 from repo_dive.parsing.models import Chunk, ParseResult, Relationship, Symbol
 from repo_dive.scanner.models import (
     FileRecord,
@@ -21,7 +27,7 @@ from repo_dive.scanner.models import (
     SourceFile,
 )
 
-INDEX_SCHEMA_VERSION = 3
+INDEX_SCHEMA_VERSION = 4
 
 _BM25_STAT_KEYS = {
     "average_document_length": "bm25.average_document_length",
@@ -306,6 +312,118 @@ class IndexStore:
                 "BM25 records are internally inconsistent.",
             )
         return index
+
+    def replace_vector_index(
+        self,
+        identity: EmbeddingIdentity,
+        vectors: Iterable[ChunkVector],
+    ) -> None:
+        """Atomically replace the optional vector index for one embedding space."""
+        self._ensure_open()
+        self._ensure_writable()
+        ordered = tuple(sorted(vectors, key=lambda vector: vector.chunk_id))
+        chunk_ids = tuple(vector.chunk_id for vector in ordered)
+        if len(chunk_ids) != len(set(chunk_ids)):
+            raise InternalOperationError(
+                "index_vector_duplicate_chunk",
+                "Vector index contains duplicate Chunk identities.",
+            )
+        if any(vector.identity != identity for vector in ordered):
+            raise InternalOperationError(
+                "index_vector_identity_mismatch",
+                "Vector index contains a different embedding model identity.",
+            )
+
+        try:
+            with self._transaction():
+                indexed_chunks = {
+                    cast(str, row[0]): cast(str, row[1])
+                    for row in self._connection.execute(
+                        "SELECT id, content_hash FROM chunks"
+                    )
+                }
+                if any(
+                    indexed_chunks.get(vector.chunk_id) != vector.chunk_hash
+                    for vector in ordered
+                ):
+                    raise InternalOperationError(
+                        "index_vector_chunk_mismatch",
+                        "Vector index does not match the current indexed Chunks.",
+                    )
+
+                self._connection.execute("DELETE FROM vectors")
+                self._connection.executemany(
+                    "INSERT INTO vectors "
+                    "(chunk_id, provider, model, dimensions, chunk_hash, embedding) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        (
+                            vector.chunk_id,
+                            identity.provider,
+                            identity.model,
+                            identity.dimensions,
+                            vector.chunk_hash,
+                            pack_float32(
+                                vector.embedding,
+                                dimensions=identity.dimensions,
+                            ),
+                        )
+                        for vector in ordered
+                    ),
+                )
+        except InternalOperationError:
+            raise
+        except (ValueError, sqlite3.IntegrityError) as error:
+            raise InternalOperationError(
+                "index_vector_invalid",
+                "Vector index violates the internal integrity contract.",
+            ) from error
+        except sqlite3.Error as error:
+            raise InternalOperationError(
+                "index_write_failed",
+                "Could not update the Vector index.",
+            ) from error
+
+    def get_vector_index(
+        self,
+        identity: EmbeddingIdentity,
+    ) -> tuple[ChunkVector, ...]:
+        """Read the optional vector index only for its exact embedding space."""
+        self._ensure_open()
+        rows = self._connection.execute(
+            "SELECT chunk_id, provider, model, dimensions, chunk_hash, embedding "
+            "FROM vectors ORDER BY chunk_id"
+        ).fetchall()
+        if not rows:
+            return ()
+        if any(
+            cast(str, row[1]) != identity.provider
+            or cast(str, row[2]) != identity.model
+            or cast(int, row[3]) != identity.dimensions
+            for row in rows
+        ):
+            raise InternalOperationError(
+                "index_vector_identity_mismatch",
+                "Stored vectors use a different embedding model identity.",
+            )
+        try:
+            return tuple(
+                ChunkVector(
+                    chunk_id=cast(str, row[0]),
+                    chunk_hash=cast(str, row[4]),
+                    identity=identity,
+                    embedding=unpack_float32(
+                        cast(bytes, row[5]),
+                        dimensions=identity.dimensions,
+                    ),
+                )
+                for row in rows
+            )
+        except (TypeError, ValueError) as error:
+            raise InternalOperationError(
+                "index_vector_corrupt",
+                "Stored vector data is invalid.",
+            ) from error
 
     def query_symbols(
         self,
