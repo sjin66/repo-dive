@@ -153,13 +153,13 @@
 **Description:** 定义 Parser 适配器、Chunk/Symbol/Relationship 对象和不支持语言的确定性文本切分器。
 
 **Acceptance criteria:**
-- [ ] Parser 接口只接收文件记录与文本，不访问文件系统或终端。
-- [ ] Markdown 按标题/段落切分，普通文本按有重叠的行窗切分。
-- [ ] Chunk ID、行号、内容哈希在重复解析时稳定；空白与超长行有明确行为。
+- [x] Parser 接口只接收文件记录与文本，不访问文件系统或终端。
+- [x] Markdown 按标题/段落切分，普通文本按有重叠的行窗切分。
+- [x] Chunk ID、行号、内容哈希在重复解析时稳定；空白与超长行有明确行为。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/parsing/test_text.py tests/unit/parsing/test_models.py -q`
-- [ ] Line check: 每个 Chunk 文本可由原文件声明行区间重新取得。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/parsing/test_text.py tests/unit/parsing/test_models.py -q`
+- [x] Line check: 每个 Chunk 文本可由原文件声明行区间重新取得。
 
 **Dependencies:** Task 6
 
