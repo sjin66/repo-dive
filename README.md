@@ -14,9 +14,10 @@ The current offline RAG core provides:
 - Python AST and Tree-sitter parsing with stable chunks, symbols, and relationships;
 - atomic local SQLite indexing with BM25 and structural retrieval;
 - read-only `search` and token-budgeted `context` commands in JSON or Markdown;
+- resumable `wiki structure` and `wiki status` commands with atomic JSON state;
 - stable process, schema, evaluation, and local/CI harness contracts.
 
-Optional vector retrieval and wiki persistence/assembly remain planned work.
+Optional vector retrieval and wiki evidence/page/assembly commands remain planned work.
 
 ## Design Philosophy
 
@@ -74,6 +75,8 @@ After setup:
 .venv/bin/repo-dive index /path/to/repository --format json
 .venv/bin/repo-dive search /path/to/repository "entrypoint" --max-results 10 --format json
 .venv/bin/repo-dive context /path/to/repository "architecture" --token-budget 1200 --format json
+.venv/bin/repo-dive wiki structure /path/to/repository --input structure.json --format json
+.venv/bin/repo-dive wiki status /path/to/repository --format json
 ```
 
 See [Development](docs/en/development.md) and [CLI Contract](docs/en/cli-contract.md) for supported workflows and public contracts.

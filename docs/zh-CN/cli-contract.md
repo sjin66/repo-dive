@@ -14,7 +14,7 @@
 repo-dive <command> [repository] --format json
 ```
 
-当前版本除 `--help` 和 `--version` 外，已经实现 `index`、`search` 和 `context`。
+当前版本除 `--help` 和 `--version` 外，已经实现 `index`、`search`、`context`、`wiki structure` 和 `wiki status`。
 
 ## RAG 命令边界
 
@@ -25,7 +25,7 @@ repo-dive <command> [repository] --format json
 - `context`：去重，并在调用方给定的 Token 预算下打包证据。
 - `wiki`：持久化 Agent 生成的页面状态，并汇总 `.repo-dive/wiki.md`。
 
-`index`、`search` 和 `context` 是当前可用的确定性 RAG 操作。规划中的 `wiki` 命令族将接受调用方 Copilot 会话生成的内容。这些命令都不会隐式调用生成模型。
+`index`、`search` 和 `context` 是当前可用的确定性 RAG 操作。`wiki structure` 和 `wiki status` 提供首个持久化 Wiki 边界；证据绑定、页面提交与最终汇总仍属于后续计划。这些命令都不会隐式调用生成模型。
 
 `context` 命令要求正整数 Token 预算，并接受有上限的检索候选数量：
 
@@ -34,6 +34,19 @@ repo-dive context <repository> <query> --token-budget N [--max-results COUNT] --
 ```
 
 JSON 结果报告 `token_budget`、`estimated_tokens`、`reserved_tokens`、`estimator`、`truncated`、固定的 `duplicate`/`budget`/`low_score` 排除计数、融合参数和完整 Evidence 条目。每条 Evidence 包含稳定的 `evidence_id`、仓库相对路径、首尾都包含的行号范围、可用时的符号元数据、源码正文、评分和检索原因。
+
+结构命令从显式文件读取有大小上限的 UTF-8 JSON 文档：
+
+```text
+repo-dive wiki structure <repository> --input structure.json --format json|markdown
+repo-dive wiki status <repository> --format json|markdown
+```
+
+结构输入 Schema `1.0` 只接受 `schema_version`、`title`、`description`、`output_language` 和有序 `sections`。Section 只包含 `id`、`title` 和有序 `pages`；Page 只包含 `id`、`title`、`description`、`relevant_files` 和 `related_page_ids`。ID 必须唯一，关系必须指向本次提交的 Page ID，相关文件必须存在于当前已发布索引。调用方不能通过此命令注入 status、evidence、body 或 error 等生命周期字段。
+
+重复提交相同结构时，公开文件保持字节级幂等。新页面从 `pending` 开始；修改页面标题、描述、相关文件或关系时，只把该页面重置为 `pending`，并保留旧 evidence/body/error 供诊断。仅重新排序或移动未改变的页面会保留其状态。仓库/索引身份或输出语言变化会使所有保留页面失效。
+
+状态输出包含有序章节与页面、状态计数、正文或错误是否存在，以及每页的下一步动作，但不返回已生成正文。映射为 `pending -> collect_evidence`、`evidence_ready -> generate_page`、`generated -> complete`、`failed -> retry`。
 
 ## 标准流
 

@@ -62,6 +62,15 @@ The calling agent receives the inventory and proposes a versioned structure cont
 
 The CLI validates references and persists the accepted structure to `wiki.json`. It does not invent missing pages or silently repair unknown file paths.
 
+The available command boundary is:
+
+```text
+repo-dive wiki structure <repository> --input structure.json --format json|markdown
+repo-dive wiki status <repository> --format json|markdown
+```
+
+Structure submission is stateless: callers provide only titles, descriptions, output language, ordered section/page IDs, page relationships, and relevant-file hints. Persisted lifecycle fields are owned by the CLI. Reapplying the same structure performs no write. A changed page is reset to `pending`; unaffected stable Page IDs preserve their evidence and generated state, including when reordered or moved between sections.
+
 ## Stage 4: RAG Page Evidence
 
 For each page, the agent requests evidence using the page topic and relevant-file hints. The RAG retrieval pipeline queries structural, BM25, and optional vector channels; fuses their candidates; removes duplicate or overlapping chunks; optionally expands symbol relationships; and applies an explicit context budget.
@@ -99,6 +108,8 @@ uninitialized -> inventoried -> indexed -> structured -> retrieving -> generatin
 ```
 
 Page states are `pending`, `evidence_ready`, `generated`, or `failed`. Retrying a failed page does not reset successful pages. A source fingerprint change marks affected evidence and pages stale without deleting their previous content.
+
+`wiki status` exposes these states without returning generated bodies. Its next actions are `collect_evidence`, `generate_page`, `complete`, and `retry`, respectively, so a non-interactive caller can resume work deterministically.
 
 Valid page transitions are explicit:
 

@@ -12,6 +12,7 @@ from repo_dive.commands import Command, CommandOutput
 from repo_dive.commands.context import CONTEXT_COMMAND
 from repo_dive.commands.index import INDEX_COMMAND
 from repo_dive.commands.search import SEARCH_COMMAND
+from repo_dive.commands.wiki import WIKI_COMMAND
 from repo_dive.errors import (
     ExitCode,
     InternalOperationError,
@@ -25,7 +26,12 @@ from repo_dive.schema import (
     serialize_json_document,
 )
 
-COMMANDS: tuple[Command, ...] = (INDEX_COMMAND, SEARCH_COMMAND, CONTEXT_COMMAND)
+COMMANDS: tuple[Command, ...] = (
+    INDEX_COMMAND,
+    SEARCH_COMMAND,
+    CONTEXT_COMMAND,
+    WIKI_COMMAND,
+)
 
 
 class RepoDiveArgumentParser(argparse.ArgumentParser):

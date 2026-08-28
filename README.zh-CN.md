@@ -14,9 +14,10 @@
 - Python AST 与 Tree-sitter 解析，以及稳定的 Chunk、符号和关系；
 - 原子发布的本地 SQLite 索引、BM25 与结构检索；
 - 支持 JSON 或 Markdown 的只读 `search` 和 Token 预算 `context` 命令；
+- 带原子 JSON 状态的可恢复 `wiki structure` 和 `wiki status` 命令；
 - 稳定的进程、Schema、评测及本地/CI Harness 契约。
 
-可选向量检索以及 Wiki 状态持久化/汇总仍属于后续计划。
+可选向量检索以及 Wiki 证据、页面与汇总命令仍属于后续计划。
 
 ## 设计哲学
 
@@ -74,6 +75,8 @@ make test-all
 .venv/bin/repo-dive index /path/to/repository --format json
 .venv/bin/repo-dive search /path/to/repository "entrypoint" --max-results 10 --format json
 .venv/bin/repo-dive context /path/to/repository "architecture" --token-budget 1200 --format json
+.venv/bin/repo-dive wiki structure /path/to/repository --input structure.json --format json
+.venv/bin/repo-dive wiki status /path/to/repository --format json
 ```
 
 支持的工作流与公开契约参见[开发指南](docs/zh-CN/development.md)和 [CLI 契约](docs/zh-CN/cli-contract.md)。

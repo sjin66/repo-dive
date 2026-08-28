@@ -526,13 +526,13 @@
 **Description:** 实现 `wiki structure` 和 `wiki status`，让调用方提交带稳定 Page ID 的章节/页面结构并查询可恢复状态。
 
 **Acceptance criteria:**
-- [ ] 结构输入校验标题、唯一 ID、有序章节、页面描述和仓库内相关文件。
-- [ ] 未知文件路径和重复 Page ID 被拒绝，CLI 不自动修正或虚构页面。
-- [ ] 重提相同结构幂等；结构改变只把受影响页面标记为 pending/stale。
+- [x] 结构输入校验标题、唯一 ID、有序章节、页面描述和仓库内相关文件。
+- [x] 未知文件路径和重复 Page ID 被拒绝，CLI 不自动修正或虚构页面。
+- [x] 重提相同结构幂等；结构改变只把受影响页面标记为 pending/stale。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/integration/test_wiki_structure.py -q`
-- [ ] Manual check: `wiki status` 能显示每种页面状态和下一步动作。
+- [x] Tests pass: `.venv/bin/python -m pytest tests/integration/test_wiki_structure.py -q`
+- [x] Manual check: `wiki status` 的 JSON/Markdown 输出能显示每种页面状态和下一步动作。
 
 **Dependencies:** Task 21
 

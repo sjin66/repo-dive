@@ -62,6 +62,15 @@ CLI 解析支持的源文件，创建与符号边界对齐的 Chunk，并建立�
 
 CLI 校验引用，并把接受的结构持久化到 `wiki.json`。它不能自行虚构缺失页面，也不能静默修复未知文件路径。
 
+当前可用的命令边界是：
+
+```text
+repo-dive wiki structure <repository> --input structure.json --format json|markdown
+repo-dive wiki status <repository> --format json|markdown
+```
+
+结构提交是无状态输入：调用方只提供标题、描述、输出语言、有序 Section/Page ID、页面关系和相关文件提示。持久化生命周期字段由 CLI 管理。重复提交相同结构不会写文件；页面结构改变时，该页重置为 `pending`；未受影响的稳定 Page ID 保留证据与生成状态，包括只重新排序或移动到其他 Section 的情况。
+
 ## 阶段 4：RAG 页面证据
 
 Agent 针对每个页面，使用页面主题和相关文件提示请求证据。RAG 检索流水线查询结构、BM25 和可选向量通道，融合候选项，移除重复或重叠 Chunk，按需扩展符号关系，然后应用明确的上下文预算。
@@ -99,6 +108,8 @@ uninitialized -> inventoried -> indexed -> structured -> retrieving -> generatin
 ```
 
 页面状态是 `pending`、`evidence_ready`、`generated` 或 `failed`。重试失败页面不会重置成功页面。源码指纹变化会把受影响证据和页面标记为过期，但不删除旧内容。
+
+`wiki status` 在不返回已生成正文的前提下暴露这些状态。对应下一步动作依次为 `collect_evidence`、`generate_page`、`complete` 和 `retry`，使非交互调用方能够确定性地恢复流程。
 
 合法页面转换是显式的：
 

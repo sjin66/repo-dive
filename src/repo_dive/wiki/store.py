@@ -32,6 +32,14 @@ class WikiStore:
     def __init__(self, repository: str | Path) -> None:
         self.repository = resolve_repository(repository)
 
+    def has_wiki(self) -> bool:
+        """Return whether a Wiki state path currently exists."""
+        return self._exists(WIKI_PATH)
+
+    def has_metadata(self) -> bool:
+        """Return whether a Wiki metadata path currently exists."""
+        return self._exists(METADATA_PATH)
+
     def read_wiki(self) -> Wiki:
         """Read Wiki state without repairing or rewriting invalid bytes."""
         return self._read(
@@ -102,6 +110,10 @@ class WikiStore:
             return decoder(document)
         except (KeyError, TypeError, ValueError) as error:
             raise RepositoryError(invalid_code, invalid_message) from error
+
+    def _exists(self, relative_path: str) -> bool:
+        path = resolve_within_repository(self.repository, relative_path)
+        return path.exists()
 
 
 def _object(value: object) -> JsonObject:
