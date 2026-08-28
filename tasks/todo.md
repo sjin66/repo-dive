@@ -231,13 +231,13 @@
 **Description:** 建立内部索引数据库、版本迁移拒绝策略和类型化读写 Store。
 
 **Acceptance criteria:**
-- [ ] Schema 包含 files、chunks、symbols、relationships、terms、postings、stats 和 vectors 表。
-- [ ] 外键、唯一键和事务保证不存在悬空 Symbol/Relationship/Posting。
-- [ ] 未知内部 Schema 版本被明确拒绝，不尝试猜测迁移。
+- [x] Schema 包含 files、chunks、symbols、relationships、terms、postings、stats 和 vectors 表。
+- [x] 外键、唯一键和事务保证不存在悬空 Symbol/Relationship/Posting。
+- [x] 未知内部 Schema 版本被明确拒绝，不尝试猜测迁移。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/indexing/test_store.py -q`
-- [ ] Integrity check: 测试执行 `PRAGMA foreign_key_check` 和 `PRAGMA integrity_check`。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/indexing/test_store.py -q`
+- [x] Integrity check: 测试执行 `PRAGMA foreign_key_check` 和 `PRAGMA integrity_check`。
 
 **Dependencies:** Tasks 4、7
 
