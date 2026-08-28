@@ -31,7 +31,6 @@ from repo_dive.wiki.models import (
 from repo_dive.wiki.store import WIKI_MARKDOWN_PATH, WikiStore
 from repo_dive.wiki.submission import PageSubmission, validate_submission_content
 from repo_dive.wiki.validation import (
-    stale_page_ids,
     stale_page_ids_for_index,
     validate_page_evidence,
 )
@@ -431,9 +430,7 @@ class WikiService:
     def build_wiki(self) -> WikiBuildUpdate:
         """Validate all page Evidence, assemble, and atomically publish Markdown."""
         state = self.read_state()
-        pages = tuple(
-            page for section in state.wiki.sections for page in section.pages
-        )
+        pages = tuple(page for section in state.wiki.sections for page in section.pages)
         incomplete = tuple(
             page.id for page in pages if page.status is not PageStatus.GENERATED
         )
@@ -444,9 +441,7 @@ class WikiService:
                 details={"page_ids": list(incomplete)},
             )
         invalid = tuple(
-            page.id
-            for page in pages
-            if page.body is None or not page.citation_ids
+            page.id for page in pages if page.body is None or not page.citation_ids
         )
         if invalid:
             raise RepositoryError(
@@ -454,7 +449,8 @@ class WikiService:
                 "Generated Wiki pages are missing body or citation data.",
                 details={"page_ids": list(invalid)},
             )
-        stale = stale_page_ids(self._store.repository, state.wiki)
+        published = load_published_index(self._store.repository)
+        stale = stale_page_ids_for_index(published, state.wiki)
         if stale:
             raise RepositoryError(
                 "wiki_evidence_stale",
@@ -463,6 +459,12 @@ class WikiService:
             )
 
         markdown = assemble_wiki(state.wiki)
+        current = load_published_index(self._store.repository)
+        if current.manifest.build_id != published.manifest.build_id:
+            raise RepositoryError(
+                "index_changed_during_operation",
+                "Repository index changed while Wiki Markdown was being assembled.",
+            )
         _, changed = self._store.write_markdown(markdown)
         return WikiBuildUpdate(
             changed=changed,

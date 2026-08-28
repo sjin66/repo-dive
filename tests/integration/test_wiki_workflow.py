@@ -3,12 +3,14 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from repo_dive.cli import main
+from repo_dive.indexing.service import load_published_index
 from repo_dive.wiki.models import Page
 from repo_dive.wiki.store import WikiStore
 
@@ -204,10 +206,7 @@ def test_complete_wiki_workflow_builds_stable_markdown_and_markdown_stdout(
 
     assert repeated["result"]["changed"] is False
     assert artifact.read_bytes() == first_bytes
-    assert (
-        main(["wiki", "build", str(repository), "--format", "markdown"])
-        == 0
-    )
+    assert main(["wiki", "build", str(repository), "--format", "markdown"]) == 0
     captured = capsys.readouterr()
     assert captured.err == ""
     assert captured.out == markdown
@@ -225,10 +224,7 @@ def test_wiki_build_rejects_incomplete_pages_and_preserves_previous_artifact(
     artifact = repository / ".repo-dive/wiki.md"
     artifact.write_bytes(b"previous wiki\n")
 
-    assert (
-        main(["wiki", "build", str(repository), "--format", "json"])
-        == 3
-    )
+    assert main(["wiki", "build", str(repository), "--format", "json"]) == 3
 
     error = result_document(capsys.readouterr().out)["error"]
     assert error["code"] == "wiki_build_incomplete"
@@ -253,10 +249,7 @@ def test_wiki_build_rejects_stale_evidence_and_preserves_current_markdown(
     )
     run_json(capsys, ["index", str(repository)])
 
-    assert (
-        main(["wiki", "build", str(repository), "--format", "json"])
-        == 3
-    )
+    assert main(["wiki", "build", str(repository), "--format", "json"]) == 3
 
     error = result_document(capsys.readouterr().out)["error"]
     assert error["code"] == "wiki_evidence_stale"
@@ -280,12 +273,38 @@ def test_wiki_build_atomic_replace_failure_preserves_previous_markdown(
 
     monkeypatch.setattr("repo_dive.storage.atomic.os.replace", fail_replace)
 
-    assert (
-        main(["wiki", "build", str(repository), "--format", "json"])
-        == 4
-    )
+    assert main(["wiki", "build", str(repository), "--format", "json"]) == 4
 
     error = result_document(capsys.readouterr().out)["error"]
     assert error["code"] == "atomic_write_failed"
     assert artifact.read_bytes() == b"previous wiki\n"
     assert list(artifact.parent.glob(".wiki.md.*.tmp")) == []
+
+
+def test_wiki_build_rejects_index_change_between_validation_and_publish(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = copy_fixture(tmp_path)
+    initialize_wiki(repository, tmp_path, capsys)
+    generate_all_pages(repository, tmp_path, capsys)
+    run_json(capsys, ["wiki", "build", str(repository)])
+    artifact = repository / ".repo-dive/wiki.md"
+    current = artifact.read_bytes()
+    published = load_published_index(repository)
+    changed = replace(
+        published,
+        manifest=replace(published.manifest, build_id="concurrent-build"),
+    )
+    snapshots = iter((published, changed))
+    monkeypatch.setattr(
+        "repo_dive.wiki.service.load_published_index",
+        lambda repository_path: next(snapshots),
+    )
+
+    assert main(["wiki", "build", str(repository), "--format", "json"]) == 3
+
+    error = result_document(capsys.readouterr().out)["error"]
+    assert error["code"] == "index_changed_during_operation"
+    assert artifact.read_bytes() == current
