@@ -146,7 +146,7 @@ Both READMEs must describe the Copilot-calls-CLI model, current foundation statu
 
 - `architecture.md`: planned package boundaries and dependency rules.
 - `cli-contract.md`: stdout/stderr, JSON, exit codes, non-interactive execution, and path/line conventions.
-- `wiki-workflow.md`: DeepWiki-compatible structure/page/assembly workflow mediated by the calling agent.
+- `wiki-workflow.md`: evidence-first structure, page-context, page-generation, persistence, and assembly workflow mediated by the calling agent.
 - `development.md`: environment setup, Make targets, tests, documentation synchronization, and contribution checks.
 
 - [ ] **Step 5: Run documentation and CLI tests**
@@ -290,4 +290,3 @@ git commit -m "chore: align foundation acceptance contracts"
 ```
 
 If no corrections were required, do not create an empty commit.
-

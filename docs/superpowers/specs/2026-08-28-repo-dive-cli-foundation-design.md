@@ -14,9 +14,21 @@ Create a new, independent, pure-Python project named `repo-dive`. Its first deli
 
 The CLI must not silently invoke a generative model. A future explicit provider adapter may be added as an optional subsystem, but it is outside this foundation.
 
-## DeepWiki-Compatible Wiki Workflow
+## Design Philosophy
 
-The future wiki workflow preserves the useful orchestration shape of deepwiki-open:
+The project follows seven design principles:
+
+1. **Deterministic core, probabilistic edge.** Repository traversal, parsing, indexing, retrieval, budgeting, persistence, and assembly belong to the CLI. Interpretation and prose generation belong to the calling agent.
+2. **Evidence before narrative.** Every generated claim should be traceable to repository-relative paths, symbols, and one-based line ranges. Retrieval results are first-class artifacts rather than hidden prompt fragments.
+3. **Explicit staged artifacts.** Structure planning, page context, page content, and final assembly are separate steps with inspectable intermediate state. A failed run can resume without repeating completed work.
+4. **Stable contracts over conversational conventions.** Commands expose versioned JSON schemas, defined exit codes, isolated stdout/stderr behavior, and stable on-disk paths so agents can automate the CLI reliably.
+5. **Local-first ownership.** Analysis runs against the local repository, and generated knowledge stays with that repository under `.repo-dive/`. Network-backed embeddings or providers must remain explicit and optional.
+6. **Replaceable retrieval components.** Parsing, lexical search, vector search, ranking, and context assembly communicate through narrow interfaces so one strategy can evolve without rewriting the workflow.
+7. **One harness for humans, agents, and CI.** The same documented commands set up, check, and test the project in every environment.
+
+## Wiki Workflow
+
+The future wiki workflow applies those principles through an evidence-first pipeline:
 
 1. Scan the repository tree and read the README.
 2. Produce a wiki structure containing pages and relevant source files.
@@ -25,7 +37,7 @@ The future wiki workflow preserves the useful orchestration shape of deepwiki-op
 5. Persist the intermediate structure and page content.
 6. Assemble a table of contents, related-page links, and page bodies into one Markdown document.
 
-Unlike deepwiki-open, the target repository owns the generated artifacts. The stable output contract is:
+The target repository owns the generated artifacts. The stable output contract is:
 
 ```text
 <repository>/.repo-dive/
@@ -115,4 +127,3 @@ The first implementation creates:
 - No repository cloning in the foundation.
 - No Tree-sitter, embedding, FAISS, or BM25 dependency in the foundation.
 - No automatic modification of an analyzed repository's `.gitignore`.
-
