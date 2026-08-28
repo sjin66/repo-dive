@@ -198,13 +198,13 @@
 **Description:** 增加延迟加载的 Tree-sitter 适配器和语言注册表，将 Python AST、Tree-sitter 和文本回退组合成单一解析流水线。
 
 **Acceptance criteria:**
-- [ ] JS/TS/TSX 至少有一个完整 Symbol/Chunk Fixture；Grammar 缺失时回退并报告 warning。
-- [ ] Tree-sitter 依赖版本范围固定且 Python 3.11–3.13 可安装。
-- [ ] 统一 Pipeline 按路径选择适配器，规范化/拆分超大 Chunk，并稳定输出有序结果。
+- [x] JS/TS/TSX 至少有一个完整 Symbol/Chunk Fixture；Grammar 缺失时回退并报告 warning。
+- [x] Tree-sitter 依赖版本范围固定且 Python 3.11–3.13 可安装。
+- [x] 统一 Pipeline 按路径选择适配器，规范化/拆分超大 Chunk，并稳定输出有序结果。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/parsing/test_tree_sitter.py tests/unit/parsing/test_pipeline.py -q`
-- [ ] Packaging check: `make setup` 可从空环境安装 Parser 依赖。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/parsing/test_tree_sitter.py tests/unit/parsing/test_pipeline.py -q`
+- [x] Packaging check: `make setup` 可从空环境安装 Parser 依赖。
 
 **Dependencies:** Tasks 7–8
 
@@ -219,10 +219,10 @@
 
 ## Checkpoint B：摄取与解析
 
-- [ ] `make check`
-- [ ] `make test-all`
-- [ ] 同一 Fixture 重跑得到相同 File/Chunk/Symbol/Relationship ID。
-- [ ] 解析错误只影响对应文件，并产生结构化 warning。
+- [x] `make check`
+- [x] `make test-all`
+- [x] 同一 Fixture 重跑得到相同 File/Chunk/Symbol/Relationship ID。
+- [x] 解析错误只影响对应文件，并产生结构化 warning。
 
 ## Phase 3：持久化索引与 `index`
 

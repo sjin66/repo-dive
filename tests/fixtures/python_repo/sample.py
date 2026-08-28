@@ -16,12 +16,12 @@ class Service(Base):
         return value
 
     class Nested:
-        async def execute(self):
+        async def execute(self) -> str:
             return os.getcwd()
 
 
 def helper(value: int) -> int:
     def inner() -> int:
-        return dd(list)
+        return len(dd(list))
 
     return inner()
