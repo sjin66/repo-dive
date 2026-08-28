@@ -8,6 +8,10 @@ from repo_dive.retrieval.fusion import (
     fuse_hits,
 )
 from repo_dive.retrieval.lexical import LexicalHit, search_lexical
+from repo_dive.retrieval.service import (
+    RepositorySearchResult,
+    search_repository,
+)
 from repo_dive.retrieval.structural import StructuralHit, search_structural
 
 __all__ = [
@@ -15,9 +19,11 @@ __all__ = [
     "FusionParameters",
     "FusionResult",
     "LexicalHit",
+    "RepositorySearchResult",
     "SearchHit",
     "StructuralHit",
     "fuse_hits",
     "search_lexical",
+    "search_repository",
     "search_structural",
 ]

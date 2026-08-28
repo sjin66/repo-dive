@@ -6,30 +6,24 @@ import argparse
 import json
 
 from repo_dive.commands import Command, CommandOutput, OutputFormat
-from repo_dive.errors import RepositoryError
-from repo_dive.indexing.graph import SymbolGraph
-from repo_dive.indexing.service import load_published_index
-from repo_dive.indexing.store import IndexStore
+from repo_dive.commands.retrieval_arguments import query_value, result_limit
 from repo_dive.parsing.models import Symbol
-from repo_dive.retrieval.fusion import FusionResult, SearchHit, fuse_hits
-from repo_dive.retrieval.lexical import search_lexical
-from repo_dive.retrieval.structural import search_structural
+from repo_dive.retrieval.fusion import FusionResult, SearchHit
+from repo_dive.retrieval.service import (
+    DEFAULT_MAX_RESULTS,
+    MAX_RESULTS,
+    search_repository,
+)
 from repo_dive.schema import JsonObject
-
-DEFAULT_MAX_RESULTS = 10
-MAX_RESULTS = 50
-MAX_QUERY_LENGTH = 1_000
-CANDIDATE_MULTIPLIER = 4
-MAX_CANDIDATES = MAX_RESULTS * CANDIDATE_MULTIPLIER
 
 
 def configure(parser: argparse.ArgumentParser) -> None:
     """Configure bounded, non-interactive search arguments."""
     parser.add_argument("repository", help="local repository directory")
-    parser.add_argument("query", type=_query, help="code or symbol search query")
+    parser.add_argument("query", type=query_value, help="code or symbol search query")
     parser.add_argument(
         "--max-results",
-        type=_result_limit,
+        type=result_limit,
         default=DEFAULT_MAX_RESULTS,
         metavar="COUNT",
         help=f"maximum returned hits, from 1 to {MAX_RESULTS}",
@@ -44,53 +38,20 @@ def configure(parser: argparse.ArgumentParser) -> None:
 
 def handle(args: argparse.Namespace) -> CommandOutput:
     """Query a validated current index without changing repository artifacts."""
-    published = load_published_index(args.repository)
-    candidate_limit = min(args.max_results * CANDIDATE_MULTIPLIER, MAX_CANDIDATES)
-
-    with IndexStore.open_readonly(published.database) as store:
-        chunks = store.get_chunks()
-        bm25_index = store.get_bm25_index()
-        if bm25_index is None:
-            raise RepositoryError(
-                "index_incomplete",
-                "Repository index does not contain lexical search data.",
-                details={"build_id": published.manifest.build_id},
-            )
-        lexical_hits = search_lexical(
-            args.query,
-            index=bm25_index,
-            chunks=chunks,
-            max_results=candidate_limit,
-        )
-        structural_hits = search_structural(
-            args.query,
-            graph=SymbolGraph(store),
-            chunks=chunks,
-            max_results=candidate_limit,
-            max_nodes=MAX_CANDIDATES,
-            max_edges=MAX_CANDIDATES * 4,
-        )
-        fused = fuse_hits(
-            lexical_hits=lexical_hits,
-            structural_hits=structural_hits,
-            max_results=args.max_results,
-        )
-        symbol_ids = tuple(
-            dict.fromkeys(
-                hit.chunk.symbol_id
-                for hit in fused.hits
-                if hit.chunk.symbol_id is not None
-            )
-        )
-        symbols = {symbol.id: symbol for symbol in store.get_symbols_by_id(symbol_ids)}
+    retrieved = search_repository(
+        args.repository,
+        args.query,
+        max_results=args.max_results,
+    )
+    symbols = {symbol.id: symbol for symbol in retrieved.symbols}
 
     output_format: OutputFormat = args.format
     output = (
-        _markdown_result(args.query, fused, symbols=symbols)
+        _markdown_result(args.query, retrieved.fusion, symbols=symbols)
         if output_format == "markdown"
         else _json_result(
             args.query,
-            fused,
+            retrieved.fusion,
             max_results=args.max_results,
             symbols=symbols,
         )
@@ -99,29 +60,8 @@ def handle(args: argparse.Namespace) -> CommandOutput:
         command="search",
         format=output_format,
         result=output,
-        repository=str(published.repository),
+        repository=str(retrieved.repository),
     )
-
-
-def _query(value: str) -> str:
-    query = value.strip()
-    if not query:
-        raise argparse.ArgumentTypeError("query must not be empty")
-    if len(query) > MAX_QUERY_LENGTH:
-        raise argparse.ArgumentTypeError(
-            f"query must not exceed {MAX_QUERY_LENGTH} characters"
-        )
-    return query
-
-
-def _result_limit(value: str) -> int:
-    try:
-        parsed = int(value)
-    except ValueError as error:
-        raise argparse.ArgumentTypeError("value must be an integer") from error
-    if not 1 <= parsed <= MAX_RESULTS:
-        raise argparse.ArgumentTypeError(f"value must be from 1 to {MAX_RESULTS}")
-    return parsed
 
 
 def _json_result(
