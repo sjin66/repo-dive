@@ -19,6 +19,44 @@ CLI_CONTRACT_PATHS = (
     Path("docs/en/cli-contract.md"),
     Path("docs/zh-CN/cli-contract.md"),
 )
+TECHNICAL_DOCUMENTS = {
+    "architecture.md": {
+        "literals": (
+            "commands/",
+            "providers/",
+            "storage/",
+            "evaluation/",
+            ".repo-dive/index-generations/<build-id>/index.sqlite3",
+            ".repo-dive/index -> index-generations/<build-id>",
+            "PRAGMA user_version = 4",
+            "weighted_rrf",
+            "strict",
+            "degraded",
+        ),
+        "sections": ("packages", "index-storage", "rag-boundary"),
+    },
+    "wiki-workflow.md": {
+        "literals": (
+            "structure -> evidence -> page -> build -> status",
+            "pending -> evidence_ready",
+            "evidence_ready -> generated",
+            "evidence_ready -> failed",
+            "evidence_ready -> pending",
+            "generated -> failed",
+            "generated -> pending",
+            "failed -> pending",
+            "collect_evidence",
+            "generate_page",
+            "complete",
+            "retry",
+            "wiki_evidence_stale",
+            ".repo-dive/wiki.json",
+            ".repo-dive/metadata.json",
+            ".repo-dive/wiki.md",
+        ),
+        "sections": ("commands", "page-state", "single-page-recovery"),
+    },
+}
 CONTRACT_EXAMPLE_MARKERS = (
     "index-success",
     "search-success",
@@ -80,6 +118,26 @@ def validate_repository_contract(root: Path) -> list[str]:
         errors.append(f"docs/zh-CN/{filename} is missing for docs/en/{filename}")
     for filename in sorted(chinese_files - english_files):
         errors.append(f"docs/en/{filename} is missing for docs/zh-CN/{filename}")
+
+    for language in ("en", "zh-CN"):
+        for filename, requirements in TECHNICAL_DOCUMENTS.items():
+            relative_path = Path("docs") / language / filename
+            path = root / relative_path
+            if not path.is_file():
+                continue
+            content = path.read_text(encoding="utf-8")
+            for literal in requirements["literals"]:
+                if literal not in content:
+                    errors.append(
+                        f"{relative_path.as_posix()} is missing required technical "
+                        f"literal: {literal}"
+                    )
+            for marker in requirements["sections"]:
+                if f"<!-- contract-section:{marker} -->" not in content:
+                    errors.append(
+                        f"{relative_path.as_posix()} is missing contract section "
+                        f"marker: {marker}"
+                    )
 
     for relative_path in CLI_CONTRACT_PATHS:
         path = root / relative_path

@@ -801,13 +801,13 @@
 **Description:** 更新中英双语架构与 Wiki 工作流，使模块、Schema、状态机、向量边界和恢复语义与真实实现一致。
 
 **Acceptance criteria:**
-- [ ] 架构文档列出的包、依赖方向、SQLite/BM25/结构/Vector 行为与源码一致。
-- [ ] Wiki 文档完整描述 `structure -> evidence -> page -> build -> status` 和单页恢复流程。
-- [ ] 中英文对应文件拥有等价标题、命令、状态、字段和技术常量。
+- [x] 架构文档列出的包、依赖方向、SQLite/BM25/结构/Vector 行为与源码一致。
+- [x] Wiki 文档完整描述 `structure -> evidence -> page -> build -> status` 和单页恢复流程。
+- [x] 中英文对应文件拥有等价标题、命令、状态、字段和技术常量。
 
 **Verification:**
-- [ ] Contract check: `.venv/bin/python scripts/check_repo_contract.py`
-- [ ] Example check: Wiki 文档中的命令示例能在 Fixture 仓库上执行或通过 `--help` 验证。
+- [x] Contract check: `.venv/bin/python scripts/check_repo_contract.py`
+- [x] Example check: Wiki 文档中的命令示例能在 Fixture 仓库上执行或通过 `--help` 验证。
 
 **Dependencies:** Task 32
 

@@ -29,6 +29,43 @@ AGENT_WORKFLOW = (
     "MCP is not required",
 )
 
+ARCHITECTURE_LITERALS = (
+    "commands/",
+    "providers/",
+    "storage/",
+    "evaluation/",
+    ".repo-dive/index-generations/<build-id>/index.sqlite3",
+    ".repo-dive/index -> index-generations/<build-id>",
+    "PRAGMA user_version = 4",
+    "weighted_rrf",
+    "strict",
+    "degraded",
+)
+
+WIKI_WORKFLOW_LITERALS = (
+    "structure -> evidence -> page -> build -> status",
+    "pending -> evidence_ready",
+    "evidence_ready -> generated",
+    "evidence_ready -> failed",
+    "evidence_ready -> pending",
+    "generated -> failed",
+    "generated -> pending",
+    "failed -> pending",
+    "collect_evidence",
+    "generate_page",
+    "complete",
+    "retry",
+    "wiki_evidence_stale",
+    ".repo-dive/wiki.json",
+    ".repo-dive/metadata.json",
+    ".repo-dive/wiki.md",
+)
+
+DOCUMENT_SECTION_MARKERS = {
+    "architecture.md": ("packages", "index-storage", "rag-boundary"),
+    "wiki-workflow.md": ("commands", "page-state", "single-page-recovery"),
+}
+
 
 def _write(path: Path, content: str = "# Contract\n") -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -47,6 +84,16 @@ def _create_valid_contract(root: Path) -> None:
                 f"<!-- contract-example:{marker} -->" for marker in EXAMPLE_MARKERS
             )
             content += '\n```json\n{"schema_version":"1.0"}\n```\n'
+        elif filename == "architecture.md":
+            content += "\n".join(ARCHITECTURE_LITERALS) + "\n"
+        elif filename == "wiki-workflow.md":
+            content += "\n".join(WIKI_WORKFLOW_LITERALS) + "\n"
+        if filename in DOCUMENT_SECTION_MARKERS:
+            content += "\n".join(
+                f"<!-- contract-section:{marker} -->"
+                for marker in DOCUMENT_SECTION_MARKERS[filename]
+            )
+            content += "\n"
         _write(root / "docs/en" / filename, content)
         _write(root / "docs/zh-CN" / filename, content)
 
@@ -157,4 +204,59 @@ def test_bilingual_readmes_require_identical_cli_command_lines(tmp_path: Path) -
 
     assert validate_repository_contract(tmp_path) == [
         "bilingual README CLI command lines differ"
+    ]
+
+
+def test_architecture_requires_runtime_package_and_index_contracts(
+    tmp_path: Path,
+) -> None:
+    _create_valid_contract(tmp_path)
+    architecture = tmp_path / "docs/en/architecture.md"
+    architecture.write_text(
+        architecture.read_text(encoding="utf-8").replace(
+            ".repo-dive/index -> index-generations/<build-id>",
+            "",
+        ),
+        encoding="utf-8",
+    )
+
+    assert validate_repository_contract(tmp_path) == [
+        "docs/en/architecture.md is missing required technical literal: "
+        ".repo-dive/index -> index-generations/<build-id>"
+    ]
+
+
+def test_wiki_workflow_requires_page_recovery_contract(tmp_path: Path) -> None:
+    _create_valid_contract(tmp_path)
+    workflow = tmp_path / "docs/zh-CN/wiki-workflow.md"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8").replace(
+            "failed -> pending",
+            "",
+        ),
+        encoding="utf-8",
+    )
+
+    assert validate_repository_contract(tmp_path) == [
+        "docs/zh-CN/wiki-workflow.md is missing required technical literal: "
+        "failed -> pending"
+    ]
+
+
+def test_architecture_and_wiki_docs_require_shared_section_markers(
+    tmp_path: Path,
+) -> None:
+    _create_valid_contract(tmp_path)
+    workflow = tmp_path / "docs/en/wiki-workflow.md"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8").replace(
+            "<!-- contract-section:single-page-recovery -->",
+            "",
+        ),
+        encoding="utf-8",
+    )
+
+    assert validate_repository_contract(tmp_path) == [
+        "docs/en/wiki-workflow.md is missing contract section marker: "
+        "single-page-recovery"
     ]
