@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -187,6 +188,34 @@ def test_build_parameter_change_forces_full_reparse(tmp_path: Path) -> None:
     assert second.reused_files == 0
     assert second.rebuilt_files == 3
     assert set(parser.calls) == {"README.md", "src/app.py", "src/utils.py"}
+
+
+def test_index_schema_change_forces_full_rebuild_without_opening_old_store(
+    tmp_path: Path,
+) -> None:
+    repository = copy_fixture(tmp_path)
+    service = IndexService()
+    first = service.build(repository)
+    index = repository / ".repo-dive" / "index"
+    manifest_path = index / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["parameters"]["index_schema_version"] = 3
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    connection = sqlite3.connect(index / "index.sqlite3")
+    try:
+        connection.execute("PRAGMA user_version = 3")
+    finally:
+        connection.close()
+    parser = RecordingParser()
+
+    second = service.build(repository, parser=parser)
+
+    assert second.build_id != first.build_id
+    assert second.reused_files == 0
+    assert second.rebuilt_files == 3
+    assert set(parser.calls) == {"README.md", "src/app.py", "src/utils.py"}
+    with IndexStore.open(index / "index.sqlite3") as store:
+        assert store.schema_version == 4
 
 
 def test_build_failure_preserves_old_generation_and_returns_safe_stage(

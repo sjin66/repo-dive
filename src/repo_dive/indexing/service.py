@@ -23,7 +23,7 @@ from repo_dive.indexing.manifest import (
     read_manifest,
     write_manifest,
 )
-from repo_dive.indexing.store import IndexStore
+from repo_dive.indexing.store import INDEX_SCHEMA_VERSION, IndexStore
 from repo_dive.parsing.models import Chunk, ParseDiagnostic, ParseResult
 from repo_dive.parsing.pipeline import ParsingPipeline
 from repo_dive.scanner.models import Inventory, ReadStatus, SourceFile
@@ -102,7 +102,7 @@ class IndexService:
                 exclude=parameters.exclude,
                 max_file_size=parameters.max_file_size,
             )
-            current = _load_current_index(root)
+            current = _load_current_index(root, allow_schema_upgrade=True)
             if (
                 current is not None
                 and current.manifest.parameters == parameters
@@ -344,7 +344,11 @@ def _prepare_generations_directory(root: Path) -> Path:
     return resolve_within_repository(root, GENERATIONS_DIRECTORY, must_exist=True)
 
 
-def _load_current_index(root: Path) -> _CurrentIndex | None:
+def _load_current_index(
+    root: Path,
+    *,
+    allow_schema_upgrade: bool = False,
+) -> _CurrentIndex | None:
     pointer = root / INDEX_DIRECTORY
     if not os.path.lexists(pointer):
         return None
@@ -372,6 +376,11 @@ def _load_current_index(root: Path) -> _CurrentIndex | None:
         )
     manifest = read_manifest(generation / MANIFEST_NAME)
     _validate_metadata(generation / METADATA_NAME, manifest)
+    if (
+        allow_schema_upgrade
+        and manifest.parameters.index_schema_version != INDEX_SCHEMA_VERSION
+    ):
+        return _CurrentIndex(manifest=manifest, generation=generation)
     with IndexStore.open_readonly(generation / DATABASE_NAME) as store:
         if store.foreign_key_violations() or store.integrity_check() != ("ok",):
             raise RepositoryError(
