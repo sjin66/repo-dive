@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import Any
+
+from repo_dive.schema import JsonObject
 
 
 class ExitCode(IntEnum):
@@ -25,7 +26,7 @@ class RepoDiveError(Exception):
         code: str,
         message: str,
         *,
-        details: dict[str, Any] | None = None,
+        details: JsonObject | None = None,
     ) -> None:
         super().__init__(message)
         self.code = code
