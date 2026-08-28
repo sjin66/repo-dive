@@ -491,10 +491,10 @@
 
 ## Checkpoint E：可调用离线 RAG
 
-- [ ] `make check`
-- [ ] `make test-all`
-- [ ] `index -> search -> context` 端到端 Fixture 通过。
-- [ ] Agent 可以只读取 JSON Schema 完成证据消费，不依赖日志文案。
+- [x] `make check`
+- [x] `make test-all`
+- [x] `index -> search -> context` 端到端 Fixture 通过。
+- [x] Agent 可以只读取 JSON Schema 完成证据消费，不依赖日志文案。
 
 ## Phase 6：Wiki 状态机与 Markdown 汇总
 
@@ -503,13 +503,13 @@
 **Description:** 定义 Wiki/Section/Page/EvidenceRef/Metadata 对象和严格状态转换，使用原子 JSON Store 保存公开产物。
 
 **Acceptance criteria:**
-- [ ] 页面状态只允许 `pending`、`evidence_ready`、`generated`、`failed` 的合法转换。
-- [ ] `wiki.json` 与 `metadata.json` 带独立 Schema/索引版本，并拒绝未知必填字段缺失。
-- [ ] 读到损坏 JSON 时返回稳定错误，不覆盖损坏文件供诊断。
+- [x] 页面状态只允许 `pending`、`evidence_ready`、`generated`、`failed` 的合法转换。
+- [x] `wiki.json` 与 `metadata.json` 带独立 Schema/索引版本，并拒绝未知必填字段缺失。
+- [x] 读到损坏 JSON 时返回稳定错误，不覆盖损坏文件供诊断。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/wiki/test_models.py tests/unit/wiki/test_store.py -q`
-- [ ] Atomic check: 任一文件写入失败时现有公开产物保持完整。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/wiki/test_models.py tests/unit/wiki/test_store.py -q`
+- [x] Atomic check: 任一文件写入失败时现有公开产物保持完整。
 
 **Dependencies:** Tasks 1、4、20
 

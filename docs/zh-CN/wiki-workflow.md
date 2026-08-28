@@ -21,6 +21,19 @@ Wiki 工作流把本地仓库证据转换成一个稳定的 Markdown 文档，�
 
 只有 `wiki.md`、`wiki.json` 和 `metadata.json` 属于公开产物契约。调用方不能依赖 `index/` 内部文件。
 
+### 公开 JSON 状态
+
+`wiki.json` 使用独立的 `schema_version`，并保存 `title`、`description` 和有序 `sections`。每个 Section 包含稳定 `id`、`title` 和有序 `pages`。每个页面记录：
+
+- 稳定的 `id`、`title` 和 `description`；
+- `status`、`relevant_files` 和 `related_page_ids`；
+- 完整的 `evidence` 引用，包括 `evidence_id`、`chunk_id`、仓库相对 POSIX `path` 和首尾都包含的行号范围；
+- 可为空的已生成 `body` 和安全 `error` 摘要。
+
+`metadata.json` 拥有可独立演进的 `schema_version`。它记录规范化仓库身份与指纹、可选源码 Commit、输出语言、时间戳、`wiki_schema_version`、`index_schema_version` 和 `index_build_id`。
+
+读取方拒绝不支持的产物 Schema 版本，以及缺少必填字段或包含未知字段的文档。非法或损坏 JSON 保持原始字节不变，供后续诊断。每个公开 JSON 文件都先完整序列化再原子替换；替换失败时，该文件的旧字节保持不变。
+
 ## 阶段 1：仓库清单
 
 CLI 校验仓库根目录，应用包含/排除规则，扫描支持的文件，读取项目级文档，并记录确定性清单。隐藏的生成目录和 `.repo-dive/` 自身会被排除。
@@ -86,6 +99,15 @@ uninitialized -> inventoried -> indexed -> structured -> retrieving -> generatin
 ```
 
 页面状态是 `pending`、`evidence_ready`、`generated` 或 `failed`。重试失败页面不会重置成功页面。源码指纹变化会把受影响证据和页面标记为过期，但不删除旧内容。
+
+合法页面转换是显式的：
+
+- `pending -> evidence_ready | failed`；
+- `evidence_ready -> generated | failed | pending`；
+- `generated -> failed | pending`；
+- `failed -> pending`。
+
+回到 `pending` 表示重试或失效；在后续命令替换正文前，可以保留旧正文供诊断。所有自转换和跨越生命周期阶段的转换都会被拒绝。
 
 ## 重新生成
 

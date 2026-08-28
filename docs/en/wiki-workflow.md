@@ -21,6 +21,19 @@ The wiki workflow turns local repository evidence into one stable Markdown docum
 
 Only `wiki.md`, `wiki.json`, and `metadata.json` are public artifact contracts. Callers must not depend on files inside `index/`.
 
+### Public JSON state
+
+`wiki.json` uses its own `schema_version` and stores `title`, `description`, and ordered `sections`. Each section has a stable `id`, `title`, and ordered `pages`. Every page records:
+
+- stable `id`, `title`, and `description`;
+- `status`, `relevant_files`, and `related_page_ids`;
+- complete `evidence` references with `evidence_id`, `chunk_id`, repository-relative POSIX `path`, and an inclusive line range;
+- nullable generated `body` and safe `error` summary.
+
+`metadata.json` has an independently evolvable `schema_version`. It records the normalized repository identity and fingerprint, optional source Commit, output language, timestamps, `wiki_schema_version`, `index_schema_version`, and `index_build_id`.
+
+Readers reject unsupported artifact Schema versions and documents with missing required fields or unknown fields. Invalid or corrupt JSON is left byte-for-byte unchanged for diagnosis. Each public JSON file is serialized completely and replaced atomically; a failed replacement preserves that file's previous bytes.
+
 ## Stage 1: Repository Inventory
 
 The CLI validates the repository root, applies include/exclude rules, scans supported files, reads project-level documentation, and records a deterministic inventory. Hidden generated directories and `.repo-dive/` itself are excluded.
@@ -86,6 +99,15 @@ uninitialized -> inventoried -> indexed -> structured -> retrieving -> generatin
 ```
 
 Page states are `pending`, `evidence_ready`, `generated`, or `failed`. Retrying a failed page does not reset successful pages. A source fingerprint change marks affected evidence and pages stale without deleting their previous content.
+
+Valid page transitions are explicit:
+
+- `pending -> evidence_ready | failed`;
+- `evidence_ready -> generated | failed | pending`;
+- `generated -> failed | pending`;
+- `failed -> pending`.
+
+Returning to `pending` represents retry or invalidation and may preserve the previous body for diagnosis until a later command replaces it. All self-transitions and skipped lifecycle steps are rejected.
 
 ## Regeneration
 
