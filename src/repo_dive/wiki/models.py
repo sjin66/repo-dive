@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from enum import StrEnum
+from math import isfinite
 from pathlib import Path, PurePosixPath
 from typing import cast
 
@@ -33,6 +34,92 @@ _ALLOWED_TRANSITIONS: dict[PageStatus, frozenset[PageStatus]] = {
 
 
 @dataclass(frozen=True, slots=True)
+class RetrievalParameters:
+    """Persisted parameters needed to explain and reproduce evidence retrieval."""
+
+    max_results: int
+    strategy: str
+    rrf_k: int
+    channel_weights: tuple[tuple[str, float], ...]
+    overlap_threshold: float
+
+    def __post_init__(self) -> None:
+        if self.max_results <= 0 or self.rrf_k < 0:
+            raise ValueError("retrieval result limit and RRF k are invalid")
+        _require_text(self.strategy, "retrieval strategy")
+        names = tuple(name for name, _ in self.channel_weights)
+        _require_unique(names, "retrieval channel names")
+        if (
+            not names
+            or any(
+                not name or name.strip() != name or not isfinite(weight) or weight < 0.0
+                for name, weight in self.channel_weights
+            )
+            or not any(weight > 0.0 for _, weight in self.channel_weights)
+        ):
+            raise ValueError("retrieval channel weights are invalid")
+        if not isfinite(self.overlap_threshold) or not (
+            0.0 < self.overlap_threshold <= 1.0
+        ):
+            raise ValueError("retrieval overlap threshold is invalid")
+
+    def to_document(self) -> JsonObject:
+        return {
+            "channel_weights": dict(self.channel_weights),
+            "max_results": self.max_results,
+            "overlap_threshold": self.overlap_threshold,
+            "rrf_k": self.rrf_k,
+            "strategy": self.strategy,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceSnapshot:
+    """Audit metadata for one page-level evidence selection."""
+
+    query: str
+    repository_fingerprint: str
+    index_schema_version: int
+    index_build_id: str
+    token_budget: int
+    estimated_tokens: int
+    reserved_tokens: int
+    estimator: str
+    truncated: bool
+    retrieval: RetrievalParameters
+    generated_at: str
+
+    def __post_init__(self) -> None:
+        for value, label in (
+            (self.query, "evidence query"),
+            (self.repository_fingerprint, "evidence repository fingerprint"),
+            (self.index_build_id, "evidence index build ID"),
+            (self.estimator, "evidence estimator"),
+            (self.generated_at, "evidence generation timestamp"),
+        ):
+            _require_text(value, label)
+        if self.index_schema_version <= 0 or self.token_budget <= 0:
+            raise ValueError("evidence index version and budget must be positive")
+        if not 0 <= self.reserved_tokens <= self.estimated_tokens <= self.token_budget:
+            raise ValueError("evidence token accounting is invalid")
+
+    def to_document(self) -> JsonObject:
+        return {
+            "estimated_tokens": self.estimated_tokens,
+            "estimator": self.estimator,
+            "generated_at": self.generated_at,
+            "index_build_id": self.index_build_id,
+            "index_schema_version": self.index_schema_version,
+            "query": self.query,
+            "repository_fingerprint": self.repository_fingerprint,
+            "reserved_tokens": self.reserved_tokens,
+            "retrieval": self.retrieval.to_document(),
+            "token_budget": self.token_budget,
+            "truncated": self.truncated,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class EvidenceRef:
     """Stable reference from a Wiki page to complete repository evidence."""
 
@@ -41,6 +128,7 @@ class EvidenceRef:
     path: str
     start_line: int
     end_line: int
+    content_hash: str | None = None
 
     def __post_init__(self) -> None:
         _require_text(self.evidence_id, "evidence ID")
@@ -48,10 +136,13 @@ class EvidenceRef:
         _validate_repository_path(self.path)
         if self.start_line < 1 or self.end_line < self.start_line:
             raise ValueError("Evidence line range must be one-based and inclusive")
+        if self.content_hash is not None:
+            _require_text(self.content_hash, "Evidence content hash")
 
     def to_document(self) -> JsonObject:
         return {
             "chunk_id": self.chunk_id,
+            "content_hash": self.content_hash,
             "end_line": self.end_line,
             "evidence_id": self.evidence_id,
             "path": self.path,
@@ -70,6 +161,7 @@ class Page:
     relevant_files: tuple[str, ...] = ()
     related_page_ids: tuple[str, ...] = ()
     evidence: tuple[EvidenceRef, ...] = ()
+    evidence_snapshot: EvidenceSnapshot | None = None
     body: str | None = None
     error: str | None = None
 
@@ -87,6 +179,11 @@ class Page:
             raise ValueError("a page cannot relate to itself")
         evidence_ids = tuple(item.evidence_id for item in self.evidence)
         _require_unique(evidence_ids, "Evidence IDs")
+        if self.evidence_snapshot is not None and (
+            not self.evidence
+            or any(item.content_hash is None for item in self.evidence)
+        ):
+            raise ValueError("evidence snapshot requires hashed Evidence references")
         if self.body is not None and not self.body:
             raise ValueError("page body must not be empty when present")
         if self.error is not None:
@@ -112,6 +209,11 @@ class Page:
             "description": self.description,
             "error": self.error,
             "evidence": [item.to_document() for item in self.evidence],
+            "evidence_snapshot": (
+                self.evidence_snapshot.to_document()
+                if self.evidence_snapshot is not None
+                else None
+            ),
             "id": self.id,
             "related_page_ids": list(self.related_page_ids),
             "relevant_files": list(self.relevant_files),
@@ -290,7 +392,7 @@ def _section_from_document(document: JsonObject) -> Section:
 
 
 def _page_from_document(document: JsonObject) -> Page:
-    _require_fields(
+    _require_optional_fields(
         document,
         {
             "body",
@@ -303,6 +405,7 @@ def _page_from_document(document: JsonObject) -> Page:
             "status",
             "title",
         },
+        {"evidence_snapshot"},
         "Page document fields",
     )
     return Page(
@@ -316,15 +419,19 @@ def _page_from_document(document: JsonObject) -> Page:
             _evidence_from_document(_object(item))
             for item in _array(document["evidence"])
         ),
+        evidence_snapshot=_optional_evidence_snapshot(
+            document.get("evidence_snapshot")
+        ),
         body=_optional_string(document["body"]),
         error=_optional_string(document["error"]),
     )
 
 
 def _evidence_from_document(document: JsonObject) -> EvidenceRef:
-    _require_fields(
+    _require_optional_fields(
         document,
         {"chunk_id", "end_line", "evidence_id", "path", "start_line"},
+        {"content_hash"},
         "Evidence document fields",
     )
     return EvidenceRef(
@@ -333,6 +440,69 @@ def _evidence_from_document(document: JsonObject) -> EvidenceRef:
         path=_string(document["path"]),
         start_line=_integer(document["start_line"]),
         end_line=_integer(document["end_line"]),
+        content_hash=_optional_string(document.get("content_hash")),
+    )
+
+
+def _optional_evidence_snapshot(value: JsonValue | None) -> EvidenceSnapshot | None:
+    if value is None:
+        return None
+    document = _object(value)
+    _require_fields(
+        document,
+        {
+            "estimated_tokens",
+            "estimator",
+            "generated_at",
+            "index_build_id",
+            "index_schema_version",
+            "query",
+            "repository_fingerprint",
+            "reserved_tokens",
+            "retrieval",
+            "token_budget",
+            "truncated",
+        },
+        "Evidence snapshot fields",
+    )
+    return EvidenceSnapshot(
+        query=_string(document["query"]),
+        repository_fingerprint=_string(document["repository_fingerprint"]),
+        index_schema_version=_integer(document["index_schema_version"]),
+        index_build_id=_string(document["index_build_id"]),
+        token_budget=_integer(document["token_budget"]),
+        estimated_tokens=_integer(document["estimated_tokens"]),
+        reserved_tokens=_integer(document["reserved_tokens"]),
+        estimator=_string(document["estimator"]),
+        truncated=_boolean(document["truncated"]),
+        retrieval=_retrieval_parameters(_object(document["retrieval"])),
+        generated_at=_string(document["generated_at"]),
+    )
+
+
+def _retrieval_parameters(document: JsonObject) -> RetrievalParameters:
+    _require_fields(
+        document,
+        {
+            "channel_weights",
+            "max_results",
+            "overlap_threshold",
+            "rrf_k",
+            "strategy",
+        },
+        "Retrieval parameter fields",
+    )
+    weights = _object(document["channel_weights"])
+    if not all(type(value) in {int, float} for value in weights.values()):
+        raise TypeError("retrieval channel weights must be numbers")
+    return RetrievalParameters(
+        max_results=_integer(document["max_results"]),
+        strategy=_string(document["strategy"]),
+        rrf_k=_integer(document["rrf_k"]),
+        channel_weights=tuple(
+            (name, float(cast(int | float, weight))) for name, weight in weights.items()
+        ),
+        overlap_threshold=_number(document["overlap_threshold"]),
     )
 
 
@@ -361,6 +531,16 @@ def _validate_repository_path(path: str) -> None:
 
 def _require_fields(document: JsonObject, expected: set[str], label: str) -> None:
     if set(document) != expected:
+        raise ValueError(f"{label} are invalid")
+
+
+def _require_optional_fields(
+    document: JsonObject,
+    required: set[str],
+    optional: set[str],
+    label: str,
+) -> None:
+    if not required <= set(document) or set(document) - required - optional:
         raise ValueError(f"{label} are invalid")
 
 
@@ -401,13 +581,27 @@ def _integer(value: JsonValue) -> int:
     return value
 
 
+def _number(value: JsonValue) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise TypeError("value must be a number")
+    return float(value)
+
+
+def _boolean(value: JsonValue) -> bool:
+    if not isinstance(value, bool):
+        raise TypeError("value must be a boolean")
+    return value
+
+
 __all__ = [
     "METADATA_SCHEMA_VERSION",
     "WIKI_SCHEMA_VERSION",
     "EvidenceRef",
+    "EvidenceSnapshot",
     "Metadata",
     "Page",
     "PageStatus",
+    "RetrievalParameters",
     "Section",
     "Wiki",
     "metadata_from_document",
