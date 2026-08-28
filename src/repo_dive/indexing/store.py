@@ -36,9 +36,16 @@ _BM25_STAT_KEYS = {
 class IndexStore:
     """The only supported connection boundary for the private SQLite index."""
 
-    def __init__(self, database: Path, connection: sqlite3.Connection) -> None:
+    def __init__(
+        self,
+        database: Path,
+        connection: sqlite3.Connection,
+        *,
+        read_only: bool = False,
+    ) -> None:
         self.database = database
         self._connection = connection
+        self._read_only = read_only
         self._closed = False
 
     @classmethod
@@ -75,6 +82,25 @@ class IndexStore:
             )
         connection = _connect(path)
         store = cls(path, connection)
+        try:
+            store._validate_schema_version()
+        except Exception:
+            store.close()
+            raise
+        return store
+
+    @classmethod
+    def open_readonly(cls, database: str | Path) -> IndexStore:
+        """Open an existing compatible index with SQLite writes disabled."""
+        path = Path(database)
+        if not path.is_file():
+            raise RepositoryError(
+                "index_not_found",
+                "Repository index does not exist.",
+                details={"path": str(path)},
+            )
+        connection = _connect(path, read_only=True)
+        store = cls(path, connection, read_only=True)
         try:
             store._validate_schema_version()
         except Exception:
@@ -119,6 +145,7 @@ class IndexStore:
     def replace_document(self, source: SourceFile, parsed: ParseResult) -> None:
         """Atomically replace one file and all of its parsed index records."""
         self._ensure_open()
+        self._ensure_writable()
         _validate_document_path(source.record.path, parsed)
         try:
             with self._transaction():
@@ -144,6 +171,7 @@ class IndexStore:
     def replace_bm25_index(self, index: BM25Index) -> None:
         """Atomically replace all lexical postings and corpus statistics."""
         self._ensure_open()
+        self._ensure_writable()
         if not _is_valid_bm25_index(index):
             raise InternalOperationError(
                 "index_integrity_error",
@@ -438,6 +466,15 @@ class IndexStore:
             relationships=relationships,
         )
 
+    def get_chunks(self) -> tuple[Chunk, ...]:
+        """Read every Chunk once in stable repository and source order."""
+        self._ensure_open()
+        rows = self._connection.execute(
+            "SELECT id, file_path, start_line, end_line, text, symbol_id, "
+            "content_hash FROM chunks ORDER BY file_path, ordinal"
+        )
+        return tuple(_chunk_from_row(row) for row in rows)
+
     def foreign_key_violations(
         self,
     ) -> tuple[tuple[str, int | None, str, int], ...]:
@@ -475,6 +512,13 @@ class IndexStore:
             raise InternalOperationError(
                 "index_store_closed",
                 "Repository index Store is already closed.",
+            )
+
+    def _ensure_writable(self) -> None:
+        if self._read_only:
+            raise InternalOperationError(
+                "index_read_only",
+                "Repository index is open for reading only.",
             )
 
     @contextmanager
@@ -575,9 +619,18 @@ class IndexStore:
         self._connection.execute("UPDATE chunks SET token_count = 0")
 
 
-def _connect(path: Path) -> sqlite3.Connection:
+def _connect(path: Path, *, read_only: bool = False) -> sqlite3.Connection:
     try:
-        connection = sqlite3.connect(path, isolation_level=None)
+        target: str | Path = path
+        if read_only:
+            target = f"{path.resolve(strict=True).as_uri()}?mode=ro"
+        connection = sqlite3.connect(
+            target,
+            isolation_level=None,
+            uri=read_only,
+        )
+        if read_only:
+            connection.execute("PRAGMA query_only = ON")
         connection.execute("PRAGMA foreign_keys = ON")
         connection.row_factory = sqlite3.Row
         return connection

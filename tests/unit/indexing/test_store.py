@@ -199,3 +199,17 @@ def test_open_rejects_missing_database(tmp_path: Path) -> None:
         IndexStore.open(tmp_path / "missing.sqlite3")
 
     assert exc_info.value.code == "index_not_found"
+
+
+def test_readonly_store_rejects_mutation_and_reads_all_chunks(tmp_path: Path) -> None:
+    database = tmp_path / "index.sqlite3"
+    parsed = parse_result()
+    with IndexStore.initialize(database) as store:
+        store.replace_document(source_file(), parsed)
+
+    with IndexStore.open_readonly(database) as store:
+        assert store.get_chunks() == parsed.chunks
+        with pytest.raises(InternalOperationError) as exc_info:
+            store.replace_document(source_file(), ParseResult())
+
+    assert exc_info.value.code == "index_read_only"
