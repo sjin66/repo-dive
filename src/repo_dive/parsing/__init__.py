@@ -7,12 +7,14 @@ from repo_dive.parsing.models import (
     Relationship,
     Symbol,
 )
+from repo_dive.parsing.python_ast import PythonAstParser
 from repo_dive.parsing.text import TextParser
 
 __all__ = [
     "Chunk",
     "ParseResult",
     "ParserAdapter",
+    "PythonAstParser",
     "Relationship",
     "Symbol",
     "TextParser",

@@ -176,13 +176,13 @@
 **Description:** 使用标准库 `ast` 提取模块、类、函数、方法、Import、调用和继承关系，并按符号边界切分 Python。
 
 **Acceptance criteria:**
-- [ ] 提取 qualified name、kind、1-based inclusive 行号和稳定 Symbol ID。
-- [ ] `contains`、`imports`、`calls`、`inherits` 关系携带来源和置信度。
-- [ ] SyntaxError 产生诊断并回退文本切分，不导致整个仓库索引失败。
+- [x] 提取 qualified name、kind、1-based inclusive 行号和稳定 Symbol ID。
+- [x] `contains`、`imports`、`calls`、`inherits` 关系携带来源和置信度。
+- [x] SyntaxError 产生诊断并回退文本切分，不导致整个仓库索引失败。
 
 **Verification:**
-- [ ] Tests pass: `.venv/bin/pytest tests/unit/parsing/test_python_ast.py -q`
-- [ ] Fixture check: 嵌套类/函数、别名 Import、装饰器和多行签名行号正确。
+- [x] Tests pass: `.venv/bin/pytest tests/unit/parsing/test_python_ast.py -q`
+- [x] Fixture check: 嵌套类/函数、别名 Import、装饰器和多行签名行号正确。
 
 **Dependencies:** Task 7
 
