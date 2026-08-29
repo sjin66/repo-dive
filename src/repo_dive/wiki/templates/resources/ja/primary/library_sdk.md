@@ -1,0 +1,6 @@
+<!-- repo-dive:contribution=library_sdk; locale=ja; -->
+<!-- repo-dive:page=library_installation_page; order=1; cardinality=1; shape=heading,paragraph,list,code_block; purpose=ライブラリ導入と import を説明する; evidence=必須の根拠は package、export、version、path、行番号; constraints=根拠ある環境と実行可能例だけを使う; --> **{{repo_dive:library_installation_page}}**
+<!-- repo-dive:page=public_api_page; order=2; cardinality=1; shape=heading,paragraph,table,code_block; purpose=公開 API 契約を定義する; evidence=必須の根拠は export、signature、type、行番号; constraints=公開契約と内部実装を分ける; --> **{{repo_dive:public_api_page}}**
+<!-- repo-dive:page=usage_examples_page; order=3; cardinality=1; shape=heading,paragraph,table,code_block; purpose=根拠ある利用例を示す; evidence=必須の根拠は example、test、fixture、call site、行番号; constraints=例を実行可能にする; --> **{{repo_dive:usage_examples_page}}**
+<!-- repo-dive:page=library_extension_page; order=4; cardinality=1; shape=heading,paragraph,list,code_block; purpose=対応する拡張境界を説明する; evidence=必須の根拠は protocol、hook、adapter、行番号; constraints=安定性と所有境界を明記する; --> **{{repo_dive:library_extension_page}}**
+<!-- repo-dive:page=compatibility_page; order=5; cardinality=1; shape=heading,paragraph,table,list; purpose=version と platform 互換性を説明する; evidence=必須の根拠は metadata、deprecation、test、行番号; constraints=明示範囲を超えて対応を推測しない; --> **{{repo_dive:compatibility_page}}**

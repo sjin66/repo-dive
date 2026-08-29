@@ -1,0 +1,6 @@
+<!-- repo-dive:contribution=general_mixed; locale=ja; -->
+<!-- repo-dive:page=component_catalog_page; order=1; cardinality=1; shape=heading,paragraph,table,list; purpose=独立した component を記録する; evidence=必須の根拠は entry、manifest、module、行番号; constraints=支配的 archetype を強制しない; --> **{{repo_dive:component_catalog_page}}**
+<!-- repo-dive:page=shared_contracts_page; order=2; cardinality=1; shape=heading,paragraph,table,code_block; purpose=共有契約を説明する; evidence=必須の根拠は schema、protocol、package、行番号; constraints=producer と consumer を正確にする; --> **{{repo_dive:shared_contracts_page}}**
+<!-- repo-dive:page=cross_component_workflows_page; order=3; cardinality=1; shape=heading,paragraph,list,code_block; purpose=component 間 workflow を追跡する; evidence=必須の根拠は call path、job、script、行番号; constraints=順序と handoff を示す; --> **{{repo_dive:cross_component_workflows_page}}**
+<!-- repo-dive:page=build_test_matrix_page; order=4; cardinality=1; shape=heading,paragraph,table,list; purpose=build と test 契約を説明する; evidence=必須の根拠は build file、test、CI、行番号; constraints=共有 gate と個別 command を分ける; --> **{{repo_dive:build_test_matrix_page}}**
+<!-- repo-dive:page=mixed_operations_page; order=5; cardinality=1; shape=heading,paragraph,list,code_block; purpose=協調運用と release を説明する; evidence=必須の根拠は deploy、publish、runbook、行番号; constraints=独立 release を統一配備としない; --> **{{repo_dive:mixed_operations_page}}**

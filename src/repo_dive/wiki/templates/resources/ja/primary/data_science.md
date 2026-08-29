@@ -1,0 +1,7 @@
+<!-- repo-dive:contribution=data_science; locale=ja; -->
+<!-- repo-dive:page=data_sources_page; order=1; cardinality=1; shape=heading,paragraph,table,list; purpose=分析データ源と前提を記録する; evidence=必須の根拠は loader、schema、notebook、行番号; constraints=来歴と機密性を示す; --> **{{repo_dive:data_sources_page}}**
+<!-- repo-dive:page=analysis_workflow_page; order=2; cardinality=1; shape=heading,paragraph,list,code_block; purpose=分析 workflow を説明する; evidence=必須の根拠は notebook、script、transform、行番号; constraints=実行順と依存を再現可能にする; --> **{{repo_dive:analysis_workflow_page}}**
+<!-- repo-dive:page=reproducibility_page; order=3; cardinality=1; shape=heading,paragraph,list,code_block; purpose=再現性制御を説明する; evidence=必須の根拠は lock、seed、environment、parameter、行番号; constraints=実装済み制御だけを記載する; --> **{{repo_dive:reproducibility_page}}**
+<!-- repo-dive:page=analysis_evaluation_page; order=4; cardinality=1; shape=heading,paragraph,table,list; purpose=分析評価と指標を説明する; evidence=必須の根拠は metric、check、baseline、行番号; constraints=定義と限界を示す; --> **{{repo_dive:analysis_evaluation_page}}**
+<!-- repo-dive:page=analysis_artifacts_page; order=5; cardinality=1; shape=heading,paragraph,table,code_block; purpose=分析成果物を記録する; evidence=必須の根拠は output、report、model、path、行番号; constraints=format と再生成を正確に示す; --> **{{repo_dive:analysis_artifacts_page}}**
+<!-- repo-dive:page=analysis_operationalization_page; order=6; cardinality=1; shape=heading,paragraph,list,code_block; purpose=分析の運用化を説明する; evidence=必須の根拠は job、automation、monitor、行番号; constraints=探索と本番経路を分ける; --> **{{repo_dive:analysis_operationalization_page}}**

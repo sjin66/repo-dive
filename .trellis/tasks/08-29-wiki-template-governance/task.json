@@ -1,0 +1,28 @@
+{
+  "id": "wiki-template-governance",
+  "name": "wiki-template-governance",
+  "title": "Template-governed multilingual Wiki generation",
+  "description": "Classify repository types and enforce detailed multilingual Markdown templates during Wiki generation and validation.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "sjin",
+  "assignee": "sjin",
+  "createdAt": "2026-08-29",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "08-29-multilingual-wiki-templates"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

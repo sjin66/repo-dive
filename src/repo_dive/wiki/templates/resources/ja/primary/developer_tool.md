@@ -1,0 +1,7 @@
+<!-- repo-dive:contribution=developer_tool; locale=ja; -->
+<!-- repo-dive:page=developer_workflow_page; order=1; cardinality=1; shape=heading,paragraph,list,code_block; purpose=開発 workflow を説明する; evidence=必須の根拠は command、hook、task、行番号; constraints=入出力と副作用を順序化する; --> **{{repo_dive:developer_workflow_page}}**
+<!-- repo-dive:page=tool_architecture_page; order=2; cardinality=1; shape=heading,paragraph,list,code_block; purpose=tool architecture を説明する; evidence=必須の根拠は entry、service、adapter、行番号; constraints=編成と domain を分ける; --> **{{repo_dive:tool_architecture_page}}**
+<!-- repo-dive:page=tool_configuration_page; order=3; cardinality=1; shape=heading,paragraph,table,code_block; purpose=tool 設定を記録する; evidence=必須の根拠は schema、file、flag、行番号; constraints=値と優先順位を正確にする; --> **{{repo_dive:tool_configuration_page}}**
+<!-- repo-dive:page=tool_integrations_page; order=4; cardinality=1; shape=heading,paragraph,table,code_block; purpose=外部 integration を記録する; evidence=必須の根拠は adapter、manifest、API、行番号; constraints=lifecycle と権限を示す; --> **{{repo_dive:tool_integrations_page}}**
+<!-- repo-dive:page=tool_diagnostics_page; order=5; cardinality=1; shape=heading,paragraph,table,code_block; purpose=診断と障害対応を説明する; evidence=必須の根拠は error、log、check、行番号; constraints=症状と原因を根拠化する; --> **{{repo_dive:tool_diagnostics_page}}**
+<!-- repo-dive:page=tool_distribution_page; order=6; cardinality=1; shape=heading,paragraph,list,code_block; purpose=test、package、配布を説明する; evidence=必須の根拠は test、metadata、release、行番号; constraints=platform と artifact を根拠化する; --> **{{repo_dive:tool_distribution_page}}**
