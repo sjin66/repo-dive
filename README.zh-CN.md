@@ -132,6 +132,7 @@ make test-all
 - [架构设计](docs/zh-CN/architecture.md)
 - [CLI 契约](docs/zh-CN/cli-contract.md)
 - [Wiki 工作流](docs/zh-CN/wiki-workflow.md)
+- [完整 Wiki 生成流程](docs/zh-CN/wiki-generation-flow.md)
 - [Agent 插件安装](docs/zh-CN/agent-plugin.md)
 - [开发指南](docs/zh-CN/development.md)
 - [Agent 指南](AGENTS.md)

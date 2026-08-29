@@ -140,6 +140,7 @@ See [Development](docs/en/development.md) and [CLI Contract](docs/en/cli-contrac
 - [Architecture](docs/en/architecture.md)
 - [CLI Contract](docs/en/cli-contract.md)
 - [Wiki Workflow](docs/en/wiki-workflow.md)
+- [Complete Wiki Generation Flow](docs/en/wiki-generation-flow.md)
 - [Agent Plugin Installation](docs/en/agent-plugin.md)
 - [Development](docs/en/development.md)
 - [Agent Guide](AGENTS.md)
