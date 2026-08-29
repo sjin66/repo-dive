@@ -43,3 +43,26 @@ Added deterministic repository classification and closed, versioned multilingual
 ### Next Steps
 
 - Continue with Markdown AST validation, governed Wiki state, then CLI integration child tasks.
+
+
+## Session 2: Agent plugin installation and Wiki flow documentation
+<!-- trellis-session: v=2 fp=ad1c8bab835d96bc -->
+
+**Date**: 2026-08-30
+**Task**: Agent plugin installation and Wiki flow documentation
+**Branch**: `main`
+
+### Summary
+
+Added the portable repo-dive wiki Agent plugin, offline transactional init installation, packaging and tests, paired installation guides, and complete bilingual Wiki generation flow documentation.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a6315e8` | feat: add agent plugin installation |
+| `f939988` | docs: explain complete wiki generation flow |
+
+### Status
+
+[OK] **Completed**
