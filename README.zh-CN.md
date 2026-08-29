@@ -52,7 +52,16 @@
 <repository>/.repo-dive/wiki.md
 ```
 
-阶段与产物细节见 [Wiki 工作流](docs/zh-CN/wiki-workflow.md)。
+阶段与产物细节见 [Wiki 工作流](docs/zh-CN/wiki-workflow.md)。要为受支持的编码
+Agent 安装可移植 `wiki` Skill，请参见 [Agent 插件安装](docs/zh-CN/agent-plugin.md)。
+
+```bash
+repo-dive init . --agent claude-code --agent codex --agent opencode \
+  --agent gemini-cli --agent github-copilot
+```
+
+在终端中直接运行 `repo-dive init` 可使用交互式多选。该命令离线安装项目级
+Skill；文档仍保留 `npx skills` 和 Host 原生安装方式作为备选。
 
 这里的 RAG 是一种**执行边界分离的检索增强生成**：`repo-dive` 负责摄取、索引、检索、排序和上下文打包；调用方 Copilot 会话负责生成。CLI 不会再启动一个隐藏的模型会话。
 
@@ -102,6 +111,7 @@ make test-all
 ```bash
 .venv/bin/repo-dive --help
 .venv/bin/repo-dive --version
+.venv/bin/repo-dive init --agent github-copilot
 .venv/bin/repo-dive index /path/to/repository --format json
 .venv/bin/repo-dive search /path/to/repository "entrypoint" --max-results 10 --format json
 .venv/bin/repo-dive context /path/to/repository "architecture" --token-budget 1200 --format json
@@ -122,5 +132,6 @@ make test-all
 - [架构设计](docs/zh-CN/architecture.md)
 - [CLI 契约](docs/zh-CN/cli-contract.md)
 - [Wiki 工作流](docs/zh-CN/wiki-workflow.md)
+- [Agent 插件安装](docs/zh-CN/agent-plugin.md)
 - [开发指南](docs/zh-CN/development.md)
 - [Agent 指南](AGENTS.md)

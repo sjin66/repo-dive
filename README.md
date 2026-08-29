@@ -56,6 +56,17 @@ The stable final artifact is:
 ```
 
 See [Wiki Workflow](docs/en/wiki-workflow.md) for stage and artifact details.
+To install the portable `wiki` skill for supported coding agents, see
+[Agent Plugin Installation](docs/en/agent-plugin.md).
+
+```bash
+repo-dive init . --agent claude-code --agent codex --agent opencode \
+  --agent gemini-cli --agent github-copilot
+```
+
+In a terminal, bare `repo-dive init` offers an interactive multi-select. The
+command installs project-scoped skill files offline; `npx skills` and native
+host installers remain documented alternatives.
 
 In this design, RAG means **retrieval-augmented generation with a split execution boundary**: `repo-dive` owns ingestion, indexing, retrieval, ranking, and context packaging; the calling Copilot session owns generation. The CLI does not launch a second hidden model session.
 
@@ -108,6 +119,7 @@ After setup:
 ```bash
 .venv/bin/repo-dive --help
 .venv/bin/repo-dive --version
+.venv/bin/repo-dive init --agent github-copilot
 .venv/bin/repo-dive index /path/to/repository --format json
 .venv/bin/repo-dive search /path/to/repository "entrypoint" --max-results 10 --format json
 .venv/bin/repo-dive context /path/to/repository "architecture" --token-budget 1200 --format json
@@ -128,5 +140,6 @@ See [Development](docs/en/development.md) and [CLI Contract](docs/en/cli-contrac
 - [Architecture](docs/en/architecture.md)
 - [CLI Contract](docs/en/cli-contract.md)
 - [Wiki Workflow](docs/en/wiki-workflow.md)
+- [Agent Plugin Installation](docs/en/agent-plugin.md)
 - [Development](docs/en/development.md)
 - [Agent Guide](AGENTS.md)

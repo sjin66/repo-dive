@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -13,9 +14,14 @@ import zipfile
 from pathlib import Path
 
 RUNTIME_SCHEMA = "repo_dive/indexing/schema.sql"
+BUNDLED_SKILL = "repo_dive/_skills/wiki/SKILL.md"
+BUILT_SKILL_REFERENCE = "repo_dive/_skills/wiki/references/workflow-contract.md"
+SDIST_SKILL = "skills/wiki/SKILL.md"
+SDIST_SKILL_REFERENCE = "skills/wiki/references/workflow-contract.md"
 CLI_SMOKE_ARGUMENTS = (
     ("--version",),
     ("--help",),
+    ("init", "--help"),
     ("index", "--help"),
     ("search", "--help"),
     ("context", "--help"),
@@ -51,6 +57,10 @@ def validate_wheel(wheel: Path) -> None:
         raise PackageSmokeError(f"wheel is unreadable: {wheel.name}") from error
     if RUNTIME_SCHEMA not in names:
         raise PackageSmokeError(f"wheel is missing {RUNTIME_SCHEMA}")
+    if BUNDLED_SKILL not in names:
+        raise PackageSmokeError(f"wheel is missing {BUNDLED_SKILL}")
+    if BUILT_SKILL_REFERENCE not in names:
+        raise PackageSmokeError(f"wheel is missing {BUILT_SKILL_REFERENCE}")
 
 
 def validate_sdist(sdist: Path) -> None:
@@ -64,6 +74,10 @@ def validate_sdist(sdist: Path) -> None:
         raise PackageSmokeError(f"sdist is missing src/{RUNTIME_SCHEMA}")
     if not any(name.endswith("/pyproject.toml") for name in names):
         raise PackageSmokeError("sdist is missing pyproject.toml")
+    if not any(name.endswith(f"/{SDIST_SKILL}") for name in names):
+        raise PackageSmokeError(f"sdist is missing {SDIST_SKILL}")
+    if not any(name.endswith(f"/{SDIST_SKILL_REFERENCE}") for name in names):
+        raise PackageSmokeError(f"sdist is missing {SDIST_SKILL_REFERENCE}")
 
 
 def smoke_wheel_install(wheel: Path) -> None:
@@ -91,6 +105,58 @@ def smoke_wheel_install(wheel: Path) -> None:
         )
         for arguments in CLI_SMOKE_ARGUMENTS:
             _run(cli, *arguments)
+        repository = Path(directory) / "repository"
+        repository.mkdir()
+        init_arguments = (
+            cli,
+            "init",
+            ".",
+            "--agent",
+            "claude-code",
+            "--agent",
+            "codex",
+            "--format",
+            "json",
+        )
+        _run(*init_arguments, cwd=repository)
+        claude_skill = repository / ".claude/skills/wiki/SKILL.md"
+        shared_skill = repository / ".agents/skills/wiki/SKILL.md"
+        if not claude_skill.is_file() or not shared_skill.is_file():
+            raise PackageSmokeError("wheel-installed init did not install wiki skill")
+        claude_reference = (
+            repository / ".claude/skills/wiki/references/workflow-contract.md"
+        )
+        shared_reference = (
+            repository / ".agents/skills/wiki/references/workflow-contract.md"
+        )
+        if not claude_reference.is_file() or not shared_reference.is_file():
+            raise PackageSmokeError("wheel-installed init omitted a skill reference")
+        if claude_skill.read_bytes() != shared_skill.read_bytes():
+            raise PackageSmokeError("wheel-installed skill destinations differ")
+        if claude_reference.read_bytes() != shared_reference.read_bytes():
+            raise PackageSmokeError("wheel-installed skill references differ")
+        authoritative = Path("skills/wiki/SKILL.md")
+        if (
+            authoritative.is_file()
+            and claude_skill.read_bytes() != authoritative.read_bytes()
+        ):
+            raise PackageSmokeError(
+                "wheel-installed skill differs from authoritative source"
+            )
+        authoritative_reference = Path("skills/wiki/references/workflow-contract.md")
+        if (
+            authoritative_reference.is_file()
+            and claude_reference.read_bytes() != authoritative_reference.read_bytes()
+        ):
+            raise PackageSmokeError(
+                "wheel-installed skill reference differs from authoritative source"
+            )
+        repeated = json.loads(_run(*init_arguments, cwd=repository))
+        statuses = {
+            destination["status"] for destination in repeated["result"]["destinations"]
+        }
+        if statuses != {"reused"}:
+            raise PackageSmokeError("wheel-installed init rerun did not report reuse")
 
 
 def _venv_executable(environment: Path, name: str) -> Path:
@@ -99,7 +165,7 @@ def _venv_executable(environment: Path, name: str) -> Path:
     return environment / directory / f"{name}{suffix}"
 
 
-def _run(*command: str | Path, timeout: int = 60) -> None:
+def _run(*command: str | Path, timeout: int = 60, cwd: Path | None = None) -> str:
     arguments = tuple(os.fspath(item) for item in command)
     try:
         completed = subprocess.run(
@@ -108,6 +174,7 @@ def _run(*command: str | Path, timeout: int = 60) -> None:
             capture_output=True,
             text=True,
             timeout=timeout,
+            cwd=cwd,
         )
     except (OSError, subprocess.TimeoutExpired) as error:
         command_text = " ".join(arguments)
@@ -118,6 +185,7 @@ def _run(*command: str | Path, timeout: int = 60) -> None:
         raise PackageSmokeError(
             f"command failed ({completed.returncode}): {' '.join(arguments)}{suffix}"
         )
+    return completed.stdout
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -21,6 +21,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | To fill |
 | [Repository Classification](./repository-classification.md) | Deterministic index-backed taxonomy and signal contracts | Active |
 | [Wiki Template Contracts](./wiki-template-contracts.md) | Closed multilingual template composition and identity contracts | Active |
+| [Agent Plugin Contracts](./agent-plugin-contracts.md) | Portable skill packaging and host adapter contracts | Active |
 
 ---
 

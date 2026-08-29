@@ -1,0 +1,5 @@
+{"file":".trellis/spec/guides/index.md","reason":"Repository-wide guide index for quality review conventions."}
+{"file":".trellis/spec/backend/agent-plugin-contracts.md","reason":"Review direct CLI initialization against the Agent plugin contract."}
+{"file":".trellis/tasks/08-29-repo-dive-agent-plugin/research/agent-skills-and-installers.md","reason":"Review portable skill compliance and installer claims against sources."}
+{"file":".trellis/tasks/08-29-repo-dive-agent-plugin/research/platform-packaging-conventions.md","reason":"Review each platform adapter and documentation claim."}
+{"file":".trellis/tasks/08-29-repo-dive-agent-plugin/research/repo-dive-package-and-test-matrix.md","reason":"Review coverage against the package and smoke-test matrix."}

@@ -1,0 +1,5 @@
+{"file":".trellis/spec/guides/index.md","reason":"Repository-wide guide index for implementation conventions."}
+{"file":".trellis/spec/backend/agent-plugin-contracts.md","reason":"Executable packaging, installation, and validation contracts for the Agent plugin."}
+{"file":".trellis/tasks/08-29-repo-dive-agent-plugin/research/agent-skills-and-installers.md","reason":"Authoritative Agent Skills, Agent Plugins, and cross-host installer research."}
+{"file":".trellis/tasks/08-29-repo-dive-agent-plugin/research/platform-packaging-conventions.md","reason":"Verified platform manifests, paths, and installation contracts."}
+{"file":".trellis/tasks/08-29-repo-dive-agent-plugin/research/repo-dive-package-and-test-matrix.md","reason":"Recommended package architecture and verification matrix."}

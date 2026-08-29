@@ -33,6 +33,12 @@ repo-dive = "repo_dive.cli:entrypoint"
 [tool.hatch.build.targets.wheel]
 packages = ["src/repo_dive"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"skills/wiki" = "repo_dive/_skills/wiki"
+
+[tool.hatch.build.targets.sdist.force-include]
+"skills/wiki" = "skills/wiki"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

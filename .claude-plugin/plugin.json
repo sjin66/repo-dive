@@ -1,0 +1,8 @@
+{
+  "name": "repo-dive",
+  "version": "0.1.0",
+  "description": "Evidence-grounded repository Wiki workflow",
+  "author": {
+    "name": "repo-dive contributors"
+  }
+}
