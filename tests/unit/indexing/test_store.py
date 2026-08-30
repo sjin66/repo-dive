@@ -72,7 +72,11 @@ def parse_result() -> ParseResult:
         target_id=function.id,
         kind="contains",
         confidence=1.0,
-        source="python_ast",
+        provenance="python_ast",
+        path="src/service.py",
+        start_line=1,
+        end_line=2,
+        occurrence_discriminator=(0, 27, 0),
     )
     return ParseResult(
         chunks=(chunk,),
@@ -118,7 +122,11 @@ def test_invalid_relationship_preserves_existing_document(tmp_path: Path) -> Non
                 target_id="symbol:missing",
                 kind="calls",
                 confidence=0.5,
-                source="test",
+                provenance="test",
+                path="src/service.py",
+                start_line=2,
+                end_line=2,
+                occurrence_discriminator=(4, 12, 0),
             ),
         ),
     )
@@ -179,6 +187,84 @@ def test_store_rejects_parse_objects_from_a_different_path(tmp_path: Path) -> No
 
         assert exc_info.value.code == "index_document_path_mismatch"
         assert store.get_file("src/service.py") is None
+
+
+def test_store_preserves_each_relationship_occurrence(tmp_path: Path) -> None:
+    database = tmp_path / "index.sqlite3"
+    source = source_file()
+    parsed = parse_result()
+    first = parsed.relationships[0]
+    repeated = create_relationship(
+        source_id=first.source_id,
+        target_id=first.target_id,
+        kind=first.kind,
+        confidence=first.confidence,
+        provenance=first.provenance,
+        path=first.path,
+        start_line=first.start_line,
+        end_line=first.end_line,
+        occurrence_discriminator=(12, 39, 0),
+    )
+    occurrences = ParseResult(
+        chunks=parsed.chunks,
+        symbols=parsed.symbols,
+        relationships=(first, repeated),
+    )
+
+    with IndexStore.initialize(database) as store:
+        store.replace_document(source, occurrences)
+        assert store.get_parse_result("src/service.py") == occurrences
+        assert store.query_relationship_occurrences(
+            (first.source_id,),
+            direction="outgoing",
+            edge_kinds=("contains",),
+            limit=10,
+        ) == (first, repeated)
+
+
+def test_store_rejects_relationship_from_a_different_path(tmp_path: Path) -> None:
+    parsed = parse_result()
+    relationship = parsed.relationships[0]
+    mismatched = create_relationship(
+        source_id=relationship.source_id,
+        target_id=relationship.target_id,
+        kind=relationship.kind,
+        confidence=relationship.confidence,
+        provenance=relationship.provenance,
+        path="src/other.py",
+        start_line=relationship.start_line,
+        end_line=relationship.end_line,
+        occurrence_discriminator=relationship.occurrence_discriminator,
+    )
+
+    with (
+        IndexStore.initialize(tmp_path / "index.sqlite3") as store,
+        pytest.raises(InternalOperationError) as exc_info,
+    ):
+        store.replace_document(
+            source_file(),
+            ParseResult(symbols=parsed.symbols, relationships=(mismatched,)),
+        )
+
+    assert exc_info.value.code == "index_document_path_mismatch"
+
+
+def test_store_rejects_duplicate_relationship_identity(tmp_path: Path) -> None:
+    parsed = parse_result()
+    relationship = parsed.relationships[0]
+    duplicated = ParseResult(
+        chunks=parsed.chunks,
+        symbols=parsed.symbols,
+        relationships=(relationship, relationship),
+    )
+
+    with (
+        IndexStore.initialize(tmp_path / "index.sqlite3") as store,
+        pytest.raises(InternalOperationError) as exc_info,
+    ):
+        store.replace_document(source_file(), duplicated)
+
+    assert exc_info.value.code == "index_integrity_error"
 
 
 def test_open_rejects_unknown_schema_version(tmp_path: Path) -> None:

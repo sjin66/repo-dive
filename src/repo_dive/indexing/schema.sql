@@ -39,14 +39,20 @@ CREATE TABLE chunks (
 );
 
 CREATE TABLE relationships (
+    id TEXT PRIMARY KEY,
     file_path TEXT NOT NULL REFERENCES files(path) ON DELETE CASCADE,
     ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
     source_id TEXT NOT NULL REFERENCES symbols(id) ON DELETE CASCADE,
     target_id TEXT NOT NULL REFERENCES symbols(id) ON DELETE CASCADE,
     kind TEXT NOT NULL,
     confidence REAL NOT NULL CHECK (confidence >= 0.0 AND confidence <= 1.0),
-    source TEXT NOT NULL,
-    PRIMARY KEY (source_id, target_id, kind, source),
+    provenance TEXT NOT NULL,
+    path TEXT NOT NULL CHECK (path = file_path),
+    start_line INTEGER NOT NULL CHECK (start_line >= 1),
+    end_line INTEGER NOT NULL CHECK (end_line >= start_line),
+    start_column INTEGER NOT NULL CHECK (start_column >= 0),
+    end_column INTEGER NOT NULL CHECK (end_column >= 0),
+    occurrence_ordinal INTEGER NOT NULL CHECK (occurrence_ordinal >= 0),
     UNIQUE (file_path, ordinal)
 );
 
@@ -90,5 +96,5 @@ ON relationships (source_id, kind, target_id);
 CREATE INDEX relationships_target_lookup
 ON relationships (target_id, kind, source_id);
 
-PRAGMA user_version = 4;
+PRAGMA user_version = 5;
 COMMIT;

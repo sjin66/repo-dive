@@ -27,7 +27,7 @@ from repo_dive.scanner.models import (
     SourceFile,
 )
 
-INDEX_SCHEMA_VERSION = 4
+INDEX_SCHEMA_VERSION = 5
 
 _BM25_STAT_KEYS = {
     "average_document_length": "bm25.average_document_length",
@@ -520,10 +520,71 @@ class IndexStore:
             parameters.extend(edge_kinds)
         parameters.extend((min_confidence, limit))
         rows = self._connection.execute(
-            "SELECT source_id, target_id, kind, confidence, source "
+            "WITH candidates AS (SELECT id, source_id, target_id, kind, confidence, "
+            "provenance, path, start_line, end_line, start_column, end_column, "
+            "occurrence_ordinal, ROW_NUMBER() OVER ("
+            "PARTITION BY source_id, target_id, kind ORDER BY confidence DESC, "
+            "provenance, path, start_line, end_line, start_column, end_column, "
+            "occurrence_ordinal, id) AS representative "
             f"FROM relationships WHERE {frontier_clause}{kind_clause} "
-            "AND confidence >= ? "
-            "ORDER BY source_id, target_id, kind, source LIMIT ?",
+            "AND confidence >= ?) SELECT id, source_id, target_id, kind, confidence, "
+            "provenance, path, start_line, end_line, start_column, end_column, "
+            "occurrence_ordinal FROM candidates WHERE representative = 1 "
+            "ORDER BY source_id, target_id, kind LIMIT ?",
+            parameters,
+        )
+        return tuple(_relationship_from_row(row) for row in rows)
+
+    def query_relationship_occurrences(
+        self,
+        symbol_ids: tuple[str, ...],
+        *,
+        direction: Literal["outgoing", "incoming", "both"],
+        edge_kinds: tuple[str, ...] | None,
+        limit: int,
+        min_confidence: float = 0.0,
+    ) -> tuple[Relationship, ...]:
+        """Read every matching relationship occurrence under an explicit limit."""
+        self._ensure_open()
+        if not symbol_ids:
+            return ()
+        if (
+            direction not in {"outgoing", "incoming", "both"}
+            or limit <= 0
+            or not 0.0 <= min_confidence <= 1.0
+        ):
+            raise ValueError("relationship query parameters must be valid")
+
+        placeholders = ", ".join("?" for _ in symbol_ids)
+        parameters: list[str | int | float] = []
+        if direction == "outgoing":
+            frontier_clause = f"source_id IN ({placeholders})"
+            parameters.extend(symbol_ids)
+        elif direction == "incoming":
+            frontier_clause = f"target_id IN ({placeholders})"
+            parameters.extend(symbol_ids)
+        else:
+            frontier_clause = (
+                f"(source_id IN ({placeholders}) OR target_id IN ({placeholders}))"
+            )
+            parameters.extend(symbol_ids)
+            parameters.extend(symbol_ids)
+
+        kind_clause = ""
+        if edge_kinds is not None:
+            if not edge_kinds:
+                return ()
+            kind_placeholders = ", ".join("?" for _ in edge_kinds)
+            kind_clause = f" AND kind IN ({kind_placeholders})"
+            parameters.extend(edge_kinds)
+        parameters.extend((min_confidence, limit))
+        rows = self._connection.execute(
+            "SELECT id, source_id, target_id, kind, confidence, provenance, path, "
+            "start_line, end_line, start_column, end_column, occurrence_ordinal "
+            f"FROM relationships WHERE {frontier_clause}{kind_clause} "
+            "AND confidence >= ? ORDER BY path, start_line, end_line, start_column, "
+            "end_column, occurrence_ordinal, source_id, target_id, kind, provenance, "
+            "id LIMIT ?",
             parameters,
         )
         return tuple(_relationship_from_row(row) for row in rows)
@@ -573,7 +634,8 @@ class IndexStore:
         relationships = tuple(
             _relationship_from_row(row)
             for row in self._connection.execute(
-                "SELECT source_id, target_id, kind, confidence, source "
+                "SELECT id, source_id, target_id, kind, confidence, provenance, path, "
+                "start_line, end_line, start_column, end_column, occurrence_ordinal "
                 "FROM relationships WHERE file_path = ? ORDER BY ordinal",
                 (path,),
             )
@@ -714,17 +776,25 @@ class IndexStore:
     ) -> None:
         self._connection.executemany(
             "INSERT INTO relationships "
-            "(file_path, ordinal, source_id, target_id, kind, confidence, source) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "(id, file_path, ordinal, source_id, target_id, kind, confidence, "
+            "provenance, path, start_line, end_line, start_column, end_column, "
+            "occurrence_ordinal) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 (
+                    relationship.id,
                     file_path,
                     ordinal,
                     relationship.source_id,
                     relationship.target_id,
                     relationship.kind,
                     relationship.confidence,
-                    relationship.source,
+                    relationship.provenance,
+                    relationship.path,
+                    relationship.start_line,
+                    relationship.end_line,
+                    relationship.occurrence_discriminator[0],
+                    relationship.occurrence_discriminator[1],
+                    relationship.occurrence_discriminator[2],
                 )
                 for ordinal, relationship in enumerate(relationships)
             ),
@@ -764,6 +834,11 @@ def _validate_document_path(file_path: str, parsed: ParseResult) -> None:
     mismatched_paths = sorted(
         {symbol.path for symbol in parsed.symbols if symbol.path != file_path}
         | {chunk.path for chunk in parsed.chunks if chunk.path != file_path}
+        | {
+            relationship.path
+            for relationship in parsed.relationships
+            if relationship.path != file_path
+        }
     )
     if mismatched_paths:
         raise InternalOperationError(
@@ -878,9 +953,18 @@ def _chunk_from_row(row: sqlite3.Row) -> Chunk:
 
 def _relationship_from_row(row: sqlite3.Row) -> Relationship:
     return Relationship(
-        source_id=cast(str, row[0]),
-        target_id=cast(str, row[1]),
-        kind=cast(str, row[2]),
-        confidence=cast(float, row[3]),
-        source=cast(str, row[4]),
+        id=cast(str, row[0]),
+        source_id=cast(str, row[1]),
+        target_id=cast(str, row[2]),
+        kind=cast(str, row[3]),
+        confidence=cast(float, row[4]),
+        provenance=cast(str, row[5]),
+        path=cast(str, row[6]),
+        start_line=cast(int, row[7]),
+        end_line=cast(int, row[8]),
+        occurrence_discriminator=(
+            cast(int, row[9]),
+            cast(int, row[10]),
+            cast(int, row[11]),
+        ),
     )

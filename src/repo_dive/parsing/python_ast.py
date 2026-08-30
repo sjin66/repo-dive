@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 from pathlib import PurePosixPath
+from typing import Protocol, cast
 
 from repo_dive.parsing.models import (
     ParseDiagnostic,
@@ -18,6 +19,15 @@ from repo_dive.parsing.text import TextParser
 from repo_dive.scanner.models import FileRecord
 
 _DefinitionNode = ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+_OccurrenceIdentity = tuple[str, str, str, float, str, str]
+_OccurrenceKey = tuple[int, int, int, int, str, str, str, float, str, str]
+
+
+class _LocatedAstNode(Protocol):
+    lineno: int
+    end_lineno: int | None
+    col_offset: int
+    end_col_offset: int | None
 
 
 class PythonAstParser:
@@ -91,6 +101,7 @@ class _DefinitionCollector(ast.NodeVisitor):
         self.symbol_by_node: dict[ast.AST, Symbol] = {}
         self.relationships: list[Relationship] = []
         self._scope: list[Symbol] = [module_symbol]
+        self._occurrences: dict[_OccurrenceKey, int] = {}
 
     @property
     def module(self) -> Symbol:
@@ -125,11 +136,26 @@ class _DefinitionCollector(ast.NodeVisitor):
         self.symbol_by_node[node] = symbol
         self.relationships.append(
             create_relationship(
+                path=self.path,
                 source_id=parent.id,
                 target_id=symbol.id,
                 kind="contains",
                 confidence=1.0,
-                source="python_ast",
+                provenance="python_ast",
+                start_line=node.lineno,
+                end_line=node.end_lineno or node.lineno,
+                occurrence_discriminator=_occurrence_discriminator(
+                    node,
+                    self._occurrences,
+                    identity=(
+                        parent.id,
+                        symbol.id,
+                        "contains",
+                        1.0,
+                        "python_ast",
+                        self.path,
+                    ),
+                ),
             )
         )
         self._scope.append(symbol)
@@ -143,10 +169,8 @@ class _RelationshipCollector(ast.NodeVisitor):
         self._scope: list[Symbol] = [definitions.module]
         self._aliases: list[dict[str, str]] = [{}]
         self._references: dict[tuple[str, str, int], Symbol] = {}
-        self._edges: dict[tuple[str, str, str], Relationship] = {
-            (edge.source_id, edge.target_id, edge.kind): edge
-            for edge in definitions.relationships
-        }
+        self._edges: list[Relationship] = list(definitions.relationships)
+        self._occurrences: dict[_OccurrenceKey, int] = {}
         self._definitions_by_qualified_name = {
             symbol.qualified_name: symbol for symbol in definitions.symbols
         }
@@ -160,7 +184,7 @@ class _RelationshipCollector(ast.NodeVisitor):
 
     @property
     def edges(self) -> tuple[Relationship, ...]:
-        return tuple(self._edges.values())
+        return tuple(self._edges)
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         symbol = self._definitions.symbol_by_node[node]
@@ -168,7 +192,7 @@ class _RelationshipCollector(ast.NodeVisitor):
             name = _expression_name(base)
             if name is not None:
                 target, confidence = self._target(name, line=base.lineno)
-                self._add_edge(symbol, target, "inherits", confidence)
+                self._add_edge(symbol, target, "inherits", confidence, node=base)
         self._visit_definition(node)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
@@ -182,7 +206,9 @@ class _RelationshipCollector(ast.NodeVisitor):
             local_name = alias.asname or alias.name.split(".", maxsplit=1)[0]
             self._aliases[-1][local_name] = alias.name if alias.asname else local_name
             target = self._reference("import", alias.name, node.lineno)
-            self._add_edge(self._scope[-1], target, "imports", 1.0)
+            self._add_edge(
+                self._scope[-1], target, "imports", 1.0, node=alias, fallback=node
+            )
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         module = f"{'.' * node.level}{node.module or ''}"
@@ -191,13 +217,15 @@ class _RelationshipCollector(ast.NodeVisitor):
             local_name = alias.asname or alias.name
             self._aliases[-1][local_name] = qualified_name
             target = self._reference("import", qualified_name, node.lineno)
-            self._add_edge(self._scope[-1], target, "imports", 1.0)
+            self._add_edge(
+                self._scope[-1], target, "imports", 1.0, node=alias, fallback=node
+            )
 
     def visit_Call(self, node: ast.Call) -> None:
         name = _expression_name(node.func)
         if name is not None:
             target, confidence = self._target(name, line=node.lineno)
-            self._add_edge(self._scope[-1], target, "calls", confidence)
+            self._add_edge(self._scope[-1], target, "calls", confidence, node=node)
         self.generic_visit(node)
 
     def _visit_definition(self, node: _DefinitionNode) -> None:
@@ -245,15 +273,37 @@ class _RelationshipCollector(ast.NodeVisitor):
         target: Symbol,
         kind: str,
         confidence: float,
+        *,
+        node: ast.AST,
+        fallback: ast.AST | None = None,
     ) -> None:
+        occurrence_node = node if hasattr(node, "lineno") else fallback
+        if occurrence_node is None:
+            raise ValueError("relationship occurrence must have a source location")
+        start_line, end_line, _, _ = _ast_location(occurrence_node)
         edge = create_relationship(
+            path=self._definitions.path,
             source_id=source.id,
             target_id=target.id,
             kind=kind,
             confidence=confidence,
-            source="python_ast",
+            provenance="python_ast",
+            start_line=start_line,
+            end_line=end_line,
+            occurrence_discriminator=_occurrence_discriminator(
+                occurrence_node,
+                self._occurrences,
+                identity=(
+                    source.id,
+                    target.id,
+                    kind,
+                    confidence,
+                    "python_ast",
+                    self._definitions.path,
+                ),
+            ),
         )
-        self._edges[(source.id, target.id, kind)] = edge
+        self._edges.append(edge)
 
 
 def _module_name(path: str) -> str:
@@ -289,10 +339,43 @@ def _symbol_sort_key(symbol: Symbol) -> tuple[int, int, str, str]:
 
 def _relationship_sort_key(
     relationship: Relationship,
-) -> tuple[str, str, str, str]:
+) -> tuple[object, ...]:
     return (
+        relationship.path,
+        relationship.start_line,
+        relationship.end_line,
+        relationship.occurrence_discriminator,
         relationship.source_id,
-        relationship.kind,
         relationship.target_id,
-        relationship.source,
+        relationship.kind,
+        relationship.provenance,
+        relationship.id,
     )
+
+
+def _occurrence_discriminator(
+    node: ast.AST,
+    occurrences: dict[_OccurrenceKey, int],
+    *,
+    identity: _OccurrenceIdentity,
+) -> tuple[int, int, int]:
+    start_line, end_line, start_column, end_column = _ast_location(node)
+    key = (
+        start_line,
+        end_line,
+        start_column,
+        end_column,
+        *identity,
+    )
+    ordinal = occurrences.get(key, 0)
+    occurrences[key] = ordinal + 1
+    return (start_column, end_column, ordinal)
+
+
+def _ast_location(node: ast.AST) -> tuple[int, int, int, int]:
+    located = cast(_LocatedAstNode, node)
+    start_line = located.lineno
+    end_line = located.end_lineno or start_line
+    start_column = located.col_offset
+    end_column = located.end_col_offset or start_column
+    return start_line, end_line, start_column, end_column

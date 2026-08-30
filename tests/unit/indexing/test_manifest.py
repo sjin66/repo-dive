@@ -67,6 +67,8 @@ def test_manifest_round_trip_is_stable_and_metadata_points_to_generation(
             "repository_fingerprint": "fingerprint",
         },
     }
+    assert expected.parameters.parser_version == "2"
+    assert expected.parameters.index_schema_version == 5
 
 
 def test_manifest_round_trip_records_optional_embedding_identity(

@@ -118,7 +118,7 @@ repo-dive index /workspace/project --format json
     "chunks": 24,
     "deleted_files": 0,
     "files": 8,
-    "index_schema_version": 4,
+    "index_schema_version": 5,
     "indexed_files": 8,
     "manifest_schema_version": "2.0",
     "rebuilt_files": 8,

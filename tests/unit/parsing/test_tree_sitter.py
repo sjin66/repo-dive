@@ -47,6 +47,27 @@ def test_tree_sitter_typescript_extracts_symbols_and_exact_chunks() -> None:
     lines = text.splitlines(keepends=True)
     for chunk in result.chunks:
         assert chunk.text == "".join(lines[chunk.start_line - 1 : chunk.end_line])
+    symbols = {symbol.id: symbol for symbol in result.symbols}
+    assert all(edge.path == "src/sample.ts" for edge in result.relationships)
+    assert all(edge.provenance == "tree_sitter" for edge in result.relationships)
+    assert {
+        (
+            symbols[edge.target_id].qualified_name,
+            edge.start_line,
+            edge.end_line,
+        )
+        for edge in result.relationships
+    } == {
+        ("src.sample.Service", 1, 5),
+        ("src.sample.Service.run", 2, 4),
+        ("src.sample.helper", 7, 9),
+    }
+
+    repeated = TreeSitterParser("typescript").parse(
+        source_record("src/sample.ts", "typescript", text),
+        text,
+    )
+    assert repeated.relationships == result.relationships
 
 
 def test_tree_sitter_derives_line_ranges_without_reading_point_fields() -> None:

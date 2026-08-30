@@ -37,7 +37,7 @@ ARCHITECTURE_LITERALS = (
     "evaluation/",
     ".repo-dive/index-generations/<build-id>/index.sqlite3",
     ".repo-dive/index -> index-generations/<build-id>",
-    "PRAGMA user_version = 4",
+    "PRAGMA user_version = 5",
     "weighted_rrf",
     "strict",
     "degraded",

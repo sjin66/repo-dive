@@ -64,28 +64,55 @@ def graph_records() -> tuple[
             target_id=client.id,
             kind="calls",
             confidence=0.9,
-            source="python_ast:src/server.py:4",
+            provenance="python_ast:src/server.py:4",
+            path="src/server.py",
+            start_line=4,
+            end_line=4,
+            occurrence_discriminator=(8, 16, 0),
+        ),
+        create_relationship(
+            source_id=server.id,
+            target_id=client.id,
+            kind="calls",
+            confidence=0.85,
+            provenance="python_ast:src/server.py:5",
+            path="src/server.py",
+            start_line=5,
+            end_line=5,
+            occurrence_discriminator=(8, 16, 0),
         ),
         create_relationship(
             source_id=client.id,
             target_id=normalized.id,
             kind="calls",
             confidence=0.8,
-            source="python_ast:src/server.py:22",
+            provenance="python_ast:src/server.py:22",
+            path="src/server.py",
+            start_line=22,
+            end_line=22,
+            occurrence_discriminator=(8, 20, 0),
         ),
         create_relationship(
             source_id=normalized.id,
             target_id=server.id,
             kind="calls",
             confidence=0.7,
-            source="python_ast:src/server.py:12",
+            provenance="python_ast:src/server.py:12",
+            path="src/server.py",
+            start_line=12,
+            end_line=12,
+            occurrence_discriminator=(8, 20, 0),
         ),
         create_relationship(
             source_id=server.id,
             target_id=normalized.id,
             kind="contains",
             confidence=1.0,
-            source="python_ast:src/server.py:1",
+            provenance="python_ast:src/server.py:1",
+            path="src/server.py",
+            start_line=1,
+            end_line=3,
+            occurrence_discriminator=(0, 20, 0),
         ),
     )
     return (server, normalized, client, test_server), relationships
@@ -162,6 +189,34 @@ def test_outgoing_cycle_traversal_is_stable_and_depth_bounded(
             (normalized.id, server.id, "calls"),
         }
         assert traversal.truncated is False
+        assert (
+            len(
+                store.query_relationship_occurrences(
+                    (server.id,),
+                    direction="outgoing",
+                    edge_kinds=("calls",),
+                    limit=10,
+                )
+            )
+            == 2
+        )
+        server_call = next(
+            edge
+            for edge in traversal.edges
+            if edge.source == server and edge.target == client
+        )
+        assert server_call.confidence == 0.9
+        assert server_call.provenance == "python_ast:src/server.py:4"
+        occurrence_limited = graph.neighbors(
+            (server.id,),
+            direction=RelationshipDirection.OUTGOING,
+            depth=1,
+            edge_kinds=("calls",),
+            max_nodes=2,
+            max_edges=1,
+        )
+        assert len(occurrence_limited.edges) == 1
+        assert occurrence_limited.truncated is False
 
 
 def test_graph_filters_edges_and_preserves_endpoint_locations(

@@ -12,7 +12,7 @@ import pytest
 from repo_dive.errors import InternalOperationError, RepositoryError
 from repo_dive.indexing.manifest import read_manifest
 from repo_dive.indexing.service import IndexService
-from repo_dive.indexing.store import IndexStore
+from repo_dive.indexing.store import INDEX_SCHEMA_VERSION, IndexStore
 from repo_dive.indexing.vectors import EmbeddingIdentity
 from repo_dive.parsing.models import ParseResult, create_relationship
 from repo_dive.parsing.pipeline import ParsingPipeline
@@ -56,7 +56,11 @@ class InvalidRelationshipParser:
                     target_id="symbol:missing",
                     kind="calls",
                     confidence=1.0,
-                    source="test",
+                    provenance="test",
+                    path=source.record.path,
+                    start_line=1,
+                    end_line=1,
+                    occurrence_discriminator=(0, 1, 0),
                 ),
             ),
             diagnostics=parsed.diagnostics,
@@ -348,7 +352,7 @@ def test_index_schema_change_forces_full_rebuild_without_opening_old_store(
     assert second.rebuilt_files == 3
     assert set(parser.calls) == {"README.md", "src/app.py", "src/utils.py"}
     with IndexStore.open(index / "index.sqlite3") as store:
-        assert store.schema_version == 4
+        assert store.schema_version == INDEX_SCHEMA_VERSION
 
 
 def test_build_failure_preserves_old_generation_and_returns_safe_stage(

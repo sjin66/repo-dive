@@ -436,7 +436,7 @@ Example successful result:
     "page_count": 2,
     "wiki_schema_version": "1.0",
     "metadata_schema_version": "1.0",
-    "index_schema_version": 4,
+    "index_schema_version": 5,
     "index_build_id": "abc123"
   },
   "warnings": []
@@ -720,7 +720,7 @@ The result looks approximately like this:
     "overlap_threshold": 0.8
   },
   "repository_fingerprint": "...",
-  "index_schema_version": 4,
+  "index_schema_version": 5,
   "index_build_id": "abc123",
   "generated_at": "...",
   "items": [
@@ -769,7 +769,7 @@ The CLI does not merely emit Evidence to stdout; it also writes citations and a 
   "evidence_snapshot": {
     "query": "...",
     "repository_fingerprint": "...",
-    "index_schema_version": 4,
+    "index_schema_version": 5,
     "index_build_id": "abc123",
     "token_budget": 8000,
     "estimated_tokens": 3150,
