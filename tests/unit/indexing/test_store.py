@@ -110,6 +110,25 @@ def test_store_round_trips_typed_file_and_parse_result(tmp_path: Path) -> None:
         assert store.get_parse_result("src/service.py") == parsed
 
 
+def test_store_pages_files_in_stable_path_order(tmp_path: Path) -> None:
+    database = tmp_path / "index.sqlite3"
+    with IndexStore.initialize(database) as store:
+        store.replace_document(source_file(), parse_result())
+        page = store.page_files(after_path=None, limit=1)
+
+    assert tuple(item.path for item in page) == ("src/service.py",)
+
+
+def test_store_pages_chunk_ids_in_stable_source_order(tmp_path: Path) -> None:
+    database = tmp_path / "index.sqlite3"
+    parsed = parse_result()
+    with IndexStore.initialize(database) as store:
+        store.replace_document(source_file(), parsed)
+        page = store.page_chunk_ids("src/service.py", after_ordinal=-1, limit=1)
+
+    assert page == ((0, parsed.chunks[0].id),)
+
+
 def test_invalid_relationship_preserves_existing_document(tmp_path: Path) -> None:
     database = tmp_path / "index.sqlite3"
     parsed = parse_result()

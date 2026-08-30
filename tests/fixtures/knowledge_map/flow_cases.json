@@ -1,0 +1,10 @@
+[
+  {
+    "id": "cycle-safe-terminal-flow",
+    "nodes": ["main", "worker"],
+    "edges": [["main", "worker"], ["worker", "main"]],
+    "root": "main",
+    "expected_steps": ["main", "worker"],
+    "expected_terminal_reason": "cycle"
+  }
+]

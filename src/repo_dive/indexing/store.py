@@ -612,6 +612,60 @@ class IndexStore:
             ),
         )
 
+    def page_files(
+        self,
+        *,
+        after_path: str | None,
+        limit: int,
+    ) -> tuple[FileRecord, ...]:
+        """Read one stable path-keyed page of indexed file metadata."""
+        self._ensure_open()
+        if limit <= 0:
+            raise ValueError("file page limit must be positive")
+        rows = self._connection.execute(
+            "SELECT path, language, size_bytes, content_hash, encoding, status, "
+            "skip_reason FROM files WHERE (? IS NULL OR path > ?) "
+            "ORDER BY path LIMIT ?",
+            (after_path, after_path, limit),
+        )
+        result: list[FileRecord] = []
+        for row in rows:
+            skip_reason_value = cast(str | None, row[6])
+            result.append(
+                FileRecord(
+                    path=cast(str, row[0]),
+                    language=cast(str, row[1]),
+                    size_bytes=cast(int, row[2]),
+                    content_hash=cast(str | None, row[3]),
+                    encoding=cast(str | None, row[4]),
+                    status=ReadStatus(cast(str, row[5])),
+                    skip_reason=(
+                        SkipReason(skip_reason_value)
+                        if skip_reason_value is not None
+                        else None
+                    ),
+                )
+            )
+        return tuple(result)
+
+    def page_chunk_ids(
+        self,
+        path: str,
+        *,
+        after_ordinal: int,
+        limit: int,
+    ) -> tuple[tuple[int, str], ...]:
+        """Read one stable ordinal-keyed page of Chunk identities for a file."""
+        self._ensure_open()
+        if after_ordinal < -1 or limit <= 0:
+            raise ValueError("Chunk page parameters are invalid")
+        rows = self._connection.execute(
+            "SELECT ordinal, id FROM chunks WHERE file_path = ? AND ordinal > ? "
+            "ORDER BY ordinal LIMIT ?",
+            (path, after_ordinal, limit),
+        )
+        return tuple((cast(int, row[0]), cast(str, row[1])) for row in rows)
+
     def get_parse_result(self, path: str) -> ParseResult:
         """Read stored parsing objects for one repository-relative file."""
         self._ensure_open()
