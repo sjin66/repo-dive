@@ -66,3 +66,35 @@ Added the portable repo-dive wiki Agent plugin, offline transactional init insta
 ### Status
 
 [OK] **Completed**
+
+
+## Session 3: Governed Wiki structure and provenance
+
+**Date**: 2026-08-30
+**Task**: Enhance Wiki structure and quality
+**Branch**: `feature/cli-agent-marketplace`
+
+### Summary
+
+Activated the governed Wiki Schema 2.0 workflow with explicit three-level outlines,
+mandatory direct Evidence, localized framework and Subsection resources, coherent index
+provenance, isolated legacy Schema 1.0 persistence, and evidence-gated extension guides.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `97280d4` | feat: enhance governed Wiki structure and provenance |
+| `4f20398` | chore(task): archive 08-30-enhance-wiki-structure-quality |
+
+### Verification
+
+- `make setup`: passed with an explicit supported Python executable.
+- `make check`: passed.
+- `make package-smoke`: passed.
+- `make test-all`: 474 passed; one local-environment-only Skill uniqueness test failed
+  because ignored `.agents/skills/wiki` and symlinked `.claude/skills/wiki` are installed.
+
+### Status
+
+[OK] **Completed**
