@@ -67,9 +67,28 @@ def main() -> int:
                 "executable": expected["executable"],
             }:
                 errors.append(f"release target metadata is invalid: {target}")
-    github_ref = os.environ.get("GITHUB_REF_NAME")
-    if github_ref and github_ref != f"v{version}":
-        errors.append(f"tag {github_ref} does not match package version v{version}")
+    github_ref_type = os.environ.get("GITHUB_REF_TYPE")
+    github_ref_name = os.environ.get("GITHUB_REF_NAME", "")
+    github_ref = os.environ.get("GITHUB_REF", "")
+    github_tag: str | None = None
+    if github_ref_type == "tag":
+        if not github_ref_name:
+            errors.append("GitHub tag reference name is missing")
+        elif not github_ref.startswith("refs/tags/"):
+            errors.append("GitHub tag reference is malformed")
+        else:
+            full_ref_tag = github_ref.removeprefix("refs/tags/")
+            if not full_ref_tag or full_ref_tag != github_ref_name:
+                errors.append("GitHub tag reference name and full ref differ")
+            else:
+                github_tag = github_ref_name
+    elif not github_ref_type and github_ref.startswith("refs/tags/"):
+        github_tag = github_ref.removeprefix("refs/tags/")
+        if not github_tag:
+            errors.append("GitHub tag reference name is missing")
+            github_tag = None
+    if github_tag is not None and github_tag != f"v{version}":
+        errors.append(f"tag {github_tag} does not match package version v{version}")
     if errors:
         for error in errors:
             print(f"release contract error: {error}", file=sys.stderr)

@@ -71,6 +71,9 @@ Both consume `skills/wiki/references/release.json`, whose required fields are
   version-pinned bootstrap installer.
 - Release metadata supports only `darwin-arm64`, `darwin-x64`, and
   `windows-x64`. The launcher rejects every other target before network access.
+- Release version checks compare `GITHUB_REF_NAME` only when
+  `GITHUB_REF_TYPE=tag`; branch CI must run the same repository checks without
+  treating the branch name as a release version.
 - Bootstrap archives are PyInstaller `onedir` directories. Launchers verify the
   exact SHA-256 manifest entry, reject unsafe paths and links, smoke the CLI,
   and atomically publish a completed directory to a versioned user cache.
@@ -99,6 +102,8 @@ Both consume `skills/wiki/references/release.json`, whose required fields are
 | `repo-dive` is absent from `PATH` | Skill explains the pinned bootstrap and requires explicit consent. |
 | Compatible CLI and cache are absent | Explain source/version/cache and ask for consent; never download implicitly. |
 | Host is not a supported release target | Stop before network access with an actionable platform diagnostic. |
+| Branch CI sets `GITHUB_REF_NAME` | Run release metadata checks without tag/version comparison. |
+| Tag ref is missing, malformed, conflicting, or version-mismatched | Fail the release contract check before building assets. |
 | Digest, archive safety, extraction, or smoke fails | Publish nothing and preserve every older cache. |
 | A manifest name or version differs | Package contract test fails. |
 | A relative skill link escapes `skills/wiki/` | Package contract test fails. |
