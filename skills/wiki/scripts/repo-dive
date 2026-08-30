@@ -1,0 +1,141 @@
+#!/bin/sh
+# Version-pinned Repo Dive runtime bootstrap for macOS.
+set -eu
+
+fail() {
+    printf 'repo-dive bootstrap: %s\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+os=$(uname -s 2>/dev/null || true)
+machine=$(uname -m 2>/dev/null || true)
+case "$os:$machine" in
+    Darwin:arm64|Darwin:aarch64) target=darwin-arm64 ;;
+    Darwin:x86_64|Darwin:amd64) target=darwin-x64 ;;
+    *) fail "unsupported platform $os/$machine; supported targets are macOS ARM64, macOS x64, and Windows x64" ;;
+esac
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+metadata=$script_dir/../references/release.json
+[ -f "$metadata" ] || fail "release metadata is missing"
+command -v osascript >/dev/null 2>&1 || fail "macOS JavaScript runtime is unavailable"
+
+fields=$(osascript -l JavaScript - "$metadata" "$target" <<'JXA'
+ObjC.import('Foundation');
+function run(argv) {
+  const bytes = $.NSData.dataWithContentsOfFile(argv[0]);
+  if (!bytes) throw new Error('release metadata is unreadable');
+  const text = ObjC.unwrap($.NSString.alloc.initWithDataEncoding(bytes, $.NSUTF8StringEncoding));
+  const data = JSON.parse(text);
+  const item = data.targets && data.targets[argv[1]];
+  if (data.schema_version !== '1.0' || !item) throw new Error('invalid release metadata');
+  return [data.version, data.repository, data.tag, item.archive,
+          item.archive_type, item.top_level, item.executable].join('\t');
+}
+JXA
+) || fail "release metadata is invalid"
+
+field_count=$(printf '%s\n' "$fields" | awk -F '\t' '{ print NF }')
+[ "$field_count" -eq 7 ] || fail "release metadata has an invalid target entry"
+version=$(printf '%s\n' "$fields" | cut -f 1)
+repository=$(printf '%s\n' "$fields" | cut -f 2)
+tag=$(printf '%s\n' "$fields" | cut -f 3)
+archive_name=$(printf '%s\n' "$fields" | cut -f 4)
+archive_type=$(printf '%s\n' "$fields" | cut -f 5)
+top_level=$(printf '%s\n' "$fields" | cut -f 6)
+executable_name=$(printf '%s\n' "$fields" | cut -f 7)
+case "$version" in ''|*[!0-9A-Za-z.-]*|.*|*..*|*.) fail "release metadata contains an unsafe version" ;; esac
+[ "$tag" = "v$version" ] || fail "release tag and version differ"
+[ "$repository" = "https://github.com/sjin66/repo-dive" ] || fail "release repository is invalid"
+[ "$archive_name" = "repo-dive-v$version-$target.tar.gz" ] || fail "release archive name is invalid"
+[ "$archive_type" = tar.gz ] || fail "release metadata selected an invalid archive type"
+[ "$top_level" = repo-dive ] || fail "release metadata selected an invalid archive root"
+[ "$executable_name" = repo-dive ] || fail "release metadata selected an invalid executable"
+
+cache_base=${XDG_CACHE_HOME:-${HOME:?HOME is required}/.cache}
+cache_dir=$cache_base/repo-dive/$version/$target
+runtime=$cache_dir/$executable_name
+marker=$cache_dir/.complete
+
+if [ "${1-}" != --install ]; then
+    [ -f "$marker" ] && [ -x "$runtime" ] || fail "runtime $version for $target is not installed; obtain consent, then run '$0 --install'"
+    exec "$runtime" "$@"
+fi
+shift
+[ "$#" -eq 0 ] || fail "--install does not accept CLI arguments"
+if [ -f "$marker" ] && [ -x "$runtime" ]; then
+    printf 'repo-dive bootstrap: reused verified repo-dive %s at %s\n' "$version" "$cache_dir" >&2
+    exit 0
+fi
+
+command -v curl >/dev/null 2>&1 || fail "curl is required for explicit installation"
+command -v shasum >/dev/null 2>&1 || fail "shasum is required for verification"
+command -v tar >/dev/null 2>&1 || fail "tar is required for installation"
+parent=$(dirname -- "$cache_dir")
+mkdir -p "$parent"
+lock=$cache_dir.lock
+if ! mkdir "$lock" 2>/dev/null; then
+    if [ -f "$marker" ] && [ -x "$runtime" ]; then
+        printf 'repo-dive bootstrap: reused verified repo-dive %s at %s\n' "$version" "$cache_dir" >&2
+        exit 0
+    fi
+    fail "another installer is publishing this runtime; retry after it finishes"
+fi
+if [ -e "$cache_dir" ]; then
+    rmdir "$lock"
+    fail "an incomplete cache already exists at $cache_dir; inspect and remove it before retrying"
+fi
+if ! work=$(mktemp -d "$parent/.install.XXXXXX"); then
+    rmdir "$lock"
+    fail "could not create installation staging directory"
+fi
+cleanup() { rm -rf "$work" "$lock"; }
+trap cleanup EXIT HUP INT TERM
+base_url=$repository/releases/download/$tag
+archive=$work/$archive_name
+checksums=$work/SHA256SUMS
+curl --fail --location --silent --show-error --output "$checksums" "$base_url/SHA256SUMS" || fail "checksum download failed"
+curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive_name" || fail "archive download failed"
+
+digest_lines=$(awk -v name="$archive_name" '
+  $2 == name || $2 == "*" name { print $1 }
+' "$checksums")
+line_count=$(printf '%s\n' "$digest_lines" | awk 'NF { count++ } END { print count+0 }')
+[ "$line_count" -eq 1 ] || fail "checksum manifest must contain exactly one entry for $archive_name"
+expected=$(printf '%s\n' "$digest_lines" | awk 'NF { print; exit }')
+case "$expected" in *[!0-9A-Fa-f]*|'') fail "checksum manifest contains a malformed digest" ;; esac
+[ "${#expected}" -eq 64 ] || fail "checksum manifest contains a malformed digest"
+actual=$(shasum -a 256 "$archive" | awk '{ print $1 }')
+[ "$actual" = "$expected" ] || fail "SHA-256 verification failed for $archive_name"
+
+members=$work/members
+tar -tzf "$archive" >"$members" || fail "archive member listing failed"
+[ -s "$members" ] || fail "archive is empty"
+while IFS= read -r member; do
+    case "$member" in
+        /*|../*|*/../*|*/..|..|*\\*) fail "archive contains an unsafe path: $member" ;;
+        "$top_level"|"$top_level"/*) ;;
+        *) fail "archive contains an unexpected top-level entry: $member" ;;
+    esac
+done <"$members"
+if tar -tvzf "$archive" | awk 'substr($0,1,1) != "-" && substr($0,1,1) != "d" { bad=1 } END { exit !bad }'; then
+    fail "archive contains a link or special entry"
+fi
+
+unpack=$work/unpack
+mkdir "$unpack"
+tar -xzf "$archive" -C "$unpack" || fail "archive extraction failed"
+staged=$unpack/$top_level
+[ -d "$staged" ] || fail "archive root is missing"
+[ -f "$staged/$executable_name" ] || fail "bundled executable is missing"
+chmod 755 "$staged/$executable_name"
+"$staged/$executable_name" --version >/dev/null || fail "bundled executable smoke test failed"
+printf '%s  %s\n' "$actual" "$archive_name" >"$staged/.complete"
+
+if [ ! -e "$cache_dir" ] && mv "$staged" "$cache_dir" 2>/dev/null; then
+    printf 'repo-dive bootstrap: installed repo-dive %s at %s\n' "$version" "$cache_dir" >&2
+elif [ -f "$marker" ] && [ -x "$runtime" ]; then
+    printf 'repo-dive bootstrap: reused verified repo-dive %s at %s\n' "$version" "$cache_dir" >&2
+else
+    fail "could not publish the verified runtime atomically"
+fi

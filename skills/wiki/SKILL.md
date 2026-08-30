@@ -23,10 +23,20 @@ prose. Never imply that the CLI calls a generative model.
 1. Resolve the local repository root and inspect its instructions and primary
    documentation.
 2. Run `command -v repo-dive`, `repo-dive --version`, and
-   `repo-dive wiki --help`. If unavailable, stop and report that the separately
-   distributed local CLI must be installed; do not silently download or install software.
-3. Inspect `git status --short` and preserve all existing user changes.
-4. Choose explicit `--exclude` patterns for high-noise agent configuration,
+   `repo-dive wiki --help`. Prefer a compatible executable already on `PATH`.
+   If it is unavailable, do not silently download or install software. Explain
+   that Repo Dive 0.1.0 will be downloaded from the `sjin66/repo-dive` GitHub
+   Release, SHA-256 verified, and installed outside the Skill in the user cache.
+   State the cache destination and ask for explicit consent before continuing.
+3. Only after consent, run `scripts/repo-dive --install` on macOS or
+   `scripts/repo-dive.ps1 --install` with PowerShell on Windows. Unsupported
+   platforms stop before network access. A checksum or archive-safety failure
+   stops the workflow; never bypass verification. The normal launcher path
+   never downloads. After installation, invoke the same launcher without
+   `--install` for every CLI stage. It forwards arguments, standard streams,
+   and the CLI exit code unchanged.
+4. Inspect `git status --short` and preserve all existing user changes.
+5. Choose explicit `--exclude` patterns for high-noise agent configuration,
    generated output, vendored dependencies, fixtures, and plans when they are
    not documentation targets. Keep tests when the Wiki must explain behavior
    or verification.
@@ -65,6 +75,9 @@ code `0` before advancing.
 
 Read [the workflow contract](references/workflow-contract.md) before creating
 JSON inputs or recovering from a failed command.
+Release target and cache details are pinned in
+[`references/release.json`](references/release.json); do not construct a
+different download URL or modify an installed Skill directory.
 
 ## Evidence quality
 

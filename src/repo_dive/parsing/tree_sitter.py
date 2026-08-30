@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+from bisect import bisect_right
 from collections.abc import Callable
 from pathlib import PurePosixPath
 from typing import Protocol, cast
@@ -21,17 +22,10 @@ from repo_dive.parsing.text import TextParser
 from repo_dive.scanner.models import FileRecord
 
 
-class _Point(Protocol):
-    row: int
-    column: int
-
-
 class _Node(Protocol):
     type: str
     start_byte: int
     end_byte: int
-    start_point: _Point
-    end_point: _Point
     children: list[_Node]
     has_error: bool
 
@@ -141,6 +135,7 @@ class _TreeSymbolCollector:
     def __init__(self, path: str, text: str) -> None:
         self._path = path
         self._source = text.encode("utf-8")
+        self._line_starts = _line_starts(self._source)
         self._lines = text.splitlines(keepends=True)
         module_name = _module_name(path)
         self._module = create_symbol(
@@ -190,7 +185,7 @@ class _TreeSymbolCollector:
         if name_node is None:
             return None
         name = self._source[name_node.start_byte : name_node.end_byte].decode("utf-8")
-        start_line, end_line = _line_range(node)
+        start_line, end_line = _line_range(node, self._line_starts)
         symbol = create_symbol(
             kind=kind,
             name=name,
@@ -240,9 +235,14 @@ def _load_parser(language: str) -> _Parser:
     return cast(_Parser, parser_class(loaded_language))
 
 
-def _line_range(node: _Node) -> tuple[int, int]:
-    start_line = node.start_point.row + 1
-    end_line = node.end_point.row + (1 if node.end_point.column > 0 else 0)
+def _line_starts(source: bytes) -> tuple[int, ...]:
+    return (0, *(index + 1 for index, byte in enumerate(source) if byte == 0x0A))
+
+
+def _line_range(node: _Node, line_starts: tuple[int, ...]) -> tuple[int, int]:
+    start_line = bisect_right(line_starts, node.start_byte)
+    final_byte = max(node.start_byte, node.end_byte - 1)
+    end_line = bisect_right(line_starts, final_byte)
     return start_line, max(start_line, end_line)
 
 

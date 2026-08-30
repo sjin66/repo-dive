@@ -1,0 +1,84 @@
+name: Native Runtime Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: darwin-arm64
+            runner: macos-14
+            extension: tar.gz
+          - target: darwin-x64
+            runner: macos-15-intel
+            extension: tar.gz
+          - target: windows-x64
+            runner: windows-latest
+            extension: zip
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install GNU Make on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install make --no-progress --yes
+      - name: Set up project
+        run: make setup
+      - name: Validate repository and release contracts
+        run: make check release-check
+      - name: Run complete test suite
+        run: make test-all
+      - name: Build native onedir archive
+        run: make bundle BUNDLE_TARGET=${{ matrix.target }} BUNDLE_ARCHIVE=dist/repo-dive-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.extension }}
+      - name: Smoke-test native bundle and grammars
+        run: make bundle-smoke BUNDLE_TARGET=${{ matrix.target }} BUNDLE_ARCHIVE=dist/repo-dive-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.extension }}
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: dist/repo-dive-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.extension }}
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.target }}
+          path: dist/repo-dive-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.extension }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish verified release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Create SHA-256 manifest
+        working-directory: assets
+        run: sha256sum repo-dive-* > SHA256SUMS
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: assets/SHA256SUMS
+      - name: Publish one GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: assets/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true

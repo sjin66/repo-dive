@@ -16,8 +16,14 @@ from pathlib import Path
 RUNTIME_SCHEMA = "repo_dive/indexing/schema.sql"
 BUNDLED_SKILL = "repo_dive/_skills/wiki/SKILL.md"
 BUILT_SKILL_REFERENCE = "repo_dive/_skills/wiki/references/workflow-contract.md"
+BUILT_RELEASE_METADATA = "repo_dive/_skills/wiki/references/release.json"
+BUILT_POSIX_LAUNCHER = "repo_dive/_skills/wiki/scripts/repo-dive"
+BUILT_POWERSHELL_LAUNCHER = "repo_dive/_skills/wiki/scripts/repo-dive.ps1"
 SDIST_SKILL = "skills/wiki/SKILL.md"
 SDIST_SKILL_REFERENCE = "skills/wiki/references/workflow-contract.md"
+SDIST_RELEASE_METADATA = "skills/wiki/references/release.json"
+SDIST_POSIX_LAUNCHER = "skills/wiki/scripts/repo-dive"
+SDIST_POWERSHELL_LAUNCHER = "skills/wiki/scripts/repo-dive.ps1"
 CLI_SMOKE_ARGUMENTS = (
     ("--version",),
     ("--help",),
@@ -59,8 +65,14 @@ def validate_wheel(wheel: Path) -> None:
         raise PackageSmokeError(f"wheel is missing {RUNTIME_SCHEMA}")
     if BUNDLED_SKILL not in names:
         raise PackageSmokeError(f"wheel is missing {BUNDLED_SKILL}")
-    if BUILT_SKILL_REFERENCE not in names:
-        raise PackageSmokeError(f"wheel is missing {BUILT_SKILL_REFERENCE}")
+    for resource in (
+        BUILT_SKILL_REFERENCE,
+        BUILT_RELEASE_METADATA,
+        BUILT_POSIX_LAUNCHER,
+        BUILT_POWERSHELL_LAUNCHER,
+    ):
+        if resource not in names:
+            raise PackageSmokeError(f"wheel is missing {resource}")
 
 
 def validate_sdist(sdist: Path) -> None:
@@ -76,8 +88,14 @@ def validate_sdist(sdist: Path) -> None:
         raise PackageSmokeError("sdist is missing pyproject.toml")
     if not any(name.endswith(f"/{SDIST_SKILL}") for name in names):
         raise PackageSmokeError(f"sdist is missing {SDIST_SKILL}")
-    if not any(name.endswith(f"/{SDIST_SKILL_REFERENCE}") for name in names):
-        raise PackageSmokeError(f"sdist is missing {SDIST_SKILL_REFERENCE}")
+    for resource in (
+        SDIST_SKILL_REFERENCE,
+        SDIST_RELEASE_METADATA,
+        SDIST_POSIX_LAUNCHER,
+        SDIST_POWERSHELL_LAUNCHER,
+    ):
+        if not any(name.endswith(f"/{resource}") for name in names):
+            raise PackageSmokeError(f"sdist is missing {resource}")
 
 
 def smoke_wheel_install(wheel: Path) -> None:
@@ -151,6 +169,15 @@ def smoke_wheel_install(wheel: Path) -> None:
             raise PackageSmokeError(
                 "wheel-installed skill reference differs from authoritative source"
             )
+        for source in Path("skills/wiki").rglob("*"):
+            if not source.is_file():
+                continue
+            relative = source.relative_to("skills/wiki")
+            installed = repository / ".agents/skills/wiki" / relative
+            if not installed.is_file() or installed.read_bytes() != source.read_bytes():
+                raise PackageSmokeError(
+                    f"wheel-installed skill resource differs: {relative.as_posix()}"
+                )
         repeated = json.loads(_run(*init_arguments, cwd=repository))
         statuses = {
             destination["status"] for destination in repeated["result"]["destinations"]

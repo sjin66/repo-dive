@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from scripts.archive_bundle import archive_bundle
+from scripts.bundle_smoke import extract_archive
 from scripts.package_smoke import (
     CLI_SMOKE_ARGUMENTS,
     PackageSmokeError,
@@ -31,6 +33,9 @@ def _wheel(
         if include_skill:
             archive.writestr(SKILL_RESOURCE, "---\nname: wiki\n---\n")
             archive.writestr(SKILL_REFERENCE, "# Workflow Contract\n")
+            archive.writestr("repo_dive/_skills/wiki/references/release.json", "{}")
+            archive.writestr("repo_dive/_skills/wiki/scripts/repo-dive", "#!/bin/sh\n")
+            archive.writestr("repo_dive/_skills/wiki/scripts/repo-dive.ps1", "")
 
 
 def _sdist(
@@ -57,6 +62,14 @@ def _sdist(
             )
             info.size = len(reference)
             archive.addfile(info, io.BytesIO(reference))
+            for name, body in (
+                ("references/release.json", b"{}"),
+                ("scripts/repo-dive", b"#!/bin/sh\n"),
+                ("scripts/repo-dive.ps1", b""),
+            ):
+                info = tarfile.TarInfo(f"repo_dive-0.1.0/skills/wiki/{name}")
+                info.size = len(body)
+                archive.addfile(info, io.BytesIO(body))
 
 
 def test_distribution_discovery_requires_one_wheel_and_sdist(tmp_path: Path) -> None:
@@ -134,3 +147,45 @@ def test_cli_smoke_covers_version_and_four_command_families() -> None:
         ("context", "--help"),
         ("wiki", "--help"),
     )
+
+
+@pytest.mark.parametrize(
+    ("target", "suffix"),
+    [("darwin-arm64", ".tar.gz"), ("windows-x64", ".zip")],
+)
+def test_native_bundle_archive_has_one_safe_top_level_directory(
+    tmp_path: Path, target: str, suffix: str
+) -> None:
+    bundle = tmp_path / "repo-dive"
+    bundle.mkdir()
+    executable = bundle / ("repo-dive.exe" if target == "windows-x64" else "repo-dive")
+    executable.write_bytes(b"executable")
+    (bundle / "_internal").mkdir()
+    (bundle / "_internal/runtime.dat").write_bytes(b"runtime")
+    output = tmp_path / f"bundle{suffix}"
+
+    archive_bundle(bundle, output, target)
+
+    if target == "windows-x64":
+        with zipfile.ZipFile(output) as archive:
+            names = archive.namelist()
+    else:
+        with tarfile.open(output) as archive:
+            names = archive.getnames()
+    assert names
+    assert all(name == "repo-dive" or name.startswith("repo-dive/") for name in names)
+    assert not any(".." in Path(name).parts for name in names)
+
+
+def test_native_bundle_smoke_rejects_archive_traversal(tmp_path: Path) -> None:
+    archive_path = tmp_path / "malicious.tar.gz"
+    body = b"escape"
+    with tarfile.open(archive_path, "w:gz") as archive:
+        info = tarfile.TarInfo("repo-dive/../../escape")
+        info.size = len(body)
+        archive.addfile(info, io.BytesIO(body))
+
+    with pytest.raises(RuntimeError, match="unsafe archive entry"):
+        extract_archive(archive_path, tmp_path / "extract")
+
+    assert not (tmp_path / "escape").exists()

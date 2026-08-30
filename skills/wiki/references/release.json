@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "version": "0.1.0",
+  "repository": "https://github.com/sjin66/repo-dive",
+  "tag": "v0.1.0",
+  "targets": {
+    "darwin-arm64": {
+      "archive": "repo-dive-v0.1.0-darwin-arm64.tar.gz",
+      "archive_type": "tar.gz",
+      "top_level": "repo-dive",
+      "executable": "repo-dive"
+    },
+    "darwin-x64": {
+      "archive": "repo-dive-v0.1.0-darwin-x64.tar.gz",
+      "archive_type": "tar.gz",
+      "top_level": "repo-dive",
+      "executable": "repo-dive"
+    },
+    "windows-x64": {
+      "archive": "repo-dive-v0.1.0-windows-x64.zip",
+      "archive_type": "zip",
+      "top_level": "repo-dive",
+      "executable": "repo-dive.exe"
+    }
+  }
+}

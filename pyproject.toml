@@ -23,6 +23,7 @@ vector = [
 dev = [
   "build>=1.2,<2.0",
   "mypy>=1.14",
+  "pyinstaller==6.15.0",
   "pytest>=8.3",
   "ruff>=0.9",
 ]
