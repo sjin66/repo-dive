@@ -220,9 +220,8 @@ def validate_repository_contract(root: Path) -> list[str]:
 
     pyproject_path = root / "pyproject.toml"
     if pyproject_path.is_file():
-        project = tomllib.loads(pyproject_path.read_text(encoding="utf-8")).get(
-            "project", {}
-        )
+        configuration = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+        project = configuration.get("project", {})
         dependencies = project.get("dependencies", [])
         optional = project.get("optional-dependencies", {})
         if "sentence-transformers" in {_dependency_name(item) for item in dependencies}:
@@ -232,6 +231,13 @@ def validate_repository_contract(root: Path) -> list[str]:
             )
         if "build" not in {_dependency_name(item) for item in optional.get("dev", [])}:
             errors.append("pyproject.toml dev extra must include build")
+        ruff_exclude = (
+            configuration.get("tool", {}).get("ruff", {}).get("extend-exclude", [])
+        )
+        if ruff_exclude != [".trellis"]:
+            errors.append(
+                'pyproject.toml Ruff extend-exclude must be exactly [".trellis"]'
+            )
 
     makefile_path = root / "Makefile"
     if makefile_path.is_file():

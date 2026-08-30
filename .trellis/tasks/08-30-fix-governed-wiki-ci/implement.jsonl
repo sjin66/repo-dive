@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/tooling-integration-contracts.md", "reason": "Defines clean-checkout tooling validation and forbids relying on local Git excludes."}

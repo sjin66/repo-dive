@@ -84,6 +84,9 @@ dependencies = ["tree-sitter>=0.25"]
 [project.optional-dependencies]
 vector = ["sentence-transformers>=6.0"]
 dev = ["build>=1.2", "pytest>=8.3"]
+
+[tool.ruff]
+extend-exclude = [".trellis"]
 """
 
 VALID_MAKEFILE = """\
@@ -361,6 +364,52 @@ def test_development_extra_must_include_package_builder(tmp_path: Path) -> None:
 
     assert validate_repository_contract(tmp_path) == [
         "pyproject.toml dev extra must include build"
+    ]
+
+
+def test_ruff_must_exclude_generated_trellis_tooling(tmp_path: Path) -> None:
+    _create_valid_contract(tmp_path)
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8").replace(
+            'extend-exclude = [".trellis"]',
+            "extend-exclude = []",
+        ),
+        encoding="utf-8",
+    )
+
+    assert validate_repository_contract(tmp_path) == [
+        'pyproject.toml Ruff extend-exclude must be exactly [".trellis"]'
+    ]
+
+
+def test_ruff_exclusion_is_validated_as_toml_not_source_text(tmp_path: Path) -> None:
+    _create_valid_contract(tmp_path)
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8").replace(
+            'extend-exclude = [".trellis"]',
+            'extend-exclude = [\n  # Generated Trellis runtime.\n  ".trellis",\n]',
+        ),
+        encoding="utf-8",
+    )
+
+    assert validate_repository_contract(tmp_path) == []
+
+
+def test_ruff_must_not_exclude_product_source_boundaries(tmp_path: Path) -> None:
+    _create_valid_contract(tmp_path)
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8").replace(
+            'extend-exclude = [".trellis"]',
+            'extend-exclude = [".trellis", "src", "tests", "scripts"]',
+        ),
+        encoding="utf-8",
+    )
+
+    assert validate_repository_contract(tmp_path) == [
+        'pyproject.toml Ruff extend-exclude must be exactly [".trellis"]'
     ]
 
 
