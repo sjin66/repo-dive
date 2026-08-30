@@ -111,9 +111,7 @@ the generating agent.
 ### Correct
 
 ```python
-contract = compose_template(
-    "cli_tool", "monorepo", ("database", "api"), "zh-CN"
-)
+contract = compose_template("cli_tool", "monorepo", ("database", "api"), "zh-CN")
 assert contract.identity.facets == ("api", "database")
 assert "<!--" in contract.annotated_guidance
 assert "<!--" not in contract.compiled_guidance

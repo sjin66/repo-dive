@@ -93,6 +93,7 @@ Extensions are ordered mixins/elements and order affects priority. The API docum
 
 ```python
 import mistune
+
 parse = mistune.create_markdown(renderer=None, plugins=["table"])
 tokens, state = parse.parse(source)
 ```
