@@ -1,16 +1,16 @@
 # Agent Plugin Installation
 
-The `repo-dive` Agent plugin supplies one portable Agent Skill named `wiki`.
-It orchestrates the separately installed `repo-dive` Python CLI; installing the
-plugin does **not** install the executable or a model provider.
+The `repo-dive` Agent package supplies one portable Agent Skill named `wiki`.
+The small Skill and self-contained CLI are separate release assets. Installing
+the Skill does not download a runtime or install a model provider.
 
 ## Prerequisites
 
 - A local Git repository to document. The skill never clones a URL without
   separate user authorization.
-- A working `repo-dive` executable on `PATH`. Verify it with
-  `repo-dive --version` and `repo-dive wiki --help`. For a source checkout,
-  `make setup` creates `.venv/bin/repo-dive`; add that environment to `PATH`.
+- A working `repo-dive` on `PATH`, or explicit first-use consent to install the
+  pinned self-contained runtime. It includes Python and native Tree-sitter;
+  Python, pip, and a compiler are not required.
 - Node.js and npm only when using the alternative third-party `skills` installer.
 - A supported host version that implements Agent Skills. Packaging conventions
   change quickly, so pin the plugin source to a release tag or commit in
@@ -43,13 +43,13 @@ As an alternative, the third-party `skills` CLI installs the same authoritative
 `skills/wiki` directory for all five supported hosts:
 
 ```bash
-npx skills add OWNER/repo-dive --skill wiki \
+npx skills add sjin66/repo-dive --skill wiki \
   -a claude-code -a codex -a opencode -a gemini-cli \
   -a github-copilot -y
 ```
 
-Replace `OWNER/repo-dive` with the Git repository or a local checkout path. The
-project mappings are:
+The public source is `https://github.com/sjin66/repo-dive`; a local checkout
+path may be used for development. The project mappings are:
 
 | Host | Installed discovery path | Invocation/discovery |
 | --- | --- | --- |
@@ -66,6 +66,41 @@ copies independently; update from the package source instead.
 Inspect before installing with `npx skills add OWNER/repo-dive --list`. Update
 tracked installs with `npx skills update`. The third-party installer collects
 telemetry unless `DISABLE_TELEMETRY=1` or `DO_NOT_TRACK=1` is set.
+
+For an OpenCode global install, use the `skills` installer's global option; the
+discovery path is `~/.config/opencode/skills/wiki`. Project installs use
+`.agents/skills/wiki`. Launchers write only to the user cache, so the installed
+Skill directory may be read-only.
+
+```bash
+npx skills add sjin66/repo-dive --skill wiki -a opencode -g -y
+```
+
+## First use, integrity, and lifecycle
+
+The Skill prefers a compatible `repo-dive` on `PATH`. Otherwise it states the
+pinned version, GitHub Release source, network action, and cache destination and
+asks for explicit consent. No consent means no download. Supported runtime
+targets are macOS ARM64, macOS x64, and Windows x64. Linux, Windows ARM64, and
+unknown targets fail before network access.
+
+After consent, the launcher downloads the versioned directory archive and
+`SHA256SUMS`, rejects unsafe paths and links, verifies SHA-256, smoke-tests the
+executable, and atomically publishes the complete directory. Verification
+failure preserves older caches and must not be bypassed. The checksummed MVP
+has GitHub artifact attestations but no notarization or Authenticode signing, so
+OS unknown-publisher warnings may appear.
+
+`npx skills update wiki` updates the Skill and pinned version. Each version has
+a separate cache path; old versions are not silently removed:
+
+```text
+macOS:  ${XDG_CACHE_HOME:-$HOME/.cache}/repo-dive/<version>/<target>/
+Windows: %LOCALAPPDATA%\repo-dive\<version>\<target>\
+```
+
+Inspect a path before deleting a retired cache. Cache removal and
+`npx skills remove wiki` never delete repository `.repo-dive/` artifacts.
 
 ## Native and host-specific routes
 

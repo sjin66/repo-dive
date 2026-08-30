@@ -58,10 +58,12 @@ Agent 安装可移植 `wiki` Skill，请参见 [Agent 插件安装](docs/zh-CN/a
 ```bash
 repo-dive init . --agent claude-code --agent codex --agent opencode \
   --agent gemini-cli --agent github-copilot
+npx skills add sjin66/repo-dive --skill wiki -a opencode -y
 ```
 
 在终端中直接运行 `repo-dive init` 可使用交互式多选。该命令离线安装项目级
-Skill；文档仍保留 `npx skills` 和 Host 原生安装方式作为备选。
+Skill。`npx skills` 方式让 OpenCode 无需 Python 即可使用：首次使用获得明确
+同意后，Skill 会在受支持 Target 安装经 Checksum 验证的自包含 Runtime。
 
 这里的 RAG 是一种**执行边界分离的检索增强生成**：`repo-dive` 负责摄取、索引、检索、排序和上下文打包；调用方 Copilot 会话负责生成。CLI 不会再启动一个隐藏的模型会话。
 

@@ -62,11 +62,13 @@ To install the portable `wiki` skill for supported coding agents, see
 ```bash
 repo-dive init . --agent claude-code --agent codex --agent opencode \
   --agent gemini-cli --agent github-copilot
+npx skills add sjin66/repo-dive --skill wiki -a opencode -y
 ```
 
 In a terminal, bare `repo-dive init` offers an interactive multi-select. The
-command installs project-scoped skill files offline; `npx skills` and native
-host installers remain documented alternatives.
+command installs project-scoped skill files offline. The `npx skills` route
+supports OpenCode without Python: after explicit first-use consent, the Skill
+installs a checksummed self-contained runtime on supported targets.
 
 In this design, RAG means **retrieval-augmented generation with a split execution boundary**: `repo-dive` owns ingestion, indexing, retrieval, ranking, and context packaging; the calling Copilot session owns generation. The CLI does not launch a second hidden model session.
 

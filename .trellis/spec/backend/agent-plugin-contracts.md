@@ -6,8 +6,8 @@
 
 Use this contract when adding or changing an Agent-facing capability distributed
 from the `repo-dive` repository. The package targets Claude Code, Codex CLI,
-OpenCode, Gemini CLI, and GitHub Copilot while keeping the Python CLI as a
-separately installed executable.
+OpenCode, Gemini CLI, and GitHub Copilot while keeping the Skill separate from
+either a PATH-installed CLI or an explicitly installed self-contained runtime.
 
 ### 2. Signatures
 
@@ -42,6 +42,17 @@ repo-dive init [repository] [--agent AGENT]... [--force]
                [--format json|markdown]
 ```
 
+The self-contained runtime launchers are:
+
+```text
+skills/wiki/scripts/repo-dive [--install | <repo-dive arguments>...]
+skills/wiki/scripts/repo-dive.ps1 [--install | <repo-dive arguments>...]
+```
+
+Both consume `skills/wiki/references/release.json`, whose required fields are
+`schema_version`, `version`, `repository`, `tag`, and a `targets` entry with
+`archive`, `archive_type`, `top_level`, and `executable`.
+
 ### 3. Contracts
 
 - `skills/wiki/SKILL.md` is the only committed operational source for `wiki`.
@@ -54,8 +65,18 @@ repo-dive init [repository] [--agent AGENT]... [--force]
   host metadata in their native manifests.
 - OpenCode uses Agent Skills discovery. Do not create a JavaScript runtime
   plugin solely to distribute a skill.
-- Installing the Agent package never installs the Python CLI, clones a source
-  repository, or invokes a model provider implicitly.
+- Installing the Agent package never downloads the CLI, clones a source
+  repository, or invokes a model provider implicitly. If no compatible CLI is
+  on `PATH`, first use must obtain explicit consent before the Skill runs its
+  version-pinned bootstrap installer.
+- Release metadata supports only `darwin-arm64`, `darwin-x64`, and
+  `windows-x64`. The launcher rejects every other target before network access.
+- Bootstrap archives are PyInstaller `onedir` directories. Launchers verify the
+  exact SHA-256 manifest entry, reject unsafe paths and links, smoke the CLI,
+  and atomically publish a completed directory to a versioned user cache.
+- Normal launcher execution never downloads and forwards arguments, standard
+  streams, and process status unchanged. The Skill installation directory may
+  be read-only.
 - Bare `init` may prompt only when stdin is a TTY and output is Markdown.
   JSON/non-TTY callers must provide repeatable `--agent` arguments.
 - Claude installs to `.claude/skills/wiki`; Codex, OpenCode, Gemini, and Copilot
@@ -70,7 +91,10 @@ repo-dive init [repository] [--agent AGENT]... [--force]
 
 | Condition | Required behavior |
 | --- | --- |
-| `repo-dive` is absent from `PATH` | Skill stops at preflight and reports the separate CLI prerequisite. |
+| `repo-dive` is absent from `PATH` | Skill explains the pinned bootstrap and requires explicit consent. |
+| Compatible CLI and cache are absent | Explain source/version/cache and ask for consent; never download implicitly. |
+| Host is not a supported release target | Stop before network access with an actionable platform diagnostic. |
+| Digest, archive safety, extraction, or smoke fails | Publish nothing and preserve every older cache. |
 | A manifest name or version differs | Package contract test fails. |
 | A relative skill link escapes `skills/wiki/` | Package contract test fails. |
 | A second committed `wiki` skill appears in a host discovery root | Single-source contract test fails. |
@@ -110,12 +134,20 @@ repo-dive init [repository] [--agent AGENT]... [--force]
 - destination deduplication, reuse, conflict, `--force`, symlink rejection, and
   multi-destination rollback;
 - wheel/sdist resource inclusion and wheel-installed `init` execution.
+- release metadata/version/target consistency and unsupported-target rejection
+  before network access;
+- explicit launcher installation, archive traversal rejection, cache
+  publication, argument forwarding, and exit-code propagation;
+- native bundle archive layout and extracted JavaScript/TypeScript grammar
+  smoke coverage.
 
 Run:
 
 ```bash
 python3 -m pytest tests/unit/test_agent_plugin.py -q
+python3 -m pytest tests/unit/test_package_smoke.py -q
 python3 scripts/check_repo_contract.py
+python3 scripts/check_release_contract.py
 make check
 make test-all
 ```

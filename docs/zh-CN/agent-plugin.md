@@ -1,15 +1,13 @@
 # Agent 插件安装
 
-`repo-dive` Agent 插件提供一个名为 `wiki` 的可移植 Agent Skill。它编排单独
-安装的 `repo-dive` Python CLI；安装插件**不会**安装该可执行文件或模型
-Provider。
+`repo-dive` Agent 包提供一个名为 `wiki` 的可移植 Agent Skill。小型 Skill 与
+自包含 CLI 是独立 Release 资产。安装 Skill 不会下载 Runtime 或安装模型 Provider。
 
 ## 前置条件
 
 - 一个待生成文档的本地 Git 仓库。未经用户另行授权，Skill 不会克隆 URL。
-- `PATH` 中有可用的 `repo-dive` 可执行文件。使用 `repo-dive --version` 和
-  `repo-dive wiki --help` 验证。对于源码检出，`make setup` 会创建
-  `.venv/bin/repo-dive`；请把该环境加入 `PATH`。
+- `PATH` 中有可用的 `repo-dive`，或首次使用时明确同意安装固定版本的自包含
+  Runtime。它包含 Python 和原生 Tree-sitter，不需要 Python、pip 或编译器。
 - 仅在使用备选的第三方 `skills` 安装器时需要 Node.js 和 npm。
 - 支持 Agent Skills 的 Host 版本。打包约定变化较快；可复现环境应把插件
   Source 固定到 Release Tag 或 Commit。
@@ -40,12 +38,13 @@ repo-dive init /path/to/project --agent codex --agent opencode --format json
 `skills/wiki` 目录：
 
 ```bash
-npx skills add OWNER/repo-dive --skill wiki \
+npx skills add sjin66/repo-dive --skill wiki \
   -a claude-code -a codex -a opencode -a gemini-cli \
   -a github-copilot -y
 ```
 
-请把 `OWNER/repo-dive` 替换为 Git 仓库或本地检出路径。项目映射如下：
+公共 Source 是 `https://github.com/sjin66/repo-dive`；开发时也可使用本地检出
+路径。项目映射如下：
 
 | Host | 安装后的发现路径 | 调用/发现方式 |
 | --- | --- | --- |
@@ -61,6 +60,38 @@ npx skills add OWNER/repo-dive --skill wiki \
 安装前可运行 `npx skills add OWNER/repo-dive --list` 检查发现结果。使用
 `npx skills update` 更新受跟踪安装。除非设置 `DISABLE_TELEMETRY=1` 或
 `DO_NOT_TRACK=1`，该第三方安装器会收集遥测。
+
+OpenCode 全局安装应使用 `skills` 安装器的全局选项，发现路径是
+`~/.config/opencode/skills/wiki`。项目安装使用 `.agents/skills/wiki`。
+Launcher 只写用户 Cache，因此安装后的 Skill 目录可以是只读的。
+
+```bash
+npx skills add sjin66/repo-dive --skill wiki -a opencode -g -y
+```
+
+## 首次使用、完整性与生命周期
+
+Skill 优先使用 `PATH` 中兼容的 `repo-dive`。否则，它会说明固定版本、GitHub
+Release Source、网络操作和 Cache 目标，并请求明确同意；不同意就不会下载。
+支持 macOS ARM64、macOS x64 和 Windows x64。Linux、Windows ARM64 和未知
+Target 会在网络访问前失败。
+
+获得同意后，Launcher 下载版本化目录 Archive 和 `SHA256SUMS`，拒绝不安全
+Path 和 Link，验证 SHA-256，冒烟测试可执行文件，然后原子发布完整目录。
+验证失败会保留旧 Cache，且不得绕过。Checksum MVP 提供 GitHub Artifact
+Attestation，但没有 Notarization 或 Authenticode 签名，因此 OS 可能显示未知
+发布者警告。
+
+`npx skills update wiki` 更新 Skill 和固定版本。各版本使用独立 Cache Path，
+旧版本不会被静默删除：
+
+```text
+macOS:  ${XDG_CACHE_HOME:-$HOME/.cache}/repo-dive/<version>/<target>/
+Windows: %LOCALAPPDATA%\repo-dive\<version>\<target>\
+```
+
+删除旧 Cache 前先检查路径。删除 Cache 或运行 `npx skills remove wiki` 都不会
+删除仓库的 `.repo-dive/` 产物。
 
 ## 原生与 Host 专用方式
 
