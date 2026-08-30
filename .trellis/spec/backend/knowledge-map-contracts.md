@@ -319,3 +319,145 @@ with store.write_transaction(baseline, revalidate=recheck_index) as transaction:
 The correct order prevents retrieval on required-capacity failure, refuses to conceal
 stale persisted Evidence, and keeps equivalence, revision checks, and mutation inside
 the one shared writer protocol.
+
+## Scenario: Public Knowledge Map Commands
+
+### 1. Scope / Trigger
+
+- Apply this contract when registering, changing, documenting, or process-testing the
+  public Knowledge Map command family.
+- The public name is only `repo-dive map`; the command adapter owns arguments,
+  bounded input, output projection, and error-envelope integration, not derivation,
+  semantics, persistence, locking, or model invocation.
+
+### 2. Signatures
+
+```text
+repo-dive map build <repository>
+  --source-fact-budget <count>
+  --artifact-byte-budget <bytes>
+  --budget-file <repository-relative-path>
+  [--format json]
+
+repo-dive map show <repository>
+  --view architecture|flows|tour --max-results <count> [--format json]
+
+repo-dive map evidence <repository>
+  --scope <scope-id> --token-budget <tokens> [--format json]
+
+repo-dive map enrich <repository>
+  --input <repository-relative-path|-> [--format json]
+
+repo-dive map reset <repository>
+  --scope <scope-id> [--format json]
+
+repo-dive map validate <repository> [--format json]
+```
+
+### 3. Contracts
+
+- The subcommand set is exactly `build`, `show`, `evidence`, `enrich`, `reset`, and
+  `validate`. There is no `graph`, `status`, `init`, `unit`, Wiki-topic, package, or
+  artifact alias.
+- Every command is non-interactive and JSON-only. Success and failure each write one
+  Schema 1.0 envelope document to stdout; diagnostics use stderr; JSON output contains
+  no ANSI. The command field is `map build`, `map show`, and so on.
+- Build budgets are positive and combine two required top-level values with a strict
+  UTF-8 JSON budget document of at most 1,000,000 bytes. The budget file is confined
+  beneath the selected repository and rejects duplicate keys, non-standard constants,
+  unknown fields, malformed encoding, and non-object roots.
+- `show` always has an explicit result bound. `evidence` always has a positive token
+  bound. Enrichment input is repository-confined or `-` for stdin and is read only to
+  `ENRICHMENT_READER_CEILING + 1` before the strict domain decoder rejects overflow.
+- `show` and `validate` are read-only. Build, Evidence, enrichment, and reset publish
+  only through the shared map transaction; repeated equivalent intent returns
+  `changed=false`, `unchanged=true`, and preserves artifact bytes.
+- Evidence output may return complete source Chunk text to the caller, but errors and
+  diagnostics never disclose source text, escaped input targets, or host absolute
+  paths. Error details contain bounded IDs/counts and machine recovery fields only.
+- Map validation reports schema/reference/scope/freshness checks and always states
+  `semantic_entailment_checked=false`; citation validity is not semantic truth.
+
+### 4. Validation & Error Matrix
+
+| Condition | Public process behavior |
+|---|---|
+| Missing/invalid flag or budget document | Exit `2`; invocation error; `correct_invocation` / `after_recovery` |
+| Malformed enrichment UTF-8/JSON/schema/claim | Exit `2`; `knowledge_map_enrichment_invalid`; never generic `invalid_invocation` |
+| Missing/confined input or repository state | Exit `3`; preserve map bytes; return the domain recovery action |
+| Missing/stale/invalid map or Evidence/reference | Exit `3`; preserve bytes; require rebuild, recollection, reset, or corrected scope as applicable |
+| Source, derivation, semantic, or artifact capacity failure | Exit `3`; report bounded required/provided or named-limit details; never truncate required state |
+| Lock timeout, index change, or revision conflict | Exit `3`; no automatic retry/merge; preserve bytes |
+| Unexpected derivation or atomic write failure | Exit `4`; safe diagnostic only; preserve last valid bytes |
+| Exact build/Evidence/enrichment/reset replay | Exit `0`; one success document; no artifact write |
+
+For every non-success Map domain error, `error.details.retry_mode` is one of
+`unchanged`, `after_reload`, `after_recovery`, or `after_cause_clears`, and
+`error.details.recovery_action` is the domain-defined closed action. Existing domain
+details are retained when both fields already exist; the CLI adds only the established
+mapping for errors that do not provide them.
+
+### 5. Good/Base/Bad Cases
+
+- Good: build twice over one current index and exact budgets; the second command is an
+  unchanged success and the artifact bytes are identical.
+- Good: collect Evidence, submit independently cited claims through stdin, validate,
+  reset the scope, and retain one valid JSON document and stable recovery metadata at
+  every step.
+- Base: build and show a deterministic map with no semantic records; Wiki state and
+  commands remain independent and unchanged.
+- Bad: expose a domain exception through a generic process error, include an absolute
+  escaped path in details, or treat domain-only tests as proof of the public envelope.
+- Bad: add `map status`, silently default a required budget, retry a revision conflict,
+  or infer semantic truth from citation presence.
+
+### 6. Tests Required
+
+- Help tests assert the exact six-command set, exact required flags and choices, and
+  absence of forbidden aliases.
+- Every success path asserts one parseable JSON document, command/schema fields,
+  stdout/stderr separation, no ANSI, explicit bounds, and stable result projection.
+- Every checked command/error applicability cell has an independent process case that
+  asserts stable code, exit, one error document, safe stderr, no ANSI, exact
+  `retry_mode`/`recovery_action`, precedence, and map bytes before/after.
+- Input tests cover repository traversal, symlink and absolute escape, missing paths,
+  stdin, invalid UTF-8, duplicate keys, constants, oversized documents, and private
+  source/path non-disclosure.
+- Workflow tests cover deterministic-only build/show/validate, Evidence/enrich/
+  validate/reset, exact replay, stale state, contention, no lost updates, and read-only
+  commands. Compatibility tests keep index/search/context/retrieval/Wiki green.
+- Evaluation tests keep citation validity, referential integrity, Evidence freshness,
+  deterministic reproducibility, coverage/truncation, and explicit manual semantic
+  usefulness as separate dimensions. English/Chinese docs must match executable help.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+try:
+    service.build(repository, budgets=budgets)
+except Exception as error:
+    print(error)  # leaks implementation/path details and bypasses the envelope
+```
+
+#### Correct
+
+```python
+try:
+    result = service.build(repository, budgets=budgets)
+except RepoDiveError:
+    raise
+except Exception as error:
+    raise InternalOperationError(
+        "knowledge_map_derivation_failed",
+        "Knowledge Map derivation failed.",
+        details={
+            "retry_mode": "after_cause_clears",
+            "recovery_action": "inspect_safe_diagnostic",
+        },
+    ) from error
+```
+
+The correct adapter preserves typed domain failures, translates only unexpected
+operation failures, and leaves the root CLI responsible for one safe process envelope.

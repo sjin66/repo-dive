@@ -92,6 +92,13 @@ for `index_not_found` or `index_stale`, recollect Evidence for
 `4`, surface the safe diagnostic and keep the last valid index or Wiki output;
 never parse stderr as source Evidence.
 
+For an optional Knowledge Map that remains independent of Wiki, use `repo-dive
+map build`, inspect bounded `map show` architecture/flows/tour views, and run
+`map validate`. A calling agent may collect one scope with `map evidence` and
+submit claim-level citations through `map enrich`; `map reset --scope` is the
+correction path. Map Evidence never substitutes for persisted Wiki Evidence,
+and the CLI does not invoke a model for either workflow.
+
 ## Repository Artifact Contract
 
 Generated artifacts belong under the analyzed repository's `.repo-dive/` directory:

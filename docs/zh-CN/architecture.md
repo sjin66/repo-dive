@@ -34,13 +34,14 @@ stdout JSON/Markdown + <repository>/.repo-dive/
 ```text
 src/repo_dive/
 ├── cli.py                 进程边界与错误/结果序列化
-├── commands/              index、search、context、wiki 适配器
+├── commands/              index、search、context、map、wiki 适配器
 ├── scanner/               确定性候选发现与文件读取
 ├── parsing/               提取 Chunk、Symbol、Relationship
 ├── indexing/              SQLite、BM25、图、Vector、代际发布
 ├── providers/             可选本地 Embedding Provider 选择
 ├── retrieval/             关键词、结构、Vector 与加权融合
 ├── context/               Token 估算与完整 Evidence 打包
+├── knowledge_map/         确定性 Map、View、Evidence 与 Enrichment
 ├── wiki/                  状态、新鲜度、页面提交、汇总
 ├── storage/               仓库路径校验与原子写入
 ├── evaluation/            离线检索与上下文评测 Runner
@@ -52,12 +53,13 @@ src/repo_dive/
 
 ```text
 cli -> commands
-commands -> indexing / retrieval / context / wiki
+commands -> indexing / retrieval / context / knowledge_map / wiki
 scanner -> storage
 parsing -> scanner
 indexing -> scanner / parsing / providers / storage
 retrieval -> indexing / parsing / providers
 context -> retrieval / parsing
+knowledge_map -> indexing / retrieval / context / storage
 wiki -> indexing / retrieval / context / storage
 evaluation -> indexing / retrieval / context
 ```
@@ -142,9 +144,17 @@ SQLite Schema 5 由 `PRAGMA user_version = 5` 声明，包含 `files`、`symbols
 
 ## Wiki 持久化与恢复边界
 
-Wiki 状态使用 `.repo-dive/wiki.json` 和 `.repo-dive/metadata.json` 中的严格 Schema `1.0` JSON。完整文件先序列化再原子替换；损坏、不支持或不完整的状态会被拒绝且不会修复。只有全部页面和 Evidence 校验通过后才替换 `.repo-dive/wiki.md`；字节相同时返回 `changed: false`。
+Wiki 状态使用 `.repo-dive/wiki.json` 和 `.repo-dive/metadata.json` 中的严格 Schema `2.0` JSON。完整文件先序列化再原子替换；损坏、不支持或不完整的状态会被拒绝且不会修复。只有全部页面和 Evidence 校验通过后才替换 `.repo-dive/wiki.md`；字节相同时返回 `changed: false`。
 
 Evidence 新鲜度以页面为单位：索引 Schema 必须仍是 `4`，每个持久化引用的 Chunk ID、内容哈希、路径和首尾都包含的行号都必须匹配当前索引。Index Build ID 用于审计溯源，本身不是全局失效信号。
+
+## Knowledge Map 边界
+
+可选 Knowledge Map 是 `.repo-dive/knowledge-map.json` 中的严格 Schema `1.0` 文档。它从一个当前已发布索引推导 Repository、Module、File、Symbol 事实，以及 Architecture、Static Flow、Reading Tour 投影。Source Chunk 仍是 Evidence 引用而不是 Fact Node。语义区为空时，确定性 Build 仍然有用，并且不会调用模型。
+
+所有 Writer 共用 `.repo-dive/knowledge-map.lock` 的有界 OS Advisory Lock，然后在锁内重新校验索引、检查精确 Intent 等价性、执行 Revision/Hash Compare-and-Swap、校验完整 Candidate、执行字节容量约束并原子替换。`artifact_revision` 只在字节发生变化时递增。确定性变化会清空语义状态；满足约束的纯 Capacity 变化会保留语义。`map show` 与 `map validate` 是只读操作。
+
+可选 Scope Evidence 与 Claim Enrichment 使用同一个 Writer。每条 Claim 自有 Fact Node 与 Evidence 引用。Validation 校验 Schema、Ownership、Referential Integrity 与 Evidence Freshness；`semantic_entailment_checked` 始终为 `false`，因此 Citation Presence 不是 Truth 或 Entailment Score。Knowledge Map 不会修改或供给 Wiki Schema `2.0`、Template、Command 或 Artifact。
 
 ## 错误与安全边界
 

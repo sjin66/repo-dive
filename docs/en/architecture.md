@@ -34,13 +34,14 @@ These are implemented package boundaries, not a future plan:
 ```text
 src/repo_dive/
 ├── cli.py                 process boundary and error/result serialization
-├── commands/              index, search, context, and wiki adapters
+├── commands/              index, search, context, map, and wiki adapters
 ├── scanner/               deterministic candidate discovery and file reads
 ├── parsing/               Chunk, Symbol, Relationship extraction
 ├── indexing/              SQLite store, BM25, graph, vectors, generations
 ├── providers/             optional local embedding provider selection
 ├── retrieval/             lexical, structural, vector, and weighted fusion
 ├── context/               token estimation and complete-Evidence packing
+├── knowledge_map/         deterministic maps, views, Evidence, and enrichment
 ├── wiki/                  state, freshness, page submission, assembly
 ├── storage/               repository path validation and atomic writes
 ├── evaluation/            offline retrieval and context evaluation runner
@@ -52,12 +53,13 @@ The concrete dependency direction is:
 
 ```text
 cli -> commands
-commands -> indexing / retrieval / context / wiki
+commands -> indexing / retrieval / context / knowledge_map / wiki
 scanner -> storage
 parsing -> scanner
 indexing -> scanner / parsing / providers / storage
 retrieval -> indexing / parsing / providers
 context -> retrieval / parsing
+knowledge_map -> indexing / retrieval / context / storage
 wiki -> indexing / retrieval / context / storage
 evaluation -> indexing / retrieval / context
 ```
@@ -142,9 +144,17 @@ An index build creates a staging directory, reuses unchanged parse results from 
 
 ## Wiki Persistence and Recovery Boundary
 
-Wiki state uses strict Schema `1.0` JSON in `.repo-dive/wiki.json` and `.repo-dive/metadata.json`. Complete files are serialized and atomically replaced; malformed, unsupported, or incomplete state is rejected without repair. `.repo-dive/wiki.md` is replaced only after all pages and Evidence are validated, and identical bytes produce `changed: false`.
+Wiki state uses strict Schema `2.0` JSON in `.repo-dive/wiki.json` and `.repo-dive/metadata.json`. Complete files are serialized and atomically replaced; malformed, unsupported, or incomplete state is rejected without repair. `.repo-dive/wiki.md` is replaced only after all pages and Evidence are validated, and identical bytes produce `changed: false`.
 
 Evidence freshness is page-local: the index Schema must still be `4`, and every persisted reference must match its current Chunk ID, content hash, path, and inclusive line range. The index build ID is audit provenance, not by itself a global invalidation signal.
+
+## Knowledge Map Boundary
+
+The optional Knowledge Map is a strict Schema `1.0` document at `.repo-dive/knowledge-map.json`. It derives repository, module, file, and symbol facts plus architecture, static-flow, and reading-tour projections from one current published index. Source Chunks remain Evidence references rather than fact nodes. A deterministic build is useful with empty semantic sections and never calls a model.
+
+All writers use `.repo-dive/knowledge-map.lock`, a bounded OS advisory lock, followed by under-lock index revalidation, exact-intent equivalence, revision/hash compare-and-swap, complete candidate validation, byte-capacity enforcement, and atomic replacement. `artifact_revision` advances only on byte-changing writes. Deterministic changes clear semantic state; compliant capacity-only changes preserve it. `map show` and `map validate` are read-only.
+
+Optional scope Evidence and claim enrichment use the same writer. Every claim owns fact-node and Evidence references. Validation checks schema, ownership, referential integrity, and Evidence freshness; `semantic_entailment_checked` is always `false`, so citation presence is not a truth or entailment score. Knowledge Map does not alter or feed Wiki Schema `2.0`, templates, commands, or artifacts.
 
 ## Error and Security Boundaries
 

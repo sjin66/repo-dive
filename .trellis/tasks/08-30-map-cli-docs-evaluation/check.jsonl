@@ -1,4 +1,5 @@
 {"file":".trellis/spec/backend/index.md","reason":"Verify active backend spec references and ownership."}
+{"file":".trellis/spec/backend/knowledge-map-contracts.md","reason":"Verify public commands preserve frozen deterministic, semantic, budget, validation, and shared writer behavior."}
 {"file":".trellis/spec/backend/repository-classification.md","reason":"Verify classification/snapshot fixture behavior stays deterministic and bounded."}
 {"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Verify Wiki Schema 2.0, init, templates, and artifacts remain unchanged."}
 {"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Verify exact clean staged snapshot, repository-owned closure, and shared Make targets."}
