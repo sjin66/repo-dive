@@ -140,8 +140,8 @@ python3 ./.trellis/scripts/get_context.py --mode phase --step <X.Y>  # detailed 
       matching phase's `[required · once]` walkthrough steps for sync
     - Run `trellis update` after editing to push the new bodies to
       downstream user projects (block-level managed replacement)
-    - Full runtime contract:
-      .trellis/spec/cli/backend/workflow-state-contract.md
+    - Core phase extraction:
+      .trellis/scripts/common/workflow_phase.py
 -->
 
 ## Phase Index
@@ -713,9 +713,11 @@ Add a `hooks` field to your `task.json`:
 
 Supported events: `after_create / after_start / after_finish / after_archive`. Note that `after_finish` ≠ a status change (it only clears the active-task pointer); use `after_archive` for "task is done" notifications.
 
-### Full contract
+### Core implementation
 
-For the workflow state machine's runtime contract, the locations of all status writers, pseudo-statuses (`no_task` / `stale_<source_type>`), the hook reachability matrix, and other deep details, see:
+For repository-owned phase extraction, see:
 
-- `.trellis/spec/cli/backend/workflow-state-contract.md` — runtime contract + writer table + test invariants
-- `.trellis/scripts/inject-workflow-state.py` — actual parser (reads workflow.md only, no embedded text)
+- `.trellis/scripts/common/workflow_phase.py` — phase-index and step extraction
+
+Per-turn breadcrumb parsers are generated inside each local Host integration and are
+intentionally not part of the repository-owned Trellis core.
