@@ -74,6 +74,11 @@ Both consume `skills/wiki/references/release.json`, whose required fields are
 - Bootstrap archives are PyInstaller `onedir` directories. Launchers verify the
   exact SHA-256 manifest entry, reject unsafe paths and links, smoke the CLI,
   and atomically publish a completed directory to a versioned user cache.
+- Published archives contain only regular files. The archive builder rejects
+  source links that resolve outside the bundle, flattens bundle-local file
+  aliases, and omits bundle-local directory aliases whose canonical contents
+  are already archived. This is required for PyInstaller's macOS
+  `Python.framework` layout to satisfy the link-free bootstrap contract.
 - Normal launcher execution never downloads and forwards arguments, standard
   streams, and process status unchanged. The Skill installation directory may
   be read-only.
@@ -140,6 +145,8 @@ Both consume `skills/wiki/references/release.json`, whose required fields are
   publication, argument forwarding, and exit-code propagation;
 - native bundle archive layout and extracted JavaScript/TypeScript grammar
   smoke coverage.
+- PyInstaller-style framework file/directory aliases, link-free archive
+  members, and rejection of source links that escape the bundle.
 
 Run:
 

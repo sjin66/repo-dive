@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import io
+import os
+import stat
 import tarfile
 import zipfile
 from collections.abc import Callable
@@ -168,13 +170,104 @@ def test_native_bundle_archive_has_one_safe_top_level_directory(
 
     if target == "windows-x64":
         with zipfile.ZipFile(output) as archive:
-            names = archive.namelist()
+            zip_entries = archive.infolist()
+            names = [entry.filename for entry in zip_entries]
+            assert all(stat.S_ISREG(entry.external_attr >> 16) for entry in zip_entries)
     else:
         with tarfile.open(output) as archive:
-            names = archive.getnames()
+            tar_entries = archive.getmembers()
+            names = [entry.name for entry in tar_entries]
+            assert all(entry.isreg() for entry in tar_entries)
     assert names
     assert all(name == "repo-dive" or name.startswith("repo-dive/") for name in names)
     assert not any(".." in Path(name).parts for name in names)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="creating symlinks requires privileges")
+@pytest.mark.parametrize(
+    ("target", "suffix"),
+    [("darwin-arm64", ".tar.gz"), ("windows-x64", ".zip")],
+)
+def test_native_bundle_archive_flattens_pyinstaller_framework_symlinks(
+    tmp_path: Path, target: str, suffix: str
+) -> None:
+    bundle = tmp_path / "repo-dive"
+    internal = bundle / "_internal"
+    internal.mkdir(parents=True)
+    executable = bundle / ("repo-dive.exe" if target == "windows-x64" else "repo-dive")
+    executable.write_bytes(b"executable")
+    framework = internal / "Python.framework"
+    target_file = framework / "Versions" / "3.12" / "Python"
+    target_file.parent.mkdir(parents=True)
+    target_file.write_bytes(b"framework executable")
+    resources = target_file.parent / "Resources"
+    resources.mkdir()
+    (resources / "Info.plist").write_bytes(b"framework resources")
+    (framework / "Versions" / "Current").symlink_to("3.12", target_is_directory=True)
+    (framework / "Python").symlink_to(Path("Versions/Current/Python"))
+    (framework / "Resources").symlink_to(
+        Path("Versions/Current/Resources"), target_is_directory=True
+    )
+    (internal / "Python").symlink_to(Path("Python.framework/Versions/3.12/Python"))
+    output = tmp_path / f"bundle{suffix}"
+
+    archive_bundle(bundle, output, target)
+
+    flattened_files = {
+        "repo-dive/_internal/Python",
+        "repo-dive/_internal/Python.framework/Python",
+    }
+    omitted_directory_aliases = {
+        "repo-dive/_internal/Python.framework/Resources",
+        "repo-dive/_internal/Python.framework/Versions/Current",
+    }
+    if target == "windows-x64":
+        with zipfile.ZipFile(output) as archive:
+            names = set(archive.namelist())
+            for archive_name in flattened_files:
+                zip_info = archive.getinfo(archive_name)
+                assert stat.S_ISREG(zip_info.external_attr >> 16)
+                assert archive.read(zip_info) == b"framework executable"
+    else:
+        with tarfile.open(output) as archive:
+            names = set(archive.getnames())
+            for archive_name in flattened_files:
+                tar_info = archive.getmember(archive_name)
+                assert tar_info.isreg()
+                source = archive.extractfile(tar_info)
+                assert source is not None
+                assert source.read() == b"framework executable"
+    assert omitted_directory_aliases.isdisjoint(names)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="creating symlinks requires privileges")
+@pytest.mark.parametrize(
+    ("target", "suffix"),
+    [("darwin-arm64", ".tar.gz"), ("windows-x64", ".zip")],
+)
+@pytest.mark.parametrize("external_is_directory", [False, True])
+def test_native_bundle_archive_rejects_symlinks_outside_bundle(
+    tmp_path: Path, target: str, suffix: str, external_is_directory: bool
+) -> None:
+    bundle = tmp_path / "repo-dive"
+    internal = bundle / "_internal"
+    internal.mkdir(parents=True)
+    executable = bundle / ("repo-dive.exe" if target == "windows-x64" else "repo-dive")
+    executable.write_bytes(b"executable")
+    external = tmp_path / "external-runtime"
+    if external_is_directory:
+        external.mkdir()
+    else:
+        external.write_bytes(b"untrusted")
+    (internal / "Python").symlink_to(
+        external, target_is_directory=external_is_directory
+    )
+    output = tmp_path / f"bundle{suffix}"
+
+    with pytest.raises(ValueError, match="symlink target escapes bundle"):
+        archive_bundle(bundle, output, target)
+
+    assert not output.exists()
 
 
 def test_native_bundle_smoke_rejects_archive_traversal(tmp_path: Path) -> None:
