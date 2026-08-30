@@ -82,6 +82,13 @@ Both consume `skills/wiki/references/release.json`, whose required fields are
   aliases, and omits bundle-local directory aliases whose canonical contents
   are already archived. This is required for PyInstaller's macOS
   `Python.framework` layout to satisfy the link-free bootstrap contract.
+- Published repository indexes keep `.repo-dive/index` as a generation pointer:
+  a relative directory symlink on POSIX and a directory junction on Windows.
+  Windows junction creation passes only generated relative names through
+  `cmd.exe`; repository paths must never become shell-parsed arguments. Loading
+  accepts only a link or junction that resolves to a direct child of
+  `.repo-dive/index-generations/`. Pointer replacement failure restores the
+  previous generation and removes temporary and recovery pointers.
 - Normal launcher execution never downloads and forwards arguments, standard
   streams, and process status unchanged. The Skill installation directory may
   be read-only.
@@ -108,6 +115,8 @@ Both consume `skills/wiki/references/release.json`, whose required fields are
 | A manifest name or version differs | Package contract test fails. |
 | A relative skill link escapes `skills/wiki/` | Package contract test fails. |
 | A second committed `wiki` skill appears in a host discovery root | Single-source contract test fails. |
+| An index pointer is an ordinary directory or resolves outside `index-generations` | Fail with `index_pointer_invalid`; do not read the target. |
+| Windows junction creation or pointer replacement fails | Fail the build at `publish`, restore the previous pointer, and remove the new generation. |
 | Functional CLI command exits non-zero | Do not advance; recover using exit code and stable JSON error code. |
 | User supplies a repository URL | Do not clone without separate authorization. |
 | JSON/non-TTY `init` omits `--agent` | Exit `2` with `agent_required`; never read stdin. |
@@ -152,6 +161,9 @@ Both consume `skills/wiki/references/release.json`, whose required fields are
   smoke coverage.
 - PyInstaller-style framework file/directory aliases, link-free archive
   members, and rejection of source links that escape the bundle.
+- native Windows first-build and incremental-index coverage through an
+  unprivileged directory junction, plus publication-failure rollback with no
+  `.index.*.tmp` or `.index.*.previous` residue.
 
 Run:
 
@@ -193,3 +205,8 @@ metadata adapters.
 For direct CLI installation, validate every target and stage all skill trees
 before publishing any destination. Never implement `--force` as an unchecked
 recursive copy over an existing or symlinked directory.
+
+For index publication on Windows, create the junction from `.repo-dive/` using
+only generated relative link and target names. Do not pass an absolute,
+repository-controlled path through `cmd.exe mklink`, and do not accept a normal
+directory as the current index pointer.
