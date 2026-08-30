@@ -40,6 +40,7 @@ Added deterministic repository classification and closed, versioned multilingual
 
 [OK] **Completed**
 
+
 ### Next Steps
 
 - Continue with Markdown AST validation, governed Wiki state, then CLI integration child tasks.
@@ -94,6 +95,41 @@ provenance, isolated legacy Schema 1.0 persistence, and evidence-gated extension
 - `make package-smoke`: passed.
 - `make test-all`: 474 passed; one local-environment-only Skill uniqueness test failed
   because ignored `.agents/skills/wiki` and symlinked `.claude/skills/wiki` are installed.
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 4: Align Ruff checks across clean checkouts
+
+**Date**: 2026-08-30
+**Task**: Fix governed Wiki CI
+**Branch**: `feature/cli-agent-marketplace`
+
+### Summary
+
+Made the repository-owned Ruff configuration exclude generated `.trellis` runtime
+files consistently in local and fresh CI checkouts. Added a repository contract that
+requires the exclusion to be exactly `[".trellis"]`, preserving checks for product
+source, tests, and repository scripts.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `953a7d7` | fix: align Ruff checks across clean checkouts |
+| `13a5fae` | chore(task): archive 08-30-fix-governed-wiki-ci |
+
+### Verification
+
+- `make check`: passed.
+- `make package-smoke`: passed.
+- Clean temporary worktree `make test-all`: 478 passed.
+- Developer worktree `make test-all`: 477 passed; one local-environment-only Skill
+  uniqueness test failed because ignored `.agents/skills/wiki` and symlinked
+  `.claude/skills/wiki` are installed.
+- Clean temporary worktree Ruff format and lint with `--no-respect-gitignore`: passed.
 
 ### Status
 
