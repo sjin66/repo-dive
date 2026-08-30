@@ -1,5 +1,7 @@
 """Deterministic, repository-owned Knowledge Map domain package."""
 
+from repo_dive.knowledge_map.enrichment_service import KnowledgeMapEnrichmentService
+from repo_dive.knowledge_map.evidence_service import KnowledgeMapEvidenceService
 from repo_dive.knowledge_map.models import (
     KNOWLEDGE_MAP_ALGORITHM_ID,
     KNOWLEDGE_MAP_ALGORITHM_VERSION,
@@ -14,4 +16,6 @@ __all__ = [
     "KNOWLEDGE_MAP_SCHEMA_VERSION",
     "KnowledgeMapArtifact",
     "MapBuildBudgets",
+    "KnowledgeMapEvidenceService",
+    "KnowledgeMapEnrichmentService",
 ]

@@ -1,4 +1,5 @@
 {"file":".trellis/spec/backend/index.md","reason":"Confirm active backend ownership remains coherent."}
+{"file":".trellis/spec/backend/knowledge-map-contracts.md","reason":"Verify semantic services reuse the frozen Schema 1.0 models, capacities, and one shared writer protocol."}
 {"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Verify no Wiki structure, template, schema, or artifact dependency."}
 {"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Verify clean snapshot and no incomplete tooling references."}
 {"file":".trellis/tasks/08-30-knowledge-map-refactor/research/agent-enrichment-and-wiki-integration.md","reason":"Check strict claim input, Evidence ownership, freshness, idempotence, and entailment limitations."}

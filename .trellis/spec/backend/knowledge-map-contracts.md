@@ -171,3 +171,151 @@ with store.write_transaction(baseline, revalidate=recheck_index) as transaction:
 
 The correct form places revalidation, equivalence, CAS, validation, byte capacity, and
 atomic replacement under the one shared bounded writer lock.
+
+## Scenario: Scope Evidence And Claim Enrichment
+
+### 1. Scope / Trigger
+
+- Apply this contract when collecting Knowledge Map Evidence, decoding Agent-owned
+  claims, replacing one scope's semantic records, resetting semantics, or reporting
+  semantic validation health.
+- Supported scopes and permissions come only from persisted cluster, flow, and tour
+  `ScopeContract` values. Semantic services may not widen deterministic facts or add
+  fact edges, another writer, or another lock.
+
+### 2. Signatures
+
+```python
+plan_scope_evidence(
+    artifact: KnowledgeMapArtifact,
+    scope_id: str,
+    *,
+    chunks: tuple[Chunk, ...],
+    symbols: tuple[Symbol, ...],
+    retrieval_parameters: RetrievalParameters,
+) -> ScopeEvidencePlan
+
+KnowledgeMapEvidenceService.collect(
+    repository: str | Path,
+    *,
+    scope_id: str,
+    token_budget: int,
+) -> ScopeEvidenceResult
+
+decode_enrichment_submission(payload: bytes) -> EnrichmentSubmission
+
+KnowledgeMapEnrichmentService.enrich(
+    repository: str | Path,
+    *,
+    payload: bytes,
+) -> EnrichmentResult
+
+KnowledgeMapEnrichmentService.reset(
+    repository: str | Path,
+    *,
+    scope_id: str,
+) -> EnrichmentResult
+
+KnowledgeMapEnrichmentService.validate(
+    repository: str | Path,
+) -> SemanticValidationResult
+```
+
+### 3. Contracts
+
+- Evidence planning selects complete mandatory chunks in persisted anchor order.
+  Symbol anchors use their definition chunk; file/module fallback order is
+  `(path, start_line, end_line, symbol_kind_order, qualified_name, symbol_id,
+  chunk_id)`, then complete file chunks by `(path, start_line, end_line, chunk_id)`.
+  Duplicate chunks retain first occurrence and collect all mapped anchor IDs.
+- Mandatory references are preflight-packed before supplemental search. They reserve
+  tokens and reference capacity, always precede supplemental Evidence, and failure
+  performs neither retrieval nor artifact mutation.
+- Before recollection, any existing snapshot is freshness-validated even when it is
+  uncited. Equivalent recollection preserves bytes; a changed uncited snapshot may be
+  replaced; a changed cited snapshot requires reset.
+- Enrichment input is exactly one strict UTF-8 JSON object with fields
+  `schema_version`, `scope_id`, `expected_artifact_revision`, and `records`.
+  Records contain only `id`, `kind`, and `claims`; every claim independently owns
+  `kind`, `text`, `fact_node_ids`, `related_node_ids`, and `evidence_ids`.
+- Submission decoding rejects duplicate keys, non-standard constants, unknown or
+  missing fields, padded/duplicate IDs, empty required reference arrays, and input
+  above the fixed reader ceiling. Persisted capacities additionally bound raw and
+  canonical input bytes, records, claims, references, and final artifact bytes.
+- Enrichment is complete-scope replacement. Under the shared lock, current Evidence
+  and references are revalidated and exact scope-content equivalence is tested before
+  expected artifact revision. Different content requires an exact current revision
+  and changes only the selected scope.
+- Reset removes one scope's snapshot and enrichment, preserves deterministic revision
+  and deterministic sections, and is unchanged when that scope is already pending.
+- Semantic validation reports schema, reference integrity, scope ownership, and
+  Evidence freshness. `semantic_entailment_checked` remains `False`.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+|---|---|
+| Non-positive operation token budget | Raise `ValueError` before index/retrieval work |
+| Mandatory tokens do not fit | `knowledge_map_evidence_budget_insufficient`; report numeric required/provided values; no search or write |
+| Snapshot/reference capacity cannot fit mandatory state | `knowledge_map_evidence_capacity_exceeded`; no partial snapshot |
+| Existing snapshot contains stale Chunk identity/hash/location | Reject as stale repository Evidence before replacement; preserve bytes |
+| Changed snapshot is cited by current enrichment | `knowledge_map_evidence_conflict`; recovery is scope reset |
+| Invalid UTF-8/JSON/schema/shape/kind or duplicate key | `knowledge_map_enrichment_invalid` invocation error; preserve bytes |
+| Missing/wrong-scope/stale node, Evidence, or scope reference | Repository error with recovery action; preserve bytes |
+| Exact submitted scope content already exists | Return `changed=False` before expected-revision comparison |
+| Different scope content has stale expected revision | `knowledge_map_revision_conflict`; preserve bytes |
+| Current or candidate semantic capacity is exceeded | Capacity error; never truncate accepted claims or records |
+| Reset of an already pending current scope | Return `changed=False` and preserve bytes |
+
+### 5. Good/Base/Bad Cases
+
+- Good: collect preflights all mandatory complete chunks, then appends bounded
+  supplemental hits; an equivalent recollection leaves artifact bytes unchanged.
+- Good: replay identical claims after another scope advances the artifact revision;
+  equivalence wins under the lock and the replay remains unchanged.
+- Base: a valid scope has no snapshot or enrichment; validation reports zero checked
+  claims and does not imply semantic truth.
+- Bad: search first and discover afterward that required chunks do not fit; this spends
+  retrieval work and breaks the required-Evidence failure boundary.
+- Bad: replace an uncited snapshot without validating its old references; staleness
+  must not be silently healed by recollection.
+
+### 6. Tests Required
+
+- Pure planning tests pin cluster/flow/tour expansion, symbol/file/module fallback,
+  tie ordering, chunk deduplication, anchor accumulation, and stable query-plan hashes.
+- Collection tests assert mandatory preflight before search, direct-before-
+  supplemental order, numeric budget errors, count limits, stale old-snapshot
+  rejection, equivalent bytes, uncited replacement, and cited conflict.
+- Decoder tests cover UTF-8, JSON closure, duplicate keys, constants, schema/kind
+  closure, padded/duplicate values, required per-claim citations, and reader ceiling.
+- Lifecycle tests cover replay after unrelated revisions, stale different-content
+  conflicts, selected-scope replacement, reset isolation/pending no-op, semantic
+  revision changes, freshness, and no entailment claim.
+- Shared writer tests cover real process contention, lock timeout/release, index races,
+  artifact-byte overflow, atomic replacement failure, and prior-byte preservation.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```python
+search = search_repository(repository, plan.query)
+bundle = pack(search.hits, mandatory=mandatory, token_budget=token_budget)
+replace_snapshot_without_validating(existing)
+```
+
+#### Correct
+
+```python
+validate_existing_snapshot_freshness(existing)
+pack((), mandatory=mandatory, token_budget=token_budget)  # preflight
+search = search_repository(repository, plan.query)
+bundle = pack(search.hits, mandatory=mandatory, token_budget=token_budget)
+with store.write_transaction(baseline, revalidate=recheck_index) as transaction:
+    transaction.commit(candidate, equivalent=validate_then_compare_scope_intent)
+```
+
+The correct order prevents retrieval on required-capacity failure, refuses to conceal
+stale persisted Evidence, and keeps equivalence, revision checks, and mutation inside
+the one shared writer protocol.

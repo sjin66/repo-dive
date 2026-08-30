@@ -1,4 +1,5 @@
 {"file":".trellis/spec/backend/index.md","reason":"Active backend ownership index."}
+{"file":".trellis/spec/backend/knowledge-map-contracts.md","reason":"Frozen Schema 1.0, budget, lifecycle, scope, and shared writer contracts from the deterministic dependency."}
 {"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Negative ownership boundary: map semantics cannot become Wiki structure or state."}
 {"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Repository-owned closure and clean-snapshot validation."}
 {"file":".trellis/tasks/08-30-knowledge-map-refactor/research/agent-enrichment-and-wiki-integration.md","reason":"Existing strict Agent input, Evidence ownership/freshness, lifecycle, and semantic-validation limits."}
