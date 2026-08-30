@@ -117,7 +117,10 @@ def test_first_build_atomically_publishes_database_manifest_and_metadata(
     result = IndexService().build(repository)
 
     index = repository / ".repo-dive" / "index"
-    assert index.is_symlink()
+    assert index.is_dir() if os.name == "nt" else index.is_symlink()
+    assert index.resolve(strict=True).parent == (
+        repository / ".repo-dive" / "index-generations"
+    ).resolve(strict=True)
     assert result.rebuilt_files == 3
     assert result.reused_files == 0
     assert result.deleted_files == 0
@@ -135,6 +138,7 @@ def test_first_build_atomically_publishes_database_manifest_and_metadata(
         assert store.foreign_key_violations() == ()
         assert store.integrity_check() == ("ok",)
     assert not list((repository / ".repo-dive").glob(".index.*.tmp"))
+    assert not list((repository / ".repo-dive").glob(".index.*.previous"))
     assert not list((repository / ".repo-dive" / "index-generations").glob(".build-*"))
 
 
@@ -390,9 +394,12 @@ def test_publish_failure_preserves_old_generation_and_cleans_new_artifacts(
         encoding="utf-8",
     )
     real_replace = os.replace
+    pointer_replace_attempts = 0
 
     def fail_pointer_replace(source: str | Path, destination: str | Path) -> None:
-        if Path(destination) == index:
+        nonlocal pointer_replace_attempts
+        if Path(destination) == index and pointer_replace_attempts == 0:
+            pointer_replace_attempts += 1
             raise OSError("simulated pointer replacement failure")
         real_replace(source, destination)
 
@@ -408,6 +415,7 @@ def test_publish_failure_preserves_old_generation_and_cleans_new_artifacts(
     generations = repository / ".repo-dive" / "index-generations"
     assert list(generations.iterdir()) == [original_generation]
     assert not list((repository / ".repo-dive").glob(".index.*.tmp"))
+    assert not list((repository / ".repo-dive").glob(".index.*.previous"))
 
 
 def test_build_rejects_repo_dive_symlink_outside_repository(tmp_path: Path) -> None:
@@ -448,3 +456,13 @@ def test_build_rejects_tampered_current_metadata(tmp_path: Path) -> None:
         IndexService().build(repository)
 
     assert exc_info.value.code == "index_metadata_invalid"
+
+
+def test_build_rejects_ordinary_directory_as_index_pointer(tmp_path: Path) -> None:
+    repository = copy_fixture(tmp_path)
+    (repository / ".repo-dive" / "index").mkdir(parents=True)
+
+    with pytest.raises(RepositoryError) as exc_info:
+        IndexService().build(repository)
+
+    assert exc_info.value.code == "index_pointer_invalid"

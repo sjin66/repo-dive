@@ -60,7 +60,9 @@ def test_git_candidates_parse_nul_delimited_unusual_filenames(tmp_path: Path) ->
     repository = tmp_path / "repository"
     repository.mkdir()
     initialize_git_repository(repository)
-    expected = ("line\nbreak.py", "space name.py", "unicodé.py")
+    expected: tuple[str, ...] = ("space name.py", "unicodé.py")
+    if os.name != "nt":
+        expected = ("line\nbreak.py", *expected)
     for relative_path in expected:
         write_file(repository, relative_path)
 

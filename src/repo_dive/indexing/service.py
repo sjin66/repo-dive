@@ -6,6 +6,8 @@ import json
 import os
 import shutil
 import sqlite3
+import stat
+import subprocess
 import tempfile
 import uuid
 from contextlib import ExitStack, suppress
@@ -488,7 +490,7 @@ def _load_current_index(
     pointer = root / INDEX_DIRECTORY
     if not os.path.lexists(pointer):
         return None
-    if not pointer.is_symlink():
+    if not pointer.is_symlink() and not _is_directory_junction(pointer):
         raise RepositoryError(
             "index_pointer_invalid",
             "Repository index pointer is invalid.",
@@ -570,21 +572,83 @@ def _publish_generation(*, root: Path, staging: Path, build_id: str) -> None:
     try:
         os.replace(staging, generation)
         moved = True
-        os.symlink(
-            Path("index-generations") / build_id,
-            temporary_pointer,
-            target_is_directory=True,
-        )
-        os.replace(temporary_pointer, pointer)
-    except OSError as error:
-        with suppress(OSError):
-            temporary_pointer.unlink(missing_ok=True)
+        _create_index_pointer(temporary_pointer, build_id)
+        _replace_index_pointer(temporary_pointer, pointer, build_id)
+    except (OSError, subprocess.SubprocessError) as error:
+        _remove_index_pointer(temporary_pointer)
         if moved:
             _cleanup_directory(generation)
         raise InternalOperationError(
             "index_publish_failed",
             "Could not atomically publish repository index.",
         ) from error
+
+
+def _create_index_pointer(pointer: Path, build_id: str) -> None:
+    target = Path("index-generations") / build_id
+    if os.name == "nt":
+        # Keep shell-parsed arguments limited to generated path components. Passing
+        # absolute repository paths through cmd.exe would allow valid Windows path
+        # characters such as `&` to be interpreted as command separators.
+        subprocess.run(
+            [
+                os.environ.get("COMSPEC", "cmd.exe"),
+                "/d",
+                "/c",
+                "mklink",
+                "/J",
+                pointer.name,
+                str(target),
+            ],
+            check=True,
+            capture_output=True,
+            cwd=pointer.parent,
+        )
+        return
+    os.symlink(
+        target,
+        pointer,
+        target_is_directory=True,
+    )
+
+
+def _replace_index_pointer(temporary: Path, pointer: Path, build_id: str) -> None:
+    if os.name != "nt" or not os.path.lexists(pointer):
+        os.replace(temporary, pointer)
+        return
+
+    previous = pointer.parent / f".index.{build_id}.previous"
+    os.replace(pointer, previous)
+    try:
+        os.replace(temporary, pointer)
+    except OSError:
+        os.replace(previous, pointer)
+        raise
+    _remove_index_pointer(previous)
+
+
+def _is_directory_junction(path: Path) -> bool:
+    if os.name != "nt":
+        return False
+    try:
+        status = path.lstat()
+    except OSError:
+        return False
+    return bool(
+        stat.S_ISDIR(status.st_mode)
+        and getattr(status, "st_file_attributes", 0)
+        & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        and getattr(status, "st_reparse_tag", None)
+        == getattr(stat, "IO_REPARSE_TAG_MOUNT_POINT", None)
+    )
+
+
+def _remove_index_pointer(pointer: Path) -> None:
+    with suppress(OSError):
+        if _is_directory_junction(pointer):
+            pointer.rmdir()
+        else:
+            pointer.unlink(missing_ok=True)
 
 
 def _cleanup_directory(path: Path) -> bool:

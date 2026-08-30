@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -75,7 +76,7 @@ def test_hostile_sources_stay_inside_repository_and_context_budget(
     (source / "app.py").write_text(
         "def safe_value():\n    return 'inside'\n", encoding="utf-8"
     )
-    hostile_name = "line\nbreak.py"
+    hostile_name = "space name.py" if os.name == "nt" else "line\nbreak.py"
     (source / hostile_name).write_text(
         "def odd_name():\n    return 'safe'\n", encoding="utf-8"
     )
@@ -85,7 +86,8 @@ def test_hostile_sources_stay_inside_repository_and_context_budget(
     outside.write_text(
         f"def stolen():\n    return {OUTSIDE_SECRET!r}\n", encoding="utf-8"
     )
-    (source / "escape.py").symlink_to(outside)
+    if os.name != "nt":
+        (source / "escape.py").symlink_to(outside)
 
     assert (
         main(

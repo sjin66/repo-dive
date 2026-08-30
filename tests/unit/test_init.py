@@ -14,8 +14,8 @@ from repo_dive.initialization import install_skill
 def _skill_source(tmp_path: Path, content: str = "skill\n") -> Path:
     source = tmp_path / "source"
     (source / "references").mkdir(parents=True)
-    (source / "SKILL.md").write_text(content, encoding="utf-8")
-    (source / "references/workflow.md").write_text("reference\n", encoding="utf-8")
+    (source / "SKILL.md").write_bytes(content.encode("utf-8"))
+    (source / "references/workflow.md").write_bytes(b"reference\n")
     return source
 
 
@@ -46,7 +46,7 @@ def test_install_is_idempotent_and_force_replaces_conflicts(tmp_path: Path) -> N
     first = install_skill(repository, agents=("claude-code",), source=source)
     second = install_skill(repository, agents=("claude-code",), source=source)
     destination = repository / ".claude/skills/wiki"
-    destination.joinpath("SKILL.md").write_text("different\n", encoding="utf-8")
+    destination.joinpath("SKILL.md").write_bytes(b"different\n")
 
     with pytest.raises(InvocationError, match="already contains different content"):
         install_skill(repository, agents=("claude-code",), source=source)
@@ -67,7 +67,7 @@ def test_install_validates_every_conflict_before_writing(tmp_path: Path) -> None
     repository.mkdir()
     conflict = repository / ".agents/skills/wiki"
     conflict.mkdir(parents=True)
-    conflict.joinpath("SKILL.md").write_text("keep me\n", encoding="utf-8")
+    conflict.joinpath("SKILL.md").write_bytes(b"keep me\n")
 
     with pytest.raises(InvocationError):
         install_skill(

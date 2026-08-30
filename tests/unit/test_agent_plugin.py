@@ -191,7 +191,8 @@ def test_bootstrap_launchers_are_portable_skill_resources() -> None:
 
     assert posix.is_file()
     assert powershell.is_file()
-    assert posix.stat().st_mode & 0o111
+    if sys.platform != "win32":
+        assert posix.stat().st_mode & 0o111
     assert "--install" in posix.read_text(encoding="utf-8")
     assert "--install" in powershell.read_text(encoding="utf-8")
 
