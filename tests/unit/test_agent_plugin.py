@@ -1,8 +1,10 @@
 import io
 import json
 import re
+import shlex
 import shutil
 import subprocess
+import sys
 import tarfile
 import tomllib
 from pathlib import Path
@@ -31,6 +33,36 @@ PROJECT_MAPPINGS = {
     "Gemini CLI": ".agents/skills/wiki",
     "GitHub Copilot": ".agents/skills/wiki",
 }
+
+
+def _write_fake_osascript(fake_bin: Path) -> None:
+    parser = """\
+import json
+import sys
+
+if len(sys.argv) != 6 or sys.argv[1:4] != ["-l", "JavaScript", "-"]:
+    raise SystemExit(2)
+with open(sys.argv[4], encoding="utf-8") as source:
+    release = json.load(source)
+target = release.get("targets", {}).get(sys.argv[5])
+if release.get("schema_version") != "1.0" or not isinstance(target, dict):
+    raise SystemExit(1)
+fields = (
+    release.get("version", ""),
+    release.get("repository", ""),
+    release.get("tag", ""),
+    target.get("archive", ""),
+    target.get("archive_type", ""),
+    target.get("top_level", ""),
+    target.get("executable", ""),
+)
+sys.stdout.write("\\t".join(str(field) for field in fields))
+"""
+    (fake_bin / "osascript").write_text(
+        "#!/bin/sh\n"
+        f'exec {shlex.quote(sys.executable)} -c {shlex.quote(parser)} "$@"\n',
+        encoding="utf-8",
+    )
 
 
 def _frontmatter(content: str) -> dict[str, str]:
@@ -200,6 +232,7 @@ def test_posix_launcher_rejects_unsafe_release_metadata_before_network(
         '#!/bin/sh\nif [ "${1-}" = -s ]; then echo Darwin; else echo arm64; fi\n',
         encoding="utf-8",
     )
+    _write_fake_osascript(fake_bin)
     (fake_bin / "curl").write_text(
         "#!/bin/sh\necho network-was-used >&2\nexit 99\n", encoding="utf-8"
     )
@@ -250,6 +283,7 @@ def test_posix_launcher_installs_verified_archive_and_forwards_exit_status(
         '#!/bin/sh\nif [ "${1-}" = -s ]; then echo Darwin; else echo arm64; fi\n',
         encoding="utf-8",
     )
+    _write_fake_osascript(fake_bin)
     (fake_bin / "curl").write_text(
         "#!/bin/sh\nout=\nurl=\n"
         'while [ $# -gt 0 ]; do case "$1" in -o|--output) out=$2; shift 2;; '
@@ -311,6 +345,7 @@ def test_posix_launcher_rejects_archive_traversal_without_publishing(
         '#!/bin/sh\nif [ "${1-}" = -s ]; then echo Darwin; else echo arm64; fi\n',
         encoding="utf-8",
     )
+    _write_fake_osascript(fake_bin)
     (fake_bin / "curl").write_text(
         "#!/bin/sh\nout=\nurl=\n"
         'while [ $# -gt 0 ]; do case "$1" in -o|--output) out=$2; shift 2;; '
