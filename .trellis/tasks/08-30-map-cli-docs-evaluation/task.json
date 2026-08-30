@@ -1,0 +1,29 @@
+{
+  "id": "map-cli-docs-evaluation",
+  "name": "map-cli-docs-evaluation",
+  "title": "Map CLI docs evaluation",
+  "description": "Expose repo-dive map commands and complete error, security, recovery, performance, evaluation, and bilingual documentation contracts.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": "cli-docs-evaluation",
+  "package": null,
+  "priority": "P1",
+  "creator": "sjin",
+  "assignee": "sjin",
+  "createdAt": "2026-08-30",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "08-30-knowledge-map-refactor",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "dependency_order": "4",
+    "depends_on": "deterministic-knowledge-map,map-evidence-enrichment"
+  }
+}

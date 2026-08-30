@@ -1,0 +1,28 @@
+{
+  "id": "relationship-provenance-index-schema",
+  "name": "relationship-provenance-index-schema",
+  "title": "Relationship provenance index schema",
+  "description": "Persist exact per-occurrence relationship provenance and upgrade parser, index, manifest, graph, and retrieval compatibility without ranking regressions.",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": "parsing-indexing-retrieval",
+  "package": null,
+  "priority": "P1",
+  "creator": "sjin",
+  "assignee": "sjin",
+  "createdAt": "2026-08-30",
+  "completedAt": null,
+  "branch": "feat/relationship-provenance-index-schema",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "08-30-knowledge-map-refactor",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "dependency_order": "1"
+  }
+}

@@ -1,0 +1,8 @@
+{"file":".trellis/spec/backend/index.md","reason":"Confirm active backend spec closure."}
+{"file":".trellis/spec/backend/repository-classification.md","reason":"Verify deterministic snapshot and bounded manifest parsing compliance."}
+{"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Verify no Wiki ownership or schema changes."}
+{"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Verify clean staged snapshot and repository-owned path closure."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/existing-fact-graph-and-analytics.md","reason":"Check derivation against actual graph coverage and traversal semantics."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/persistence-and-cli-contracts.md","reason":"Check read-only index use, strict identity, lock/atomic recovery, and budgets."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/mvp-boundary-test-map-and-risks.md","reason":"Check missing capabilities, performance limits, and required test classes."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/planning-convergence-update.md","reason":"Check final parent contract, exclusions, and downstream API ownership."}

@@ -1,0 +1,34 @@
+{
+  "id": "knowledge-map-refactor",
+  "name": "knowledge-map-refactor",
+  "title": "Refactor knowledge map",
+  "description": "Build a deterministic fact graph and validated agent semantic layer that derives architecture, flow, and reading-path views.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": "planning-integration",
+  "package": null,
+  "priority": "P2",
+  "creator": "sjin",
+  "assignee": "sjin",
+  "createdAt": "2026-08-30",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "08-30-relationship-provenance-index-schema",
+    "08-30-deterministic-knowledge-map",
+    "08-30-map-evidence-enrichment",
+    "08-30-map-cli-docs-evaluation"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "task_role": "parent",
+    "implementation_target": "false"
+  }
+}

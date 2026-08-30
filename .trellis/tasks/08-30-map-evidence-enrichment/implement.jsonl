@@ -1,0 +1,7 @@
+{"file":".trellis/spec/backend/index.md","reason":"Active backend ownership index."}
+{"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Negative ownership boundary: map semantics cannot become Wiki structure or state."}
+{"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Repository-owned closure and clean-snapshot validation."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/agent-enrichment-and-wiki-integration.md","reason":"Existing strict Agent input, Evidence ownership/freshness, lifecycle, and semantic-validation limits."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/persistence-and-cli-contracts.md","reason":"Atomic persistence, current-index identity, CLI error classification, and budget constraints."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/mvp-boundary-test-map-and-risks.md","reason":"Semantic capability boundary, security/recovery test map, and freshness risks."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/planning-convergence-update.md","reason":"Canonical claim-level schema, shared lock ownership, lifecycle, no-Wiki, and metric decisions."}

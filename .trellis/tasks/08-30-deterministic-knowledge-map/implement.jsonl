@@ -1,0 +1,8 @@
+{"file":".trellis/spec/backend/index.md","reason":"Active backend ownership index."}
+{"file":".trellis/spec/backend/repository-classification.md","reason":"Immutable published-index snapshot, bounded manifest signals, determinism, and safe observations."}
+{"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Negative boundary: Wiki structure remains classification/template-owned and independent."}
+{"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Repository-owned closure and clean-snapshot verification."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/existing-fact-graph-and-analytics.md","reason":"Current graph facts, traversal, language coverage, and missing analytics."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/persistence-and-cli-contracts.md","reason":"Published index, strict schema, atomic persistence, CLI, and budget constraints."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/mvp-boundary-test-map-and-risks.md","reason":"Capability boundary, test map, and observed scaling/reference risks."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/planning-convergence-update.md","reason":"Canonical naming, lifecycle, budget, concurrency, node, and child ownership decisions."}

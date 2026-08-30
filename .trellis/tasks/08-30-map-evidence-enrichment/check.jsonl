@@ -1,0 +1,7 @@
+{"file":".trellis/spec/backend/index.md","reason":"Confirm active backend ownership remains coherent."}
+{"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Verify no Wiki structure, template, schema, or artifact dependency."}
+{"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Verify clean snapshot and no incomplete tooling references."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/agent-enrichment-and-wiki-integration.md","reason":"Check strict claim input, Evidence ownership, freshness, idempotence, and entailment limitations."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/persistence-and-cli-contracts.md","reason":"Check shared lock transaction use, atomic recovery, stale identity, and exit classes."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/mvp-boundary-test-map-and-risks.md","reason":"Check semantic scope, security, concurrency, and artifact-growth risks."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/planning-convergence-update.md","reason":"Check final parent contract and deterministic/enrichment ownership boundary."}

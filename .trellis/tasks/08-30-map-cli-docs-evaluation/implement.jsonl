@@ -1,0 +1,9 @@
+{"file":".trellis/spec/backend/index.md","reason":"Active backend ownership and guideline index."}
+{"file":".trellis/spec/backend/repository-classification.md","reason":"Deterministic source-signal and snapshot contract used by map fixtures."}
+{"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Compatibility boundary proving Wiki ownership remains unchanged."}
+{"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Exact staged-snapshot, repository-owned closure, Ruff, and clean verification requirements."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/existing-fact-graph-and-analytics.md","reason":"Parser/graph/retrieval facts and heuristic evaluation requirements."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/persistence-and-cli-contracts.md","reason":"CLI envelopes, error exits, index identity, atomic recovery, and budgets."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/agent-enrichment-and-wiki-integration.md","reason":"Strict Agent/Evidence behavior and no-Wiki integration boundary."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/mvp-boundary-test-map-and-risks.md","reason":"Full test map, security/recovery/performance risks, and missing capabilities."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/planning-convergence-update.md","reason":"Canonical commands, error matrix, metric separation, naming, and child integration decisions."}

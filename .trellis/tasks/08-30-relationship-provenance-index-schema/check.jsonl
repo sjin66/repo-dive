@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Confirm active backend ownership references remain valid."}
+{"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Verify clean staged snapshot and unrelated-change exclusion."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/existing-fact-graph-and-analytics.md","reason":"Check exact occurrence provenance, unique traversal, parser determinism, and rank compatibility."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/persistence-and-cli-contracts.md","reason":"Check Schema/version event, atomic generation recovery, and strict compatibility."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/planning-convergence-update.md","reason":"Check this child against the final parent boundary and dependency order."}
