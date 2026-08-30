@@ -16,6 +16,8 @@ from repo_dive.wiki.models import (
 )
 from repo_dive.wiki.store import METADATA_PATH, WIKI_PATH, WikiStore
 
+REPOSITORY_IDENTITY = str(Path(__file__).resolve().parent / "example")
+
 
 def wiki() -> Wiki:
     return Wiki(
@@ -53,7 +55,7 @@ def wiki() -> Wiki:
 
 def metadata() -> Metadata:
     return Metadata(
-        repository="/workspace/example",
+        repository=REPOSITORY_IDENTITY,
         repository_fingerprint="fingerprint",
         source_commit="abc123",
         output_language="en",

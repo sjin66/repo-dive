@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -20,6 +21,8 @@ from repo_dive.wiki.models import (
     metadata_from_document,
     wiki_from_document,
 )
+
+REPOSITORY_IDENTITY = str(Path(__file__).resolve().parent / "example")
 
 
 def evidence() -> EvidenceRef:
@@ -85,7 +88,7 @@ def wiki() -> Wiki:
 
 def metadata() -> Metadata:
     return Metadata(
-        repository="/workspace/example",
+        repository=REPOSITORY_IDENTITY,
         repository_fingerprint="fingerprint-1",
         source_commit=None,
         output_language="en",
