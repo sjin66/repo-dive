@@ -11,6 +11,7 @@ import pytest
 from repo_dive.cli import main
 from repo_dive.errors import RepositoryError
 from repo_dive.wiki.models import Page, PageStatus
+from repo_dive.wiki.service import WikiService, structure_from_document
 from repo_dive.wiki.store import WikiStore
 from repo_dive.wiki.validation import stale_page_ids, validate_page_evidence
 
@@ -49,9 +50,9 @@ def build_index(
     return run_json(capsys, ["index", str(repository)])
 
 
-def write_structure(tmp_path: Path) -> Path:
+def structure_document() -> dict[str, Any]:
     document = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "title": "Example Wiki",
         "description": "Grounded repository documentation.",
         "output_language": "en",
@@ -66,6 +67,15 @@ def write_structure(tmp_path: Path) -> Path:
                         "description": "Explain the greet application entrypoint.",
                         "relevant_files": ["src/app.py"],
                         "related_page_ids": ["utilities"],
+                        "subsections": [
+                            {
+                                "id": "runtime_flow",
+                                "title": "Runtime flow",
+                                "description": "Trace the application entrypoint.",
+                                "direct_source_paths": ["src/app.py"],
+                                "documentation_only": False,
+                            }
+                        ],
                     },
                     {
                         "id": "utilities",
@@ -73,14 +83,21 @@ def write_structure(tmp_path: Path) -> Path:
                         "description": "Explain the format_name helper.",
                         "relevant_files": ["src/utils.py"],
                         "related_page_ids": ["overview"],
+                        "subsections": [
+                            {
+                                "id": "formatting_flow",
+                                "title": "Formatting",
+                                "description": "Explain the formatting helper.",
+                                "direct_source_paths": ["src/utils.py"],
+                                "documentation_only": False,
+                            }
+                        ],
                     },
                 ],
             }
         ],
     }
-    path = tmp_path / "structure.json"
-    path.write_text(json.dumps(document), encoding="utf-8")
-    return path
+    return document
 
 
 def initialize_wiki(
@@ -89,16 +106,7 @@ def initialize_wiki(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     build_index(repository, capsys)
-    run_json(
-        capsys,
-        [
-            "wiki",
-            "structure",
-            str(repository),
-            "--input",
-            str(write_structure(tmp_path)),
-        ],
-    )
+    WikiService(repository).initialize(structure_from_document(structure_document()))
 
 
 def collect_evidence(
@@ -158,7 +166,8 @@ def test_wiki_evidence_persists_reproducible_bundle_before_returning_source(
     assert result["page_id"] == "overview"
     assert result["status"] == "evidence_ready"
     assert result["query"] == (
-        "Overview\nExplain the greet application entrypoint.\npath:src/app.py"
+        "Overview\nExplain the greet application entrypoint.\npath:src/app.py\n"
+        "Runtime flow\nTrace the application entrypoint.\npath:src/app.py"
     )
     assert result["token_budget"] == 1_200
     assert result["max_results"] == 5
@@ -226,11 +235,11 @@ def test_wiki_evidence_empty_result_fails_only_requested_page(
     assert main(arguments) == 3
 
     error = result_document(capsys.readouterr().out)["error"]
-    assert error["code"] == "wiki_evidence_empty"
+    assert error["code"] == "wiki_evidence_direct_budget_insufficient"
     overview = page_by_id(repository, "overview")
     utilities = page_by_id(repository, "utilities")
-    assert overview.status is PageStatus.FAILED
-    assert overview.error == "wiki_evidence_empty"
+    assert overview.status is PageStatus.PENDING
+    assert overview.error is None
     assert utilities.status is PageStatus.PENDING
     assert utilities.error is None
 
@@ -294,18 +303,11 @@ def test_changed_chunk_stales_only_dependent_page_and_blocks_consumers(
     assert captured.value.code == "wiki_evidence_stale"
     validate_page_evidence(repository, utilities)
 
-    structure_result = run_json(
-        capsys,
-        [
-            "wiki",
-            "structure",
-            str(repository),
-            "--input",
-            str(write_structure(tmp_path)),
-        ],
-    )["result"]
-    assert structure_result["invalidated_page_ids"] == ["overview"]
-    assert structure_result["preserved_page_ids"] == ["utilities"]
+    structure_result = WikiService(repository).initialize(
+        structure_from_document(structure_document())
+    )
+    assert structure_result.invalidated_page_ids == ("overview",)
+    assert structure_result.preserved_page_ids == ("utilities",)
 
     collect_evidence(repository, "utilities", capsys)
 

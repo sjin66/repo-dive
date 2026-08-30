@@ -12,6 +12,7 @@ import pytest
 from repo_dive.cli import main
 from repo_dive.indexing.service import load_published_index
 from repo_dive.wiki.models import Page
+from repo_dive.wiki.service import WikiService, structure_from_document
 from repo_dive.wiki.store import WikiStore
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "index_repo"
@@ -48,8 +49,8 @@ def initialize_wiki(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     run_json(capsys, ["index", str(repository)])
-    structure = {
-        "schema_version": "1.0",
+    structure: dict[str, Any] = {
+        "schema_version": "2.0",
         "title": "Example Wiki",
         "description": "Grounded repository documentation.",
         "output_language": "en",
@@ -64,6 +65,15 @@ def initialize_wiki(
                         "description": "Explain the greet application entrypoint.",
                         "relevant_files": ["src/app.py"],
                         "related_page_ids": ["utilities"],
+                        "subsections": [
+                            {
+                                "id": "runtime_flow",
+                                "title": "Runtime flow",
+                                "description": "Trace the application entrypoint.",
+                                "direct_source_paths": ["src/app.py"],
+                                "documentation_only": False,
+                            }
+                        ],
                     },
                     {
                         "id": "utilities",
@@ -71,23 +81,21 @@ def initialize_wiki(
                         "description": "Explain the format_name helper.",
                         "relevant_files": ["src/utils.py"],
                         "related_page_ids": ["overview"],
+                        "subsections": [
+                            {
+                                "id": "formatting_flow",
+                                "title": "Formatting",
+                                "description": "Explain the formatting helper.",
+                                "direct_source_paths": ["src/utils.py"],
+                                "documentation_only": False,
+                            }
+                        ],
                     },
                 ],
             }
         ],
     }
-    structure_path = tmp_path / "structure.json"
-    structure_path.write_text(json.dumps(structure), encoding="utf-8")
-    run_json(
-        capsys,
-        [
-            "wiki",
-            "structure",
-            str(repository),
-            "--input",
-            str(structure_path),
-        ],
-    )
+    WikiService(repository).initialize(structure_from_document(structure))
 
 
 def page_by_id(repository: Path, page_id: str) -> Page:
@@ -125,10 +133,15 @@ def generate_page(
     )
     page = page_by_id(repository, page_id)
     submission = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "page_id": page_id,
-        "body": body,
-        "evidence_ids": [page.evidence[0].evidence_id],
+        "subsections": [
+            {
+                "subsection_id": page.subsections[0].id,
+                "body": body,
+                "evidence_ids": [page.evidence[0].evidence_id],
+            }
+        ],
     }
     input_path = tmp_path / f"{page_id}.json"
     input_path.write_text(json.dumps(submission), encoding="utf-8")
@@ -192,6 +205,11 @@ def test_complete_wiki_workflow_builds_stable_markdown_and_markdown_stdout(
         "section_count": 1,
         "sha256": hashlib.sha256(markdown.encode("utf-8")).hexdigest(),
         "source_count": 2,
+        "index_build_id": result["result"]["index_build_id"],
+        "repository_fingerprint": result["result"]["repository_fingerprint"],
+        "source_commit": None,
+        "source_control": "non_git",
+        "source_dirty": None,
     }
     assert markdown.startswith("# Example Wiki\n\nGrounded repository documentation.")
     assert markdown.index("### Overview") < markdown.index("### Utilities")
@@ -308,3 +326,35 @@ def test_wiki_build_rejects_index_change_between_validation_and_publish(
     error = result_document(capsys.readouterr().out)["error"]
     assert error["code"] == "index_changed_during_operation"
     assert artifact.read_bytes() == current
+
+
+def test_wiki_build_rejects_current_index_identity_that_differs_from_evidence(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = copy_fixture(tmp_path)
+    initialize_wiki(repository, tmp_path, capsys)
+    generate_all_pages(repository, tmp_path, capsys)
+    artifact = repository / ".repo-dive/wiki.md"
+    artifact.write_bytes(b"previous wiki\n")
+    published = load_published_index(repository)
+    changed = replace(
+        published,
+        manifest=replace(
+            published.manifest,
+            build_id="equivalent-content-rebuild",
+            source_control="git",
+            source_commit="b" * 40,
+            source_dirty=False,
+        ),
+    )
+    monkeypatch.setattr(
+        "repo_dive.wiki.service.load_published_index", lambda repository_path: changed
+    )
+
+    assert main(["wiki", "build", str(repository), "--format", "json"]) == 3
+
+    error = result_document(capsys.readouterr().out)["error"]
+    assert error["code"] == "wiki_evidence_stale"
+    assert artifact.read_bytes() == b"previous wiki\n"

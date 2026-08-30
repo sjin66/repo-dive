@@ -11,6 +11,7 @@ import pytest
 
 from repo_dive.cli import main
 from repo_dive.wiki.models import Page
+from repo_dive.wiki.service import WikiService, structure_from_document
 from repo_dive.wiki.store import WikiStore
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "index_repo"
@@ -62,43 +63,37 @@ def initialize_one_page_wiki(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     run_json(capsys, ["index", str(repository)])
-    structure_path = tmp_path / "structure.json"
-    structure_path.write_text(
-        json.dumps(
+    structure: dict[str, Any] = {
+        "schema_version": "2.0",
+        "title": "Recovery Wiki",
+        "description": "Grounded recovery fixture.",
+        "output_language": "en",
+        "sections": [
             {
-                "schema_version": "1.0",
-                "title": "Recovery Wiki",
-                "description": "Grounded recovery fixture.",
-                "output_language": "en",
-                "sections": [
+                "id": "guide",
+                "title": "Guide",
+                "pages": [
                     {
-                        "id": "guide",
-                        "title": "Guide",
-                        "pages": [
+                        "id": "overview",
+                        "title": "Overview",
+                        "description": "Explain the greet entrypoint.",
+                        "relevant_files": ["src/app.py"],
+                        "related_page_ids": [],
+                        "subsections": [
                             {
-                                "id": "overview",
-                                "title": "Overview",
+                                "id": "runtime_flow",
+                                "title": "Runtime flow",
                                 "description": "Explain the greet entrypoint.",
-                                "relevant_files": ["src/app.py"],
-                                "related_page_ids": [],
+                                "direct_source_paths": ["src/app.py"],
+                                "documentation_only": False,
                             }
                         ],
                     }
                 ],
             }
-        ),
-        encoding="utf-8",
-    )
-    run_json(
-        capsys,
-        [
-            "wiki",
-            "structure",
-            str(repository),
-            "--input",
-            str(structure_path),
         ],
-    )
+    }
+    WikiService(repository).initialize(structure_from_document(structure))
     run_json(
         capsys,
         [
@@ -116,10 +111,15 @@ def initialize_one_page_wiki(
     submission_path.write_text(
         json.dumps(
             {
-                "schema_version": "1.0",
+                "schema_version": "2.0",
                 "page_id": page.id,
-                "body": "The entrypoint delegates greeting construction.\n",
-                "evidence_ids": [page.evidence[0].evidence_id],
+                "subsections": [
+                    {
+                        "subsection_id": page.subsections[0].id,
+                        "body": "The entrypoint delegates greeting construction.\n",
+                        "evidence_ids": [page.evidence[0].evidence_id],
+                    }
+                ],
             }
         ),
         encoding="utf-8",

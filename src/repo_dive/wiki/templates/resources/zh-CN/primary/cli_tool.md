@@ -11,3 +11,6 @@
 **{{repo_dive:cli_extension_points_page}}**：记录显式接口、适配器契约、注册和兼容限制。
 <!-- repo-dive:page=errors_exit_codes_page; order=6; cardinality=1; shape=heading,paragraph,table,code_block; purpose=映射失败、诊断和进程退出码; evidence=必需证据包括异常、错误信封、退出常量和单基行号; constraints=准确保留稳定代码、输出通道和重试指导; -->
 **{{repo_dive:errors_exit_codes_page}}**：列出校验、输入、操作和内部失败的可观察行为。
+<!-- repo-dive:page=terminology_reference_page; order=7; cardinality=1; shape=heading,paragraph,table,code_block; purpose=定义一致的代码库术语与来源解释; evidence=公共模型、Schema、状态字段、路径、符号与从一开始的行号; constraints=本地化术语首次出现时配对规范标识，且不得编造不支持的概念; -->
+**{{repo_dive:terminology_reference_page}}**：一致定义 Evidence、Chunk、Index、Context、Provider、Corpus 与 Skill，并解释范围和版本字段。
+补充规范本地检查、安全恢复，以及 Evidence/Chunk/Index/Context/Provider/Corpus/Skill 术语表。只有直接实现 Evidence 证明边界时才说明 Parser、Retriever 或 Provider 扩展流程。

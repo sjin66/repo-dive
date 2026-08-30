@@ -17,6 +17,7 @@ from repo_dive.wiki.models import (
     PageStatus,
     RetrievalParameters,
     Section,
+    Subsection,
     Wiki,
     metadata_from_document,
     wiki_from_document,
@@ -42,6 +43,9 @@ def evidence_snapshot() -> EvidenceSnapshot:
         repository_fingerprint="fingerprint-1",
         index_schema_version=3,
         index_build_id="build-1",
+        source_control="git",
+        source_commit="a" * 40,
+        source_dirty=True,
         token_budget=1_200,
         estimated_tokens=320,
         reserved_tokens=80,
@@ -69,6 +73,14 @@ def page(*, status: PageStatus = PageStatus.PENDING) -> Page:
         evidence=(evidence(),),
         body="# Overview\n",
         error=None,
+        subsections=(
+            Subsection(
+                id="overview_content",
+                title="Overview content",
+                description="Explain the repository entrypoint.",
+                direct_source_paths=("src/app.py",),
+            ),
+        ),
     )
 
 
@@ -83,6 +95,7 @@ def wiki() -> Wiki:
                 pages=(page(),),
             ),
         ),
+        framework_labels=(("contents", "Contents"),),
     )
 
 

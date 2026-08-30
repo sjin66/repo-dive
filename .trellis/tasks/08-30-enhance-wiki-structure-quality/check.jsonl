@@ -1,0 +1,2 @@
+{"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Review source for template composition, exact locale parity, shell ownership, hashes, and required validation cases."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Review checklist for round-trip schema fields, version provenance, consumers, tests, and cross-layer documentation consistency."}

@@ -4,8 +4,16 @@ from dataclasses import replace
 
 import pytest
 
-from repo_dive.wiki.assembler import assemble_wiki, stable_anchor
-from repo_dive.wiki.models import EvidenceRef, Page, PageStatus, Section, Wiki
+from repo_dive.wiki.assembler import assemble_wiki, stable_anchor, subsection_anchor
+from repo_dive.wiki.models import (
+    EvidenceRef,
+    Page,
+    PageStatus,
+    Section,
+    Subsection,
+    SubsectionContent,
+    Wiki,
+)
 
 
 def evidence(
@@ -40,7 +48,17 @@ def generated_page(
         related_page_ids=related_page_ids,
         evidence=(reference,),
         citation_ids=(reference.evidence_id,),
-        body=body,
+        subsections=(
+            Subsection(
+                id="details",
+                title="Details",
+                description=f"Explain {title} details.",
+                direct_source_paths=(reference.path,),
+            ),
+        ),
+        subsection_contents=(
+            SubsectionContent("details", body, (reference.evidence_id,)),
+        ),
     )
 
 
@@ -89,6 +107,8 @@ def test_assemble_wiki_is_ordered_deterministic_and_links_grounded_sources() -> 
     section_anchor = stable_anchor("section", "guide")
     overview_anchor = stable_anchor("page", "overview")
     utilities_anchor = stable_anchor("page", "utilities")
+    overview_subsection = subsection_anchor("overview", "details")
+    utilities_subsection = subsection_anchor("utilities", "details")
 
     markdown = assemble_wiki(document)
 
@@ -101,13 +121,18 @@ def test_assemble_wiki_is_ordered_deterministic_and_links_grounded_sources() -> 
         "\n"
         f"- [Guide](#{section_anchor})\n"
         f"  - [Overview](#{overview_anchor})\n"
+        f"    - [Details](#{overview_subsection})\n"
         f"  - [Utilities](#{utilities_anchor})\n"
+        f"    - [Details](#{utilities_subsection})\n"
         "\n"
         f'<a id="{section_anchor}"></a>\n'
         "## Guide\n"
         "\n"
         f'<a id="{overview_anchor}"></a>\n'
         "### Overview\n"
+        "\n"
+        f'<a id="{overview_subsection}"></a>\n'
+        "#### Details\n"
         "\n"
         "The entrypoint delegates greeting construction.\n"
         "\n"
@@ -121,6 +146,9 @@ def test_assemble_wiki_is_ordered_deterministic_and_links_grounded_sources() -> 
         "\n"
         f'<a id="{utilities_anchor}"></a>\n'
         "### Utilities\n"
+        "\n"
+        f'<a id="{utilities_subsection}"></a>\n'
+        "#### Details\n"
         "\n"
         "The helper formats a supplied name.\n"
         "\n"
@@ -139,7 +167,7 @@ def test_assemble_wiki_is_ordered_deterministic_and_links_grounded_sources() -> 
 @pytest.mark.parametrize(
     "invalid_page",
     [
-        replace(wiki().sections[0].pages[0], body=None),
+        replace(wiki().sections[0].pages[0], subsection_contents=()),
         replace(wiki().sections[0].pages[0], citation_ids=()),
     ],
 )

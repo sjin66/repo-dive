@@ -17,3 +17,7 @@ Document explicit interfaces, adapter contracts, registration, and compatibility
 <!-- repo-dive:page=errors_exit_codes_page; order=6; cardinality=1; shape=heading,paragraph,table,code_block; purpose=Map failures to diagnostics and process exit codes; evidence=Exception types, error envelopes, exit constants, paths, symbols, and one-based lines; constraints=Preserve stable codes channels and retry guidance exactly; -->
 #### {{repo_dive:errors_exit_codes_page}}
 Catalog validation, input, operational, and internal failures with observable behavior.
+<!-- repo-dive:page=terminology_reference_page; order=7; cardinality=1; shape=heading,paragraph,table,code_block; purpose=Define consistent repository terminology and provenance interpretation; evidence=Public models, schemas, status fields, paths, symbols, and one-based lines; constraints=Pair localized terms with canonical identifiers and do not invent unsupported concepts; -->
+#### {{repo_dive:terminology_reference_page}}
+Define Evidence, Chunk, Index, Context, Provider, Corpus, and Skill consistently and explain scope/version fields.
+Include canonical local checks, safe recovery, and a concise Evidence/Chunk/Index/Context/Provider/Corpus/Skill glossary. Describe parser, retriever, or Provider extension recipes only when direct implementation Evidence proves the boundary.

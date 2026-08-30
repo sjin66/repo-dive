@@ -14,7 +14,11 @@ from repo_dive.classification import (
     IndexedFile,
     IndexSnapshot,
 )
-from repo_dive.classification.models import MAX_MANIFEST_BYTES, Taxon
+from repo_dive.classification.models import (
+    MAX_MANIFEST_BYTES,
+    Taxon,
+    classification_result_from_document,
+)
 from repo_dive.classification.registry import (
     ExactPath,
     NamedManifestKeyValue,
@@ -367,3 +371,14 @@ def test_result_is_immutable_and_byte_stable_without_timestamps_or_content() -> 
     assert "SECRET" not in encoded
     assert "timestamp" not in encoded
     assert first.matched_signals[1].paths == ("src/pages/a.tsx", "src/pages/z.tsx")
+
+
+def test_classification_persistence_decoder_is_strict_and_round_trips() -> None:
+    result = ClassificationService().classify(snapshot(file("src/app.py")))
+    document = result.to_document()
+
+    assert classification_result_from_document(document) == result
+
+    document["unexpected"] = True
+    with pytest.raises(ValueError, match="fields"):
+        classification_result_from_document(document)

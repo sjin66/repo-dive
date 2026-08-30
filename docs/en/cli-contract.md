@@ -14,7 +14,7 @@ Functional commands support:
 repo-dive <command> [repository] --format json
 ```
 
-The current build implements `index`, `search`, `context`, `wiki structure`, `wiki evidence`, `wiki page`, `wiki build`, and `wiki status` in addition to `--help` and `--version`.
+The current build implements `index`, `search`, `context`, `wiki classify`, `wiki init`, `wiki evidence`, `wiki page`, `wiki validate`, `wiki build`, and `wiki status`; deprecated `wiki structure` remains for compatibility.
 
 ## RAG Command Boundary
 
@@ -25,7 +25,7 @@ Command families expose each RAG stage independently:
 - `context`: deduplicate and package evidence under a caller-supplied token budget.
 - `wiki`: persist agent-generated page state and assemble `.repo-dive/wiki.md`.
 
-`index`, `search`, and `context` are deterministic RAG operations. `wiki structure`, `wiki evidence`, `wiki page`, `wiki build`, and `wiki status` provide the complete persistent, resumable offline Wiki workflow. None of these commands implicitly calls a generative model.
+`index`, `search`, and `context` are deterministic RAG operations. `wiki classify`, `wiki init`, `wiki evidence`, `wiki page`, `wiki validate`, `wiki build`, and `wiki status` provide the complete governed, persistent, resumable offline Wiki workflow. None implicitly calls a generative model.
 
 The context command requires a positive token budget and accepts a bounded retrieval-candidate count:
 
@@ -59,33 +59,33 @@ embedding count, and safe error code. Search hits always retain
 `lexical_score`, `structural_score`, `vector_score`, and `fused_score`; a score
 is `null` when that channel did not retrieve the Chunk.
 
-The structure command reads a bounded UTF-8 JSON document from an explicit file:
+The governed Wiki commands are:
 
 ```text
-repo-dive wiki structure <repository> --input structure.json --format json|markdown
+repo-dive wiki classify <repository> [--template ID] --format json|markdown
+repo-dive wiki init <repository> [--template ID] --locale en|zh-CN|ja --format json|markdown
 repo-dive wiki evidence <repository> --page <page-id> --token-budget N [--max-results COUNT] --format json|markdown
 repo-dive wiki page <repository> --page <page-id> --input <page.json|-> --format json|markdown
+repo-dive wiki validate <repository> --format json|markdown
 repo-dive wiki build <repository> --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
 
-Structure input Schema `1.0` accepts only `schema_version`, `title`, `description`, `output_language`, and ordered `sections`. A section contains only `id`, `title`, and ordered `pages`; a page contains only `id`, `title`, `description`, `relevant_files`, and `related_page_ids`. IDs must be unique, relationships must resolve to submitted page IDs, and relevant files must exist in the current published index. Lifecycle fields such as status, evidence, body, and error cannot be injected through this command.
-
-Reapplying an identical structure is byte-idempotent. New pages start as `pending`; changing a page title, description, relevant files, or relationships resets only that page to `pending` while preserving its previous evidence/body/error for diagnosis. Reordering or moving an otherwise unchanged page preserves its state. A repository/index identity or output-language change invalidates all retained pages.
+`wiki classify` is read-only. `wiki init` deterministically classifies the current published index and composes the exact localized built-in Section/Page/Subsection structure. Callers control only exact locale and an optional registered primary-template override; they cannot submit governed nodes, ordering, source paths, or documentation-only flags. Classification and template identities are persisted in Metadata and returned by init/status.
 
 Status output reports ordered sections and pages, state counts, whether a body or error exists, and one next action per page without returning generated bodies. The mappings are `pending -> collect_evidence`, `evidence_ready -> generate_page`, `generated -> complete`, and `failed -> retry`.
 
-`wiki evidence` derives its query deterministically from the persisted page title, description, and `path:<relevant-file>` hints. It applies the same bounded hybrid retrieval and complete-Chunk context packing as `context`, but writes the page Evidence snapshot before emitting source text. A successful page enters `evidence_ready`; an empty bundle or repository/index retrieval failure marks only the requested page `failed` with a safe error code.
+`wiki evidence` derives its query deterministically from the persisted Page and Subsection titles, descriptions, and direct-source paths. It reserves one complete Chunk for every required direct path before filling the remaining budget with bounded hybrid retrieval results, then writes the Page Evidence snapshot before emitting source text. A successful Page enters `evidence_ready`; insufficient direct-Evidence budget does not mutate state, while other empty-bundle or repository/index retrieval failures mark only the requested Page `failed` with a safe error code.
 
 The persisted snapshot records the query, repository fingerprint, index Schema/build identity, token accounting, estimator, truncation flag, retrieval/fusion parameters, generation timestamp, and included Evidence references. Every reference stores the Chunk ID, content hash, path, and inclusive line range. Build identity is audit metadata; freshness is checked against the current index Schema and each referenced Chunk identity/hash, so an unrelated index rebuild does not invalidate unaffected pages. Stale Evidence is rejected by the page/build validation boundary.
 
-`wiki page` accepts a bounded UTF-8 JSON file or `--input -` for stdin. Submission Schema `1.0` accepts exactly `schema_version`, `page_id`, Markdown `body`, and a non-empty unique `evidence_ids` array. The selected and submitted Page IDs must match; every cited ID must belong to that page's current Evidence snapshot; the snapshot must still match the published index; and the body is limited to 200,000 UTF-8 bytes. The outer input is bounded at 1,500,000 bytes so escaped JSON cannot create an unbounded read.
+`wiki page` accepts a bounded UTF-8 JSON file or `--input -` for stdin. Governed submission Schema `2.0` accepts exactly `schema_version`, `page_id`, and one ordered `subsections` entry per persisted Subsection. Each entry has `subsection_id`, Markdown `body`, and non-empty unique `evidence_ids`; non-documentation Subsections must cite covering direct Evidence. The selected and submitted Page IDs and exact Subsection order must match, cited IDs must belong to the current Evidence snapshot, H1-H4 and raw HTML are rejected, and all bodies together are limited to 200,000 UTF-8 bytes. The outer input is bounded at 1,500,000 bytes so escaped JSON cannot create an unbounded read.
 
 A valid `evidence_ready` page becomes `generated`. A `failed` page with a still-valid Evidence snapshot may be corrected and submitted without touching other pages. Repeating the exact generated body and citation list is a no-write success; attempting to replace a generated page through this command is rejected. Results and diagnostics report only sizes, counts, IDs, status, and safe error codes—they do not echo the submitted body or repository source.
 
 `wiki build` requires every page to be `generated` with a body and at least one current citation. It validates all page Evidence against one current published-index view and verifies that build identity again immediately before writing. Incomplete pages return `wiki_build_incomplete`; stale pages return `wiki_evidence_stale`; a concurrent index publication returns `index_changed_during_operation`. These failures preserve any existing `.repo-dive/wiki.md`, and page-related errors include only ordered Page IDs.
 
-The assembled document preserves Section/Page order and contains the Wiki title and description, a table of contents, explicit stable anchors, page headings, caller-generated bodies, related-page links, and source links with inclusive line ranges. Anchors are the `section-` or `page-` prefix plus the full SHA-256 of the persisted ID. Source targets are URL-encoded paths relative to `.repo-dive/wiki.md`. Callers should submit page body content without repeating the CLI-owned page heading. The CLI stores Markdown as data and does not execute or HTML-sanitize page bodies; consumers that render HTML must use a trusted Markdown renderer and an appropriate HTML sanitization policy.
+The assembled document preserves Section/Page/Subsection order and contains localized scope/version disclosure, three-level Contents, explicit stable anchors, CLI-owned H2/H3/H4 headings, caller H5/H6 content, related-page links, and source links with inclusive line ranges. Section/Page anchors hash their persisted IDs; Subsection anchors hash the Page ID, a NUL separator, and the Subsection ID. Source targets are URL-encoded paths relative to `.repo-dive/wiki.md`. The CLI rejects raw HTML and stores accepted Markdown as data; consumers that render HTML must still use a trusted Markdown renderer and an appropriate HTML sanitization policy.
 
 JSON output reports `artifact_path`, UTF-8 `bytes`, `changed`, Section/Page/source counts, and `sha256` without returning the assembled body. Markdown output writes the exact assembled document to stdout, while both formats first obey the same atomic artifact write. Rebuilding identical state is a no-write success with `changed: false`.
 
@@ -95,7 +95,7 @@ No MCP server is required. A calling agent should execute the CLI directly and
 use this order for a persistent Wiki:
 
 ```text
-index -> wiki structure -> wiki evidence (Context) -> caller generates prose -> wiki page -> wiki build
+index -> wiki classify -> wiki init -> wiki evidence (Context) -> caller generates prose -> wiki page -> wiki validate -> wiki build
 ```
 
 Run `wiki status` between resumable steps. Generic `context` is appropriate for
@@ -122,7 +122,7 @@ repo-dive index /workspace/project --format json
     "files": 8,
     "index_schema_version": 4,
     "indexed_files": 8,
-    "manifest_schema_version": "1.0",
+    "manifest_schema_version": "2.0",
     "rebuilt_files": 8,
     "relationships": 11,
     "repository_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

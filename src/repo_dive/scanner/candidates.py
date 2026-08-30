@@ -36,6 +36,17 @@ DEFAULT_EXCLUDED_DIRECTORIES = frozenset(
 )
 
 
+def effective_default_excluded_directories(
+    include: Sequence[str],
+) -> tuple[str, ...]:
+    """Return the exact default directory policy remaining after explicit includes."""
+    normalized = _normalize_patterns(include)
+    explicitly_included = _explicitly_included_directories(
+        normalized, DEFAULT_EXCLUDED_DIRECTORIES
+    )
+    return tuple(sorted(DEFAULT_EXCLUDED_DIRECTORIES - explicitly_included))
+
+
 @dataclass(frozen=True, slots=True)
 class CandidateSet:
     """An ordered set of repository-relative candidate paths."""

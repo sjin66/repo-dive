@@ -11,3 +11,6 @@
 **{{repo_dive:cli_extension_points_page}}**：明示的 interface、登録、互換性制限を記録する。
 <!-- repo-dive:page=errors_exit_codes_page; order=6; cardinality=1; shape=heading,paragraph,table,code_block; purpose=失敗、診断、終了コードを対応付ける; evidence=必須の根拠は exception、error envelope、exit constant、行番号; constraints=安定 code、channel、retry 指針を正確に保つ; -->
 **{{repo_dive:errors_exit_codes_page}}**：検証、入力、運用、内部失敗の観測動作を列挙する。
+<!-- repo-dive:page=terminology_reference_page; order=7; cardinality=1; shape=heading,paragraph,table,code_block; purpose=一貫したリポジトリ用語と来歴の解釈を定義する; evidence=公開モデル、スキーマ、状態フィールド、パス、シンボル、1始まりの行範囲; constraints=初出のローカライズ用語を標準識別子と対応させ、未対応概念を作らない; -->
+**{{repo_dive:terminology_reference_page}}**：Evidence、Chunk、Index、Context、Provider、Corpus、Skill を一貫して定義し、スコープとバージョン項目を説明する。
+標準ローカルチェック、安全な復旧、および Evidence/Chunk/Index/Context/Provider/Corpus/Skill 用語集を含める。直接実装 Evidence が境界を示す場合だけ Parser、Retriever、Provider の拡張手順を説明する。

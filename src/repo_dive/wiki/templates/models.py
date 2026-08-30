@@ -12,6 +12,7 @@ NodeType = Literal[
     "contents",
     "section",
     "page",
+    "subsection",
     "heading",
     "paragraph",
     "list",
@@ -31,6 +32,7 @@ _NODE_TYPES = {
     "contents",
     "section",
     "page",
+    "subsection",
     "heading",
     "paragraph",
     "list",
@@ -291,9 +293,11 @@ class LocaleCatalog:
 
     locale: str
     labels: tuple[tuple[str, str], ...]
+    subsection_descriptions: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
         _require_tuple(self.labels, "locale labels")
+        _require_tuple(self.subsection_descriptions, "locale Subsection descriptions")
         if self.locale not in _CANONICAL_LOCALES:
             raise ValueError("locale must be a canonical registered locale")
         if any(type(item) is not tuple or len(item) != 2 for item in self.labels):
@@ -309,6 +313,21 @@ class LocaleCatalog:
             for key, value in self.labels
         ):
             raise ValueError("locale keys and values must be valid non-empty strings")
+        description_keys = tuple(key for key, _ in self.subsection_descriptions)
+        descriptions = tuple(value for _, value in self.subsection_descriptions)
+        if (
+            len(description_keys) != len(set(description_keys))
+            or tuple(sorted(description_keys)) != description_keys
+            or any(not is_logical_id(key) for key in description_keys)
+            or any(
+                not isinstance(value, str) or not value or value.strip() != value
+                for value in descriptions
+            )
+            or len(descriptions) != len(set(descriptions))
+        ):
+            raise ValueError(
+                "locale Subsection descriptions must be unique sorted copy"
+            )
 
     def resolve(self, key: str) -> str:
         try:
@@ -317,7 +336,11 @@ class LocaleCatalog:
             raise ValueError(f"locale key is unavailable: {key}") from error
 
     def to_document(self) -> JsonObject:
-        return {"locale": self.locale, "labels": dict(self.labels)}
+        return {
+            "labels": dict(self.labels),
+            "locale": self.locale,
+            "subsection_descriptions": dict(self.subsection_descriptions),
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -397,6 +420,60 @@ class TemplateIdentity:
         }
 
 
+def template_identity_from_document(document: JsonObject) -> TemplateIdentity:
+    """Strictly decode one persisted built-in template identity."""
+    required = {
+        "contract_sha256",
+        "facets",
+        "locale",
+        "localized_sha256",
+        "primary_template_id",
+        "primary_template_version",
+        "registry_version",
+        "template_schema_version",
+        "topology",
+    }
+    if set(document) != required:
+        raise ValueError("template identity fields are invalid")
+    topology = _json_object(document["topology"])
+    if set(topology) != {"id", "version"}:
+        raise ValueError("template topology identity fields are invalid")
+    facets = tuple(_json_object(item) for item in _json_array(document["facets"]))
+    if any(set(item) != {"id", "version"} for item in facets):
+        raise ValueError("template facet identity fields are invalid")
+    return TemplateIdentity(
+        schema_version=_json_string(document["template_schema_version"]),
+        registry_version=_json_string(document["registry_version"]),
+        primary_id=_json_string(document["primary_template_id"]),
+        primary_version=_json_string(document["primary_template_version"]),
+        topology_id=_json_string(topology["id"]),
+        topology_version=_json_string(topology["version"]),
+        facets=tuple(_json_string(item["id"]) for item in facets),
+        facet_versions=tuple(_json_string(item["version"]) for item in facets),
+        locale=_json_string(document["locale"]),
+        contract_sha256=_json_string(document["contract_sha256"]),
+        localized_sha256=_json_string(document["localized_sha256"]),
+    )
+
+
+def _json_object(value: JsonValue) -> JsonObject:
+    if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
+        raise ValueError("template identity value must be an object")
+    return value
+
+
+def _json_array(value: JsonValue) -> list[JsonValue]:
+    if not isinstance(value, list):
+        raise ValueError("template identity value must be an array")
+    return value
+
+
+def _json_string(value: JsonValue) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError("template identity value must be a non-empty string")
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class ComposedContract:
     """A complete normalized contract and resolved generation guidance."""
@@ -405,18 +482,41 @@ class ComposedContract:
     framework_shell: FrameworkShell
     nodes: tuple[ContractNode, ...]
     labels: tuple[tuple[str, str], ...]
+    subsection_descriptions: tuple[tuple[str, str], ...]
     annotated_guidance: str
     compiled_guidance: str
 
     def __post_init__(self) -> None:
         _require_tuple(self.nodes, "composed contract nodes")
         _require_tuple(self.labels, "composed contract labels")
+        _require_tuple(
+            self.subsection_descriptions,
+            "composed contract Subsection descriptions",
+        )
         keys = tuple(key for key, _ in self.labels)
         if len(keys) != len(set(keys)) or tuple(sorted(keys)) != keys:
             raise ValueError("composed contract labels must be unique and sorted")
+        description_keys = tuple(key for key, _ in self.subsection_descriptions)
+        if (
+            len(description_keys) != len(set(description_keys))
+            or tuple(sorted(description_keys)) != description_keys
+        ):
+            raise ValueError(
+                "composed contract Subsection descriptions must be unique and sorted"
+            )
         ids = tuple(node.logical_id for root in self.nodes for node in root.walk())
         if len(ids) != len(set(ids)):
             raise ValueError("composed contract logical ids must be unique")
+        subsection_ids = {
+            node.logical_id
+            for root in self.nodes
+            for node in root.walk()
+            if node.node_type == "subsection"
+        }
+        if set(description_keys) != subsection_ids:
+            raise ValueError(
+                "composed contract descriptions must match its Subsections"
+            )
         if (
             not self.compiled_guidance
             or "<!--" in self.compiled_guidance
@@ -435,5 +535,6 @@ class ComposedContract:
             "identity": self.identity.to_document(),
             "labels": dict(self.labels),
             "nodes": [node.to_document() for node in self.nodes],
+            "subsection_descriptions": dict(self.subsection_descriptions),
         }
         return document

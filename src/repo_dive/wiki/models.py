@@ -8,10 +8,18 @@ from math import isfinite
 from pathlib import Path, PurePosixPath
 from typing import cast
 
+from repo_dive.classification.models import (
+    ClassificationResult,
+    classification_result_from_document,
+)
 from repo_dive.schema import JsonObject, JsonValue
+from repo_dive.wiki.templates.models import (
+    TemplateIdentity,
+    template_identity_from_document,
+)
 
-WIKI_SCHEMA_VERSION = "1.0"
-METADATA_SCHEMA_VERSION = "1.0"
+WIKI_SCHEMA_VERSION = "2.0"
+METADATA_SCHEMA_VERSION = "2.0"
 
 
 class PageStatus(StrEnum):
@@ -81,6 +89,9 @@ class EvidenceSnapshot:
     repository_fingerprint: str
     index_schema_version: int
     index_build_id: str
+    source_control: str
+    source_commit: str | None
+    source_dirty: bool | None
     token_budget: int
     estimated_tokens: int
     reserved_tokens: int
@@ -100,6 +111,9 @@ class EvidenceSnapshot:
             _require_text(value, label)
         if self.index_schema_version <= 0 or self.token_budget <= 0:
             raise ValueError("evidence index version and budget must be positive")
+        _validate_source_identity(
+            self.source_control, self.source_commit, self.source_dirty
+        )
         if not 0 <= self.reserved_tokens <= self.estimated_tokens <= self.token_budget:
             raise ValueError("evidence token accounting is invalid")
 
@@ -112,6 +126,9 @@ class EvidenceSnapshot:
             "index_schema_version": self.index_schema_version,
             "query": self.query,
             "repository_fingerprint": self.repository_fingerprint,
+            "source_commit": self.source_commit,
+            "source_control": self.source_control,
+            "source_dirty": self.source_dirty,
             "reserved_tokens": self.reserved_tokens,
             "retrieval": self.retrieval.to_document(),
             "token_budget": self.token_budget,
@@ -129,6 +146,9 @@ class EvidenceRef:
     start_line: int
     end_line: int
     content_hash: str | None = None
+    role: str = "supplemental"
+    subsection_ids: tuple[str, ...] = ()
+    direct_paths: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         _require_text(self.evidence_id, "evidence ID")
@@ -138,6 +158,20 @@ class EvidenceRef:
             raise ValueError("Evidence line range must be one-based and inclusive")
         if self.content_hash is not None:
             _require_text(self.content_hash, "Evidence content hash")
+        if self.role not in {"direct", "supplemental"}:
+            raise ValueError("Evidence role must be direct or supplemental")
+        _require_unique(self.subsection_ids, "Evidence Subsection IDs")
+        _require_unique(self.direct_paths, "Evidence direct paths")
+        for path in self.direct_paths:
+            _validate_repository_path(path)
+        if self.role == "direct" and (not self.subsection_ids or not self.direct_paths):
+            raise ValueError("direct Evidence requires Subsection and path coverage")
+        if self.role == "direct" and any(
+            path != self.path for path in self.direct_paths
+        ):
+            raise ValueError("direct Evidence path coverage must match its Chunk path")
+        if self.role == "supplemental" and (self.subsection_ids or self.direct_paths):
+            raise ValueError("supplemental Evidence cannot declare direct coverage")
 
     def to_document(self) -> JsonObject:
         return {
@@ -146,7 +180,66 @@ class EvidenceRef:
             "end_line": self.end_line,
             "evidence_id": self.evidence_id,
             "path": self.path,
+            "role": self.role,
             "start_line": self.start_line,
+            "subsection_ids": list(self.subsection_ids),
+            "direct_paths": list(self.direct_paths),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class Subsection:
+    """Immutable generation and direct-Evidence contract below one Page."""
+
+    id: str
+    title: str
+    description: str
+    direct_source_paths: tuple[str, ...]
+    documentation_only: bool = False
+
+    def __post_init__(self) -> None:
+        _require_logical_id(self.id, "Subsection ID")
+        _require_text(self.title, "Subsection title")
+        _require_text(self.description, "Subsection description")
+        _require_unique(self.direct_source_paths, "Subsection direct source paths")
+        for path in self.direct_source_paths:
+            _validate_repository_path(path)
+        if not self.documentation_only and not self.direct_source_paths:
+            raise ValueError(
+                "non-documentation Subsections require direct source paths"
+            )
+
+    def to_document(self) -> JsonObject:
+        return {
+            "description": self.description,
+            "direct_source_paths": list(self.direct_source_paths),
+            "documentation_only": self.documentation_only,
+            "id": self.id,
+            "title": self.title,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SubsectionContent:
+    """One caller fragment and its citations, persisted atomically with its Page."""
+
+    subsection_id: str
+    body: str
+    evidence_ids: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        _require_logical_id(self.subsection_id, "Subsection content ID")
+        if not self.body.strip():
+            raise ValueError("Subsection body must not be empty")
+        if not self.evidence_ids:
+            raise ValueError("Subsection citations must not be empty")
+        _require_unique(self.evidence_ids, "Subsection citation Evidence IDs")
+
+    def to_document(self) -> JsonObject:
+        return {
+            "body": self.body,
+            "evidence_ids": list(self.evidence_ids),
+            "subsection_id": self.subsection_id,
         }
 
 
@@ -165,6 +258,8 @@ class Page:
     citation_ids: tuple[str, ...] = ()
     body: str | None = None
     error: str | None = None
+    subsections: tuple[Subsection, ...] = ()
+    subsection_contents: tuple[SubsectionContent, ...] = ()
 
     def __post_init__(self) -> None:
         _require_text(self.id, "page ID")
@@ -192,6 +287,34 @@ class Page:
             raise ValueError("page body must not be empty when present")
         if self.error is not None:
             _require_text(self.error, "page error")
+        subsection_ids = tuple(item.id for item in self.subsections)
+        _require_unique(subsection_ids, "Page Subsection IDs")
+        content_ids = tuple(item.subsection_id for item in self.subsection_contents)
+        _require_unique(content_ids, "Page Subsection content IDs")
+        if self.subsection_contents and content_ids != subsection_ids:
+            raise ValueError(
+                "Subsection content order must exactly match the Page contract"
+            )
+        content_citations = {
+            evidence_id
+            for content in self.subsection_contents
+            for evidence_id in content.evidence_ids
+        }
+        if content_citations - set(evidence_ids):
+            raise ValueError("Subsection citations must belong to the page")
+        subsection_paths = {
+            subsection.id: set(subsection.direct_source_paths)
+            for subsection in self.subsections
+        }
+        for reference in self.evidence:
+            if any(
+                subsection_id not in subsection_paths
+                or reference.path not in subsection_paths[subsection_id]
+                for subsection_id in reference.subsection_ids
+            ):
+                raise ValueError(
+                    "direct Evidence coverage must match the Page contract"
+                )
 
     def transition_to(self, target: PageStatus) -> Page:
         """Return a new Page after validating one explicit lifecycle step."""
@@ -224,6 +347,10 @@ class Page:
             "relevant_files": list(self.relevant_files),
             "status": self.status.value,
             "title": self.title,
+            "subsections": [item.to_document() for item in self.subsections],
+            "subsection_contents": [
+                item.to_document() for item in self.subsection_contents
+            ],
         }
 
 
@@ -258,6 +385,7 @@ class Wiki:
     description: str
     sections: tuple[Section, ...]
     schema_version: str = WIKI_SCHEMA_VERSION
+    framework_labels: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
         if self.schema_version != WIKI_SCHEMA_VERSION:
@@ -277,6 +405,8 @@ class Wiki:
             unknown = set(page.related_page_ids) - known_page_ids
             if unknown:
                 raise ValueError("related page IDs must reference Wiki pages")
+        label_keys = tuple(key for key, _ in self.framework_labels)
+        _require_unique(label_keys, "framework label IDs")
 
     def to_document(self) -> JsonObject:
         return {
@@ -284,6 +414,7 @@ class Wiki:
             "schema_version": self.schema_version,
             "sections": [section.to_document() for section in self.sections],
             "title": self.title,
+            "framework_labels": dict(self.framework_labels),
         }
 
 
@@ -301,6 +432,10 @@ class Metadata:
     updated_at: str
     wiki_schema_version: str = WIKI_SCHEMA_VERSION
     schema_version: str = METADATA_SCHEMA_VERSION
+    source_control: str = "non_git"
+    source_dirty: bool | None = None
+    repository_classification: ClassificationResult | None = None
+    template: TemplateIdentity | None = None
 
     def __post_init__(self) -> None:
         if self.schema_version != METADATA_SCHEMA_VERSION:
@@ -311,14 +446,38 @@ class Metadata:
         if not Path(self.repository).is_absolute():
             raise ValueError("metadata repository must be an absolute path")
         _require_text(self.repository_fingerprint, "repository fingerprint")
-        if self.source_commit is not None:
-            _require_text(self.source_commit, "source commit")
+        _validate_source_identity(
+            self.source_control, self.source_commit, self.source_dirty
+        )
         _require_text(self.output_language, "output language")
         if self.index_schema_version <= 0:
             raise ValueError("index schema version must be positive")
         _require_text(self.index_build_id, "index build ID")
         _require_text(self.created_at, "created timestamp")
         _require_text(self.updated_at, "updated timestamp")
+        if (self.repository_classification is None) != (self.template is None):
+            raise ValueError(
+                "classification and template governance identities must be paired"
+            )
+        if self.repository_classification is not None:
+            classification = self.repository_classification
+            if (
+                classification.repository_fingerprint != self.repository_fingerprint
+                or classification.index_build_id != self.index_build_id
+            ):
+                raise ValueError(
+                    "classification identity must match the persisted index identity"
+                )
+            if self.template is None or (
+                self.template.primary_id != classification.effective_primary.id
+                or self.template.topology_id != classification.topology.id
+                or self.template.facets
+                != tuple(item.id for item in classification.facets)
+                or self.template.locale != self.output_language
+            ):
+                raise ValueError(
+                    "template identity must match classification and locale"
+                )
 
     def to_document(self) -> JsonObject:
         return {
@@ -330,8 +489,18 @@ class Metadata:
             "repository_fingerprint": self.repository_fingerprint,
             "schema_version": self.schema_version,
             "source_commit": self.source_commit,
+            "source_control": self.source_control,
+            "source_dirty": self.source_dirty,
             "updated_at": self.updated_at,
             "wiki_schema_version": self.wiki_schema_version,
+            "repository_classification": (
+                self.repository_classification.to_document()
+                if self.repository_classification is not None
+                else None
+            ),
+            "template": self.template.to_document()
+            if self.template is not None
+            else None,
         }
 
 
@@ -339,10 +508,10 @@ def wiki_from_document(document: JsonObject) -> Wiki:
     """Strictly decode one untrusted Wiki state document."""
     _require_fields(
         document,
-        {"description", "schema_version", "sections", "title"},
+        {"description", "framework_labels", "schema_version", "sections", "title"},
         "Wiki document fields",
     )
-    return Wiki(
+    wiki = Wiki(
         title=_string(document["title"]),
         description=_string(document["description"]),
         sections=tuple(
@@ -350,7 +519,15 @@ def wiki_from_document(document: JsonObject) -> Wiki:
             for item in _array(document["sections"])
         ),
         schema_version=_string(document["schema_version"]),
+        framework_labels=_string_items(_object(document["framework_labels"])),
     )
+    if not wiki.framework_labels or any(
+        not page.subsections for section in wiki.sections for page in section.pages
+    ):
+        raise ValueError(
+            "Schema 2.0 requires locale labels and at least one Subsection per Page"
+        )
+    return wiki
 
 
 def metadata_from_document(document: JsonObject) -> Metadata:
@@ -363,18 +540,24 @@ def metadata_from_document(document: JsonObject) -> Metadata:
             "index_schema_version",
             "output_language",
             "repository",
+            "repository_classification",
             "repository_fingerprint",
             "schema_version",
             "source_commit",
+            "source_control",
+            "source_dirty",
+            "template",
             "updated_at",
             "wiki_schema_version",
         },
         "Metadata document fields",
     )
-    return Metadata(
+    metadata = Metadata(
         repository=_string(document["repository"]),
         repository_fingerprint=_string(document["repository_fingerprint"]),
         source_commit=_optional_string(document["source_commit"]),
+        source_control=_string(document["source_control"]),
+        source_dirty=_optional_boolean(document["source_dirty"]),
         output_language=_string(document["output_language"]),
         index_schema_version=_integer(document["index_schema_version"]),
         index_build_id=_string(document["index_build_id"]),
@@ -382,7 +565,26 @@ def metadata_from_document(document: JsonObject) -> Metadata:
         updated_at=_string(document["updated_at"]),
         wiki_schema_version=_string(document["wiki_schema_version"]),
         schema_version=_string(document["schema_version"]),
+        repository_classification=(
+            classification_result_from_document(
+                _object(document["repository_classification"])
+            )
+            if document["repository_classification"] is not None
+            else None
+        ),
+        template=(
+            template_identity_from_document(_object(document["template"]))
+            if document["template"] is not None
+            else None
+        ),
     )
+    if metadata.source_control == "non_git" and (
+        metadata.source_commit is not None or metadata.source_dirty is not None
+    ):
+        raise ValueError("non-Git metadata cannot declare Git source identity")
+    if metadata.source_control == "git" and metadata.source_dirty is None:
+        raise ValueError("Git metadata requires a dirty-worktree state")
+    return metadata
 
 
 def _section_from_document(document: JsonObject) -> Section:
@@ -409,6 +611,8 @@ def _page_from_document(document: JsonObject) -> Page:
             "relevant_files",
             "status",
             "title",
+            "subsections",
+            "subsection_contents",
         },
         {"citation_ids", "evidence_snapshot"},
         "Page document fields",
@@ -430,6 +634,14 @@ def _page_from_document(document: JsonObject) -> Page:
         citation_ids=_string_tuple(document.get("citation_ids", [])),
         body=_optional_string(document["body"]),
         error=_optional_string(document["error"]),
+        subsections=tuple(
+            _subsection_from_document(_object(item))
+            for item in _array(document["subsections"])
+        ),
+        subsection_contents=tuple(
+            _subsection_content_from_document(_object(item))
+            for item in _array(document["subsection_contents"])
+        ),
     )
 
 
@@ -437,7 +649,7 @@ def _evidence_from_document(document: JsonObject) -> EvidenceRef:
     _require_optional_fields(
         document,
         {"chunk_id", "end_line", "evidence_id", "path", "start_line"},
-        {"content_hash"},
+        {"content_hash", "direct_paths", "role", "subsection_ids"},
         "Evidence document fields",
     )
     return EvidenceRef(
@@ -447,6 +659,37 @@ def _evidence_from_document(document: JsonObject) -> EvidenceRef:
         start_line=_integer(document["start_line"]),
         end_line=_integer(document["end_line"]),
         content_hash=_optional_string(document.get("content_hash")),
+        role=_string(document.get("role", "supplemental")),
+        subsection_ids=_string_tuple(document.get("subsection_ids", [])),
+        direct_paths=_string_tuple(document.get("direct_paths", [])),
+    )
+
+
+def _subsection_from_document(document: JsonObject) -> Subsection:
+    _require_fields(
+        document,
+        {"description", "direct_source_paths", "documentation_only", "id", "title"},
+        "Subsection document fields",
+    )
+    return Subsection(
+        id=_string(document["id"]),
+        title=_string(document["title"]),
+        description=_string(document["description"]),
+        direct_source_paths=_string_tuple(document["direct_source_paths"]),
+        documentation_only=_boolean(document["documentation_only"]),
+    )
+
+
+def _subsection_content_from_document(document: JsonObject) -> SubsectionContent:
+    _require_fields(
+        document,
+        {"body", "evidence_ids", "subsection_id"},
+        "Subsection content document fields",
+    )
+    return SubsectionContent(
+        subsection_id=_string(document["subsection_id"]),
+        body=_string(document["body"]),
+        evidence_ids=_string_tuple(document["evidence_ids"]),
     )
 
 
@@ -466,6 +709,9 @@ def _optional_evidence_snapshot(value: JsonValue | None) -> EvidenceSnapshot | N
             "repository_fingerprint",
             "reserved_tokens",
             "retrieval",
+            "source_commit",
+            "source_control",
+            "source_dirty",
             "token_budget",
             "truncated",
         },
@@ -476,6 +722,9 @@ def _optional_evidence_snapshot(value: JsonValue | None) -> EvidenceSnapshot | N
         repository_fingerprint=_string(document["repository_fingerprint"]),
         index_schema_version=_integer(document["index_schema_version"]),
         index_build_id=_string(document["index_build_id"]),
+        source_control=_string(document["source_control"]),
+        source_commit=_optional_string(document["source_commit"]),
+        source_dirty=_optional_boolean(document["source_dirty"]),
         token_budget=_integer(document["token_budget"]),
         estimated_tokens=_integer(document["estimated_tokens"]),
         reserved_tokens=_integer(document["reserved_tokens"]),
@@ -515,6 +764,33 @@ def _retrieval_parameters(document: JsonObject) -> RetrievalParameters:
 def _require_text(value: str, label: str) -> None:
     if not value or value.strip() != value:
         raise ValueError(f"{label} must not be empty or padded")
+
+
+def _validate_source_identity(
+    source_control: str, source_commit: str | None, source_dirty: bool | None
+) -> None:
+    if source_control not in {"git", "non_git"}:
+        raise ValueError("source control must be git or non_git")
+    if source_control == "non_git" and (
+        source_commit is not None or source_dirty is not None
+    ):
+        raise ValueError("non-Git state cannot declare Git source identity")
+    if source_control == "git" and source_dirty is None:
+        raise ValueError("Git state requires a dirty-worktree state")
+    if source_commit is not None and (
+        len(source_commit) != 40
+        or any(character not in "0123456789abcdef" for character in source_commit)
+    ):
+        raise ValueError("source commit must be a full lowercase Git object ID")
+
+
+def _require_logical_id(value: str, label: str) -> None:
+    _require_text(value, label)
+    if not value[0].islower() or any(
+        not (character.islower() or character.isdigit() or character == "_")
+        for character in value
+    ):
+        raise ValueError(f"{label} must be lower snake case")
 
 
 def _require_unique(values: tuple[str, ...], label: str) -> None:
@@ -599,6 +875,18 @@ def _boolean(value: JsonValue) -> bool:
     return value
 
 
+def _optional_boolean(value: JsonValue) -> bool | None:
+    if value is None or isinstance(value, bool):
+        return value
+    raise TypeError("value must be a boolean or null")
+
+
+def _string_items(document: JsonObject) -> tuple[tuple[str, str], ...]:
+    if not all(isinstance(value, str) for value in document.values()):
+        raise TypeError("value must contain only string values")
+    return tuple((key, cast(str, value)) for key, value in sorted(document.items()))
+
+
 __all__ = [
     "METADATA_SCHEMA_VERSION",
     "WIKI_SCHEMA_VERSION",
@@ -609,6 +897,8 @@ __all__ = [
     "PageStatus",
     "RetrievalParameters",
     "Section",
+    "Subsection",
+    "SubsectionContent",
     "Wiki",
     "metadata_from_document",
     "wiki_from_document",

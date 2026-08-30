@@ -1,0 +1,862 @@
+{
+  "locale": "zh-CN",
+  "schema_version": "1.0",
+  "subsections": {
+    "analysis_artifacts_artifact_catalog": {
+      "description": "记录生成的分析产物。在“产物目录”中优先检索并引用必需证据包括输出写入器、报告、模型、图表和单基行号。",
+      "title": "产物目录"
+    },
+    "analysis_artifacts_artifact_lineage": {
+      "description": "记录生成的分析产物。在“产物血缘”中优先检索并引用必需证据包括输出写入器、报告、模型、图表和单基行号。",
+      "title": "产物血缘"
+    },
+    "analysis_evaluation_evaluation_metrics": {
+      "description": "说明分析校验与指标。在“评估指标”中优先检索并引用必需证据包括指标代码、检查、基线、测试和单基行号。",
+      "title": "评估指标"
+    },
+    "analysis_evaluation_result_interpretation": {
+      "description": "说明分析校验与指标。在“结果解读”中优先检索并引用必需证据包括指标代码、检查、基线、测试和单基行号。",
+      "title": "结果解读"
+    },
+    "analysis_operationalization_delivery_workflow": {
+      "description": "说明分析如何成为可重复运行。在“交付工作流”中优先检索并引用必需证据包括作业、导出、自动化、监控和单基行号。",
+      "title": "交付工作流"
+    },
+    "analysis_operationalization_runtime_monitoring": {
+      "description": "说明分析如何成为可重复运行。在“运行时监控”中优先检索并引用必需证据包括作业、导出、自动化、监控和单基行号。",
+      "title": "运行时监控"
+    },
+    "analysis_workflow_analysis_stages": {
+      "description": "说明分析工作流。在“分析阶段”中优先检索并引用必需证据包括笔记本、脚本、转换、命令和单基行号。",
+      "title": "分析阶段"
+    },
+    "analysis_workflow_execution_workflow": {
+      "description": "说明分析工作流。在“执行工作流”中优先检索并引用必需证据包括笔记本、脚本、转换、命令和单基行号。",
+      "title": "执行工作流"
+    },
+    "api_contracts_api_surfaces": {
+      "description": "记录稳定 API 契约。在“API表面”中优先检索并引用必需证据包括规范、模式、端点声明、符号和单基行号。",
+      "title": "API表面"
+    },
+    "api_contracts_compatibility_contracts": {
+      "description": "记录稳定 API 契约。在“兼容性契约”中优先检索并引用必需证据包括规范、模式、端点声明、符号和单基行号。",
+      "title": "兼容性契约"
+    },
+    "api_facet_api_surfaces": {
+      "description": "说明 API 表面、契约、授权与兼容性。在“API表面”中优先检索并引用必需证据包括规范、处理器、模式和单基行号。",
+      "title": "API表面"
+    },
+    "api_facet_authorization_compatibility": {
+      "description": "说明 API 表面、契约、授权与兼容性。在“授权兼容性”中优先检索并引用必需证据包括规范、处理器、模式和单基行号。",
+      "title": "授权兼容性"
+    },
+    "assets_content_asset_pipeline": {
+      "description": "说明资源与内容管道。在“素材管道”中优先检索并引用必需证据包括资源清单、导入器、格式和单基行号。",
+      "title": "素材管道"
+    },
+    "assets_content_content_lifecycle": {
+      "description": "说明资源与内容管道。在“内容生命周期”中优先检索并引用必需证据包括资源清单、导入器、格式和单基行号。",
+      "title": "内容生命周期"
+    },
+    "authoring_conventions_authoring_rules": {
+      "description": "记录编写格式与约定。在“编写规则”中优先检索并引用必需证据包括示例、风格配置、模板和单基行号。",
+      "title": "编写规则"
+    },
+    "authoring_conventions_content_examples": {
+      "description": "记录编写格式与约定。在“内容示例”中优先检索并引用必需证据包括示例、风格配置、模板和单基行号。",
+      "title": "内容示例"
+    },
+    "build_test_matrix_build_matrix": {
+      "description": "说明各组件构建与测试契约。在“构建矩阵”中优先检索并引用必需证据包括构建文件、测试、自动化和单基行号。",
+      "title": "构建矩阵"
+    },
+    "build_test_matrix_test_coverage": {
+      "description": "说明各组件构建与测试契约。在“测试覆盖率”中优先检索并引用必需证据包括构建文件、测试、自动化和单基行号。",
+      "title": "测试覆盖率"
+    },
+    "cli_configuration_configuration_precedence": {
+      "description": "说明 CLI 配置优先级和校验。在“配置优先级”中优先检索并引用必需证据包括配置模型、文件、标志、符号和单基行号。",
+      "title": "配置优先级"
+    },
+    "cli_configuration_configuration_sources": {
+      "description": "说明 CLI 配置优先级和校验。在“配置来源”中优先检索并引用必需证据包括配置模型、文件、标志、符号和单基行号。",
+      "title": "配置来源"
+    },
+    "cli_extension_points_extension_contracts": {
+      "description": "说明受支持的 CLI 扩展边界。在“扩展契约”中优先检索并引用必需证据包括协议、注册表、适配器、构造器和单基行号。",
+      "title": "扩展契约"
+    },
+    "cli_extension_points_registration_workflow": {
+      "description": "说明受支持的 CLI 扩展边界。在“注册工作流”中优先检索并引用必需证据包括协议、注册表、适配器、构造器和单基行号。",
+      "title": "注册工作流"
+    },
+    "cli_installation_first_run": {
+      "description": "说明受支持的 CLI 安装与启动。在“首次运行”中优先检索并引用必需证据包括包元数据、可执行入口、安装命令和单基行号。",
+      "title": "首次运行"
+    },
+    "cli_installation_prerequisites": {
+      "description": "在开始安装 CLI 前，识别必需的运行时、软件包和代码库设置命令。",
+      "title": "前置条件"
+    },
+    "command_reference_command_examples": {
+      "description": "提供准确的命令与选项参考。在“命令示例”中优先检索并引用必需证据包括参数声明、帮助契约、处理器、符号和单基行号。",
+      "title": "命令示例"
+    },
+    "command_reference_command_syntax": {
+      "description": "提供准确的命令与选项参考。在“命令语法”中优先检索并引用必需证据包括参数声明、帮助契约、处理器、符号和单基行号。",
+      "title": "命令语法"
+    },
+    "compatibility_migration_constraints": {
+      "description": "说明版本与平台兼容性。在“迁移约束”中优先检索并引用必需证据包括版本元数据、弃用、矩阵、测试和单基行号。",
+      "title": "迁移约束"
+    },
+    "compatibility_supported_versions": {
+      "description": "说明版本与平台兼容性。在“支持的版本”中优先检索并引用必需证据包括版本元数据、弃用、矩阵、测试和单基行号。",
+      "title": "支持的版本"
+    },
+    "component_catalog_component_inventory": {
+      "description": "记录有独立证据的代码库组件。在“组件清单”中优先检索并引用必需证据包括入口、清单、模块、符号和单基行号。",
+      "title": "组件清单"
+    },
+    "component_catalog_component_ownership": {
+      "description": "记录有独立证据的代码库组件。在“组件所有权”中优先检索并引用必需证据包括入口、清单、模块、符号和单基行号。",
+      "title": "组件所有权"
+    },
+    "contribution_points_contribution_contracts": {
+      "description": "记录插件贡献点。在“贡献契约”中优先检索并引用必需证据包括命令、提供者、钩子、模式和单基行号。",
+      "title": "贡献契约"
+    },
+    "contribution_points_registered_contributions": {
+      "description": "记录插件贡献点。在“已注册贡献”中优先检索并引用必需证据包括命令、提供者、钩子、模式和单基行号。",
+      "title": "已注册贡献"
+    },
+    "cross_component_workflows_component_handoffs": {
+      "description": "追踪跨组件工作流。在“组件交接”中优先检索并引用必需证据包括调用路径、作业、脚本、测试和单基行号。",
+      "title": "组件交接"
+    },
+    "cross_component_workflows_workflow_stages": {
+      "description": "追踪跨组件工作流。在“工作流阶段”中优先检索并引用必需证据包括调用路径、作业、脚本、测试和单基行号。",
+      "title": "工作流阶段"
+    },
+    "data_quality_quality_monitoring": {
+      "description": "说明数据质量执行。在“质量监控”中优先检索并引用必需证据包括断言、校验器、阈值、测试和单基行号。",
+      "title": "质量监控"
+    },
+    "data_quality_quality_rules": {
+      "description": "说明数据质量执行。在“质量规则”中优先检索并引用必需证据包括断言、校验器、阈值、测试和单基行号。",
+      "title": "质量规则"
+    },
+    "data_sources_ingestion_constraints": {
+      "description": "记录分析数据来源与假设。在“摄取约束”中优先检索并引用必需证据包括加载器、模式、笔记本、符号和单基行号。",
+      "title": "摄取约束"
+    },
+    "data_sources_source_catalog": {
+      "description": "记录分析数据来源与假设。在“来源目录”中优先检索并引用必需证据包括加载器、模式、笔记本、符号和单基行号。",
+      "title": "来源目录"
+    },
+    "database_facet_consistency_migrations": {
+      "description": "说明数据模型、访问、一致性、迁移与恢复。在“一致性迁移”中优先检索并引用必需证据包括模型、查询、事务、迁移和单基行号。",
+      "title": "一致性迁移"
+    },
+    "database_facet_data_models": {
+      "description": "说明数据模型、访问、一致性、迁移与恢复。在“数据模型”中优先检索并引用必需证据包括模型、查询、事务、迁移和单基行号。",
+      "title": "数据模型"
+    },
+    "desktop_distribution_testing_distribution_workflow": {
+      "description": "说明桌面测试、打包与更新。在“分发工作流”中优先检索并引用必需证据包括测试、构建器、签名、更新代码和单基行号。",
+      "title": "分发工作流"
+    },
+    "desktop_distribution_testing_platform_testing": {
+      "description": "说明桌面测试、打包与更新。在“平台测试”中优先检索并引用必需证据包括测试、构建器、签名、更新代码和单基行号。",
+      "title": "平台测试"
+    },
+    "desktop_process_architecture_process_boundaries": {
+      "description": "说明桌面进程与运行边界。在“进程边界”中优先检索并引用必需证据包括入口、进程、IPC、模块和单基行号。",
+      "title": "进程边界"
+    },
+    "desktop_process_architecture_runtime_coordination": {
+      "description": "说明桌面进程与运行边界。在“运行时协调”中优先检索并引用必需证据包括入口、进程、IPC、模块和单基行号。",
+      "title": "运行时协调"
+    },
+    "desktop_security_os_permissions": {
+      "description": "说明桌面信任边界。在“操作系统权限”中优先检索并引用必需证据包括沙箱、更新、IPC 校验、密钥和单基行号。",
+      "title": "操作系统权限"
+    },
+    "desktop_security_security_boundaries": {
+      "description": "说明桌面信任边界。在“安全边界”中优先检索并引用必需证据包括沙箱、更新、IPC 校验、密钥和单基行号。",
+      "title": "安全边界"
+    },
+    "desktop_state_storage_state_model": {
+      "description": "说明桌面状态与本地存储。在“状态模型”中优先检索并引用必需证据包括模型、偏好、数据库、缓存和单基行号。",
+      "title": "状态模型"
+    },
+    "desktop_state_storage_storage_boundaries": {
+      "description": "说明桌面状态与本地存储。在“存储边界”中优先检索并引用必需证据包括模型、偏好、数据库、缓存和单基行号。",
+      "title": "存储边界"
+    },
+    "desktop_ui_lifecycle_ui_components": {
+      "description": "说明窗口、界面和应用生命周期。在“用户界面组件”中优先检索并引用必需证据包括窗口、视图、菜单、钩子和单基行号。",
+      "title": "用户界面组件"
+    },
+    "desktop_ui_lifecycle_window_lifecycle": {
+      "description": "说明窗口、界面和应用生命周期。在“窗口生命周期”中优先检索并引用必需证据包括窗口、视图、菜单、钩子和单基行号。",
+      "title": "窗口生命周期"
+    },
+    "developer_workflow_local_setup": {
+      "description": "说明工具支持的开发工作流。在“本地设置”中优先检索并引用必需证据包括命令、钩子、任务、示例和单基行号。",
+      "title": "本地设置"
+    },
+    "developer_workflow_verification_commands": {
+      "description": "说明工具支持的开发工作流。在“验证命令”中优先检索并引用必需证据包括命令、钩子、任务、示例和单基行号。",
+      "title": "验证命令"
+    },
+    "documentation_generation_generated_artifacts": {
+      "description": "说明文档生成流程。在“生成的产物”中优先检索并引用必需证据包括生成器、插件、命令、配置和单基行号。",
+      "title": "生成的产物"
+    },
+    "documentation_generation_generation_workflow": {
+      "description": "说明文档生成流程。在“生成工作流”中优先检索并引用必需证据包括生成器、插件、命令、配置和单基行号。",
+      "title": "生成工作流"
+    },
+    "documentation_publishing_publishing_workflow": {
+      "description": "说明文档发布与维护。在“发布工作流”中优先检索并引用必需证据包括构建管道、托管配置、发布作业和单基行号。",
+      "title": "发布工作流"
+    },
+    "documentation_publishing_release_verification": {
+      "description": "说明文档发布与维护。在“发布验证”中优先检索并引用必需证据包括构建管道、托管配置、发布作业和单基行号。",
+      "title": "发布验证"
+    },
+    "documentation_validation_validation_rules": {
+      "description": "说明文档校验。在“校验规则”中优先检索并引用必需证据包括检查器、链接检查、测试、命令和单基行号。",
+      "title": "校验规则"
+    },
+    "documentation_validation_verification_commands": {
+      "description": "说明文档校验。在“验证命令”中优先检索并引用必需证据包括检查器、链接检查、测试、命令和单基行号。",
+      "title": "验证命令"
+    },
+    "environments_state_environment_matrix": {
+      "description": "说明环境、配置与状态。在“环境矩阵”中优先检索并引用必需证据包括后端、变量、工作区和单基行号。",
+      "title": "环境矩阵"
+    },
+    "environments_state_state_management": {
+      "description": "说明环境、配置与状态。在“状态管理”中优先检索并引用必需证据包括后端、变量、工作区和单基行号。",
+      "title": "状态管理"
+    },
+    "errors_exit_codes_error_contracts": {
+      "description": "映射失败、诊断和进程退出码。在“错误契约”中优先检索并引用必需证据包括异常、错误信封、退出常量和单基行号。",
+      "title": "错误契约"
+    },
+    "errors_exit_codes_recovery_workflows": {
+      "description": "映射失败、诊断和进程退出码。在“恢复工作流”中优先检索并引用必需证据包括异常、错误信封、退出常量和单基行号。",
+      "title": "恢复工作流"
+    },
+    "execution_flow_execution_pipeline": {
+      "description": "追踪命令跨模块执行流程。在“执行管道”中优先检索并引用必需证据包括入口、分派、服务、适配器和单基行号。",
+      "title": "执行管道"
+    },
+    "execution_flow_failure_boundaries": {
+      "description": "追踪命令跨模块执行流程。在“故障边界”中优先检索并引用必需证据包括入口、分派、服务、适配器和单基行号。",
+      "title": "故障边界"
+    },
+    "firmware_architecture_firmware_boundaries": {
+      "description": "说明固件模块与启动。在“固件边界”中优先检索并引用必需证据包括引导、驱动、任务、链接配置和单基行号。",
+      "title": "固件边界"
+    },
+    "firmware_architecture_runtime_components": {
+      "description": "说明固件模块与启动。在“运行时组件”中优先检索并引用必需证据包括引导、驱动、任务、链接配置和单基行号。",
+      "title": "运行时组件"
+    },
+    "firmware_testing_distribution_distribution_workflow": {
+      "description": "说明固件测试、构建、烧录与发布。在“分发工作流”中优先检索并引用必需证据包括测试工具、模拟器、构建、烧录命令和单基行号。",
+      "title": "分发工作流"
+    },
+    "firmware_testing_distribution_hardware_testing": {
+      "description": "说明固件测试、构建、烧录与发布。在“硬件测试”中优先检索并引用必需证据包括测试工具、模拟器、构建、烧录命令和单基行号。",
+      "title": "硬件测试"
+    },
+    "game_build_testing_build_workflow": {
+      "description": "说明游戏测试、构建与分发。在“构建工作流”中优先检索并引用必需证据包括测试、导出预设、构建器和单基行号。",
+      "title": "构建工作流"
+    },
+    "game_build_testing_runtime_testing": {
+      "description": "说明游戏测试、构建与分发。在“运行时测试”中优先检索并引用必需证据包括测试、导出预设、构建器和单基行号。",
+      "title": "运行时测试"
+    },
+    "game_persistence_networking_networking_flow": {
+      "description": "说明存档与网络生命周期。在“联网流程”中优先检索并引用必需证据包括序列化器、协议、会话和单基行号。",
+      "title": "联网流程"
+    },
+    "game_persistence_networking_persistence_model": {
+      "description": "说明存档与网络生命周期。在“持久化模型”中优先检索并引用必需证据包括序列化器、协议、会话和单基行号。",
+      "title": "持久化模型"
+    },
+    "game_runtime_loop_frame_lifecycle": {
+      "description": "说明游戏运行循环与状态。在“帧生命周期”中优先检索并引用必需证据包括入口、循环、更新代码和单基行号。",
+      "title": "帧生命周期"
+    },
+    "game_runtime_loop_runtime_loop": {
+      "description": "说明游戏运行循环与状态。在“运行时循环”中优先检索并引用必需证据包括入口、循环、更新代码和单基行号。",
+      "title": "运行时循环"
+    },
+    "gameplay_systems_system_catalog": {
+      "description": "记录玩法系统及交互。在“系统目录”中优先检索并引用必需证据包括系统、组件、规则、符号和单基行号。",
+      "title": "系统目录"
+    },
+    "gameplay_systems_system_interactions": {
+      "description": "记录玩法系统及交互。在“系统交互”中优先检索并引用必需证据包括系统、组件、规则、符号和单基行号。",
+      "title": "系统交互"
+    },
+    "host_contract_host_interfaces": {
+      "description": "定义插件宿主契约。在“宿主接口”中优先检索并引用必需证据包括宿主 API、清单、协议和单基行号。",
+      "title": "宿主接口"
+    },
+    "host_contract_lifecycle_contracts": {
+      "description": "定义插件宿主契约。在“生命周期契约”中优先检索并引用必需证据包括宿主 API、清单、协议和单基行号。",
+      "title": "生命周期契约"
+    },
+    "inference_architecture_inference_flow": {
+      "description": "说明推理执行与服务。在“推理流程”中优先检索并引用必需证据包括加载器、预测器、端点、队列和单基行号。",
+      "title": "推理流程"
+    },
+    "inference_architecture_serving_boundaries": {
+      "description": "说明推理执行与服务。在“服务边界”中优先检索并引用必需证据包括加载器、预测器、端点、队列和单基行号。",
+      "title": "服务边界"
+    },
+    "information_architecture_content_structure": {
+      "description": "说明文档信息架构。在“内容结构”中优先检索并引用必需证据包括导航、内容树、元数据和单基行号。",
+      "title": "内容结构"
+    },
+    "information_architecture_navigation_model": {
+      "description": "说明文档信息架构。在“导航模型”中优先检索并引用必需证据包括导航、内容树、元数据和单基行号。",
+      "title": "导航模型"
+    },
+    "infrastructure_change_change_workflow": {
+      "description": "说明计划、应用与变更控制。在“变更工作流”中优先检索并引用必需证据包括自动化、命令、管道、策略和单基行号。",
+      "title": "变更工作流"
+    },
+    "infrastructure_change_rollback_verification": {
+      "description": "说明计划、应用与变更控制。在“回滚验证”中优先检索并引用必需证据包括自动化、命令、管道、策略和单基行号。",
+      "title": "回滚验证"
+    },
+    "infrastructure_facet_runtime_resources": {
+      "description": "说明运行资源、网络、交付、安全与恢复。在“运行时资源”中优先检索并引用必需证据包括资源声明、清单、策略和单基行号。",
+      "title": "运行时资源"
+    },
+    "infrastructure_facet_security_recovery": {
+      "description": "说明运行资源、网络、交付、安全与恢复。在“安全恢复”中优先检索并引用必需证据包括资源声明、清单、策略和单基行号。",
+      "title": "安全恢复"
+    },
+    "infrastructure_testing_deployment_verification": {
+      "description": "说明基础设施校验与测试。在“部署验证”中优先检索并引用必需证据包括静态检查、策略测试、集成测试和单基行号。",
+      "title": "部署验证"
+    },
+    "infrastructure_testing_validation_strategy": {
+      "description": "说明基础设施校验与测试。在“校验策略”中优先检索并引用必需证据包括静态检查、策略测试、集成测试和单基行号。",
+      "title": "校验策略"
+    },
+    "io_protocols_io_contracts": {
+      "description": "记录设备输入输出与协议。在“输入输出契约”中优先检索并引用必需证据包括驱动、数据包、引脚、符号和单基行号。",
+      "title": "输入输出契约"
+    },
+    "io_protocols_protocol_handling": {
+      "description": "记录设备输入输出与协议。在“协议处理”中优先检索并引用必需证据包括驱动、数据包、引脚、符号和单基行号。",
+      "title": "协议处理"
+    },
+    "library_extension_extension_contracts": {
+      "description": "说明受支持的定制与扩展。在“扩展契约”中优先检索并引用必需证据包括协议、钩子、子类、适配器和单基行号。",
+      "title": "扩展契约"
+    },
+    "library_extension_extension_workflow": {
+      "description": "说明受支持的定制与扩展。在“扩展工作流”中优先检索并引用必需证据包括协议、钩子、子类、适配器和单基行号。",
+      "title": "扩展工作流"
+    },
+    "library_installation_first_usage": {
+      "description": "说明库的安装、导入与初始化。在“首次用法”中优先检索并引用必需证据包括包元数据、导出、版本约束和单基行号。",
+      "title": "首次用法"
+    },
+    "library_installation_prerequisites": {
+      "description": "说明库的安装、导入与初始化。在“前置条件”中优先检索并引用必需证据包括包元数据、导出、版本约束和单基行号。",
+      "title": "前置条件"
+    },
+    "messaging_facet_delivery_retries": {
+      "description": "说明生产者、消费者、交付、重试与监控。在“交付重试”中优先检索并引用必需证据包括主题、模式、处理器、重试和单基行号。",
+      "title": "交付重试"
+    },
+    "messaging_facet_producer_consumer_flow": {
+      "description": "说明生产者、消费者、交付、重试与监控。在“生产者消费者流程”中优先检索并引用必需证据包括主题、模式、处理器、重试和单基行号。",
+      "title": "生产者消费者流程"
+    },
+    "microservices_topology_service_boundaries": {
+      "description": "说明服务边界、通信与独立部署。在“服务边界”中优先检索并引用必需证据包括服务清单、契约、数据所有权和单基行号。",
+      "title": "服务边界"
+    },
+    "microservices_topology_service_communication": {
+      "description": "说明服务边界、通信与独立部署。在“服务通信”中优先检索并引用必需证据包括服务清单、契约、数据所有权和单基行号。",
+      "title": "服务通信"
+    },
+    "mixed_operations_operational_ownership": {
+      "description": "说明协同运维与发布。在“运维所有权”中优先检索并引用必需证据包括部署、发布、手册、命令和单基行号。",
+      "title": "运维所有权"
+    },
+    "mixed_operations_recovery_workflows": {
+      "description": "说明协同运维与发布。在“恢复工作流”中优先检索并引用必需证据包括部署、发布、手册、命令和单基行号。",
+      "title": "恢复工作流"
+    },
+    "ml_data_features_feature_pipeline": {
+      "description": "说明模型数据与特征契约。在“特征管道”中优先检索并引用必需证据包括数据集、特征代码、模式、符号和单基行号。",
+      "title": "特征管道"
+    },
+    "ml_data_features_training_data": {
+      "description": "说明模型数据与特征契约。在“训练数据”中优先检索并引用必需证据包括数据集、特征代码、模式、符号和单基行号。",
+      "title": "训练数据"
+    },
+    "ml_operations_deployment_workflow": {
+      "description": "说明模型发布后的运维。在“部署工作流”中优先检索并引用必需证据包括部署、监控、告警、再训练和单基行号。",
+      "title": "部署工作流"
+    },
+    "ml_operations_model_monitoring": {
+      "description": "说明模型发布后的运维。在“模型监控”中优先检索并引用必需证据包括部署、监控、告警、再训练和单基行号。",
+      "title": "模型监控"
+    },
+    "mobile_distribution_testing_device_testing": {
+      "description": "说明移动测试、构建与分发。在“设备测试”中优先检索并引用必需证据包括测试目标、构建、签名、自动化和单基行号。",
+      "title": "设备测试"
+    },
+    "mobile_distribution_testing_distribution_workflow": {
+      "description": "说明移动测试、构建与分发。在“分发工作流”中优先检索并引用必需证据包括测试目标、构建、签名、自动化和单基行号。",
+      "title": "分发工作流"
+    },
+    "mobile_navigation_navigation_graph": {
+      "description": "说明界面与导航流程。在“导航图”中优先检索并引用必需证据包括路由、视图、深链、符号和单基行号。",
+      "title": "导航图"
+    },
+    "mobile_navigation_transition_workflow": {
+      "description": "说明界面与导航流程。在“转换工作流”中优先检索并引用必需证据包括路由、视图、深链、符号和单基行号。",
+      "title": "转换工作流"
+    },
+    "mobile_runtime_architecture_application_lifecycle": {
+      "description": "说明移动运行时、模块与生命周期边界。在“应用生命周期”中优先检索并引用必需证据包括入口、模块、服务、符号和单基行号。",
+      "title": "应用生命周期"
+    },
+    "mobile_runtime_architecture_runtime_components": {
+      "description": "说明移动运行时、模块与生命周期边界。在“运行时组件”中优先检索并引用必需证据包括入口、模块、服务、符号和单基行号。",
+      "title": "运行时组件"
+    },
+    "mobile_security_platform_permissions": {
+      "description": "说明移动安全与隐私边界。在“平台权限”中优先检索并引用必需证据包括密钥存储、传输、权限、校验和单基行号。",
+      "title": "平台权限"
+    },
+    "mobile_security_security_boundaries": {
+      "description": "说明移动安全与隐私边界。在“安全边界”中优先检索并引用必需证据包括密钥存储、传输、权限、校验和单基行号。",
+      "title": "安全边界"
+    },
+    "mobile_state_storage_state_model": {
+      "description": "说明移动状态与存储。在“状态模型”中优先检索并引用必需证据包括存储、数据库、缓存、模型和单基行号。",
+      "title": "状态模型"
+    },
+    "mobile_state_storage_storage_boundaries": {
+      "description": "说明移动状态与存储。在“存储边界”中优先检索并引用必需证据包括存储、数据库、缓存、模型和单基行号。",
+      "title": "存储边界"
+    },
+    "model_artifacts_artifact_lineage": {
+      "description": "记录模型产物与身份。在“产物血缘”中优先检索并引用必需证据包括检查点、注册表、元数据、序列化器和单基行号。",
+      "title": "产物血缘"
+    },
+    "model_artifacts_model_versions": {
+      "description": "记录模型产物与身份。在“模型版本”中优先检索并引用必需证据包括检查点、注册表、元数据、序列化器和单基行号。",
+      "title": "模型版本"
+    },
+    "model_evaluation_acceptance_decisions": {
+      "description": "说明模型评估与门槛。在“验收决策”中优先检索并引用必需证据包括指标、数据集、基线、测试和单基行号。",
+      "title": "验收决策"
+    },
+    "model_evaluation_evaluation_metrics": {
+      "description": "说明模型评估与门槛。在“评估指标”中优先检索并引用必需证据包括指标、数据集、基线、测试和单基行号。",
+      "title": "评估指标"
+    },
+    "model_training_inference_facet_inference_monitoring": {
+      "description": "说明模型数据、训练、评估、服务与监控。在“推理监控”中优先检索并引用必需证据包括训练、评估、产物、服务和单基行号。",
+      "title": "推理监控"
+    },
+    "model_training_inference_facet_training_evaluation": {
+      "description": "说明模型数据、训练、评估、服务与监控。在“训练评估”中优先检索并引用必需证据包括训练、评估、产物、服务和单基行号。",
+      "title": "训练评估"
+    },
+    "monorepo_topology_cross_package_dependencies": {
+      "description": "说明工作区、所有权与跨包依赖。在“跨包依赖”中优先检索并引用必需证据包括工作区清单、包、编排、符号和单基行号。",
+      "title": "跨包依赖"
+    },
+    "monorepo_topology_workspace_inventory": {
+      "description": "说明工作区、所有权与跨包依赖。在“工作区清单”中优先检索并引用必需证据包括工作区清单、包、编排、符号和单基行号。",
+      "title": "工作区清单"
+    },
+    "multi_tenancy_facet_isolation_operations": {
+      "description": "说明租户身份、隔离与范围化运维。在“隔离运维”中优先检索并引用必需证据包括租户解析、授权、分区和单基行号。",
+      "title": "隔离运维"
+    },
+    "multi_tenancy_facet_tenant_identity": {
+      "description": "说明租户身份、隔离与范围化运维。在“租户身份”中优先检索并引用必需证据包括租户解析、授权、分区和单基行号。",
+      "title": "租户身份"
+    },
+    "navigation_discovery_discovery_mechanisms": {
+      "description": "说明导航与内容发现。在“发现机制”中优先检索并引用必需证据包括菜单、索引、搜索配置和单基行号。",
+      "title": "发现机制"
+    },
+    "navigation_discovery_navigation_paths": {
+      "description": "说明导航与内容发现。在“导航路径”中优先检索并引用必需证据包括菜单、索引、搜索配置和单基行号。",
+      "title": "导航路径"
+    },
+    "network_security_network_boundaries": {
+      "description": "说明网络与身份边界。在“网络边界”中优先检索并引用必需证据包括策略、路由、角色、加密和单基行号。",
+      "title": "网络边界"
+    },
+    "network_security_security_controls": {
+      "description": "说明网络与身份边界。在“安全控制”中优先检索并引用必需证据包括策略、路由、角色、加密和单基行号。",
+      "title": "安全控制"
+    },
+    "observability_recovery_observability_signals": {
+      "description": "说明基础设施监控与恢复。在“可观测性信号”中优先检索并引用必需证据包括指标、日志、告警、备份、手册和单基行号。",
+      "title": "可观测性信号"
+    },
+    "observability_recovery_recovery_workflows": {
+      "description": "说明基础设施监控与恢复。在“恢复工作流”中优先检索并引用必需证据包括指标、日志、告警、备份、手册和单基行号。",
+      "title": "恢复工作流"
+    },
+    "os_integration_integration_lifecycle": {
+      "description": "记录操作系统集成。在“集成生命周期”中优先检索并引用必需证据包括原生 API、文件关联、协议和单基行号。",
+      "title": "集成生命周期"
+    },
+    "os_integration_os_contracts": {
+      "description": "记录操作系统集成。在“操作系统契约”中优先检索并引用必需证据包括原生 API、文件关联、协议和单基行号。",
+      "title": "操作系统契约"
+    },
+    "pipeline_failure_recovery_failure_modes": {
+      "description": "说明管道失败与恢复。在“故障模式”中优先检索并引用必需证据包括重试策略、检查点、死信、手册和单基行号。",
+      "title": "故障模式"
+    },
+    "pipeline_failure_recovery_recovery_workflows": {
+      "description": "说明管道失败与恢复。在“恢复工作流”中优先检索并引用必需证据包括重试策略、检查点、死信、手册和单基行号。",
+      "title": "恢复工作流"
+    },
+    "pipeline_operations_operational_verification": {
+      "description": "说明持续管道运维。在“运维验证”中优先检索并引用必需证据包括部署、遥测、告警、命令和单基行号。",
+      "title": "运维验证"
+    },
+    "pipeline_operations_runtime_operations": {
+      "description": "说明持续管道运维。在“运行时运维”中优先检索并引用必需证据包括部署、遥测、告警、命令和单基行号。",
+      "title": "运行时运维"
+    },
+    "pipeline_orchestration_execution_graph": {
+      "description": "说明调度与依赖编排。在“执行图”中优先检索并引用必需证据包括 DAG、作业、计划、命令和单基行号。",
+      "title": "执行图"
+    },
+    "pipeline_orchestration_scheduling_workflow": {
+      "description": "说明调度与依赖编排。在“调度工作流”中优先检索并引用必需证据包括 DAG、作业、计划、命令和单基行号。",
+      "title": "调度工作流"
+    },
+    "pipeline_sources_sinks_sink_contracts": {
+      "description": "记录管道输入与输出边界。在“接收端契约”中优先检索并引用必需证据包括连接器、模式、清单、符号和单基行号。",
+      "title": "接收端契约"
+    },
+    "pipeline_sources_sinks_source_contracts": {
+      "description": "记录管道输入与输出边界。在“来源契约”中优先检索并引用必需证据包括连接器、模式、清单、符号和单基行号。",
+      "title": "来源契约"
+    },
+    "pipeline_transformations_data_contracts": {
+      "description": "说明转换契约。在“数据契约”中优先检索并引用必需证据包括转换代码、查询、模式、符号和单基行号。",
+      "title": "数据契约"
+    },
+    "pipeline_transformations_transformation_stages": {
+      "description": "说明转换契约。在“转换阶段”中优先检索并引用必需证据包括转换代码、查询、模式、符号和单基行号。",
+      "title": "转换阶段"
+    },
+    "platform_integration_integration_lifecycle": {
+      "description": "记录操作系统集成。在“集成生命周期”中优先检索并引用必需证据包括权限、服务、清单、适配器和单基行号。",
+      "title": "集成生命周期"
+    },
+    "platform_integration_platform_contracts": {
+      "description": "记录操作系统集成。在“平台契约”中优先检索并引用必需证据包括权限、服务、清单、适配器和单基行号。",
+      "title": "平台契约"
+    },
+    "plugin_activation_activation_conditions": {
+      "description": "说明插件发现、激活与关闭。在“激活条件”中优先检索并引用必需证据包括入口、注册、事件、符号和单基行号。",
+      "title": "激活条件"
+    },
+    "plugin_activation_activation_workflow": {
+      "description": "说明插件发现、激活与关闭。在“激活工作流”中优先检索并引用必需证据包括入口、注册、事件、符号和单基行号。",
+      "title": "激活工作流"
+    },
+    "plugin_compatibility_compatibility_testing": {
+      "description": "说明宿主与插件兼容性。在“兼容性测试”中优先检索并引用必需证据包括版本范围、功能检查、迁移、测试和单基行号。",
+      "title": "兼容性测试"
+    },
+    "plugin_compatibility_supported_versions": {
+      "description": "说明宿主与插件兼容性。在“支持的版本”中优先检索并引用必需证据包括版本范围、功能检查、迁移、测试和单基行号。",
+      "title": "支持的版本"
+    },
+    "plugin_packaging_testing_host_testing": {
+      "description": "说明插件测试、打包与发布。在“宿主测试”中优先检索并引用必需证据包括工具、清单、构建器、发布配置和单基行号。",
+      "title": "宿主测试"
+    },
+    "plugin_packaging_testing_packaging_workflow": {
+      "description": "说明插件测试、打包与发布。在“打包工作流”中优先检索并引用必需证据包括工具、清单、构建器、发布配置和单基行号。",
+      "title": "打包工作流"
+    },
+    "plugin_permissions_permission_model": {
+      "description": "说明权限、隔离与信任。在“权限模型”中优先检索并引用必需证据包括权限声明、沙箱边界、校验和单基行号。",
+      "title": "权限模型"
+    },
+    "plugin_permissions_trust_boundaries": {
+      "description": "说明权限、隔离与信任。在“信任边界”中优先检索并引用必需证据包括权限声明、沙箱边界、校验和单基行号。",
+      "title": "信任边界"
+    },
+    "public_api_public_contracts": {
+      "description": "定义受支持的公共 API。在“公共契约”中优先检索并引用必需证据包括导出、签名、类型、文档字符串和单基行号。",
+      "title": "公共契约"
+    },
+    "public_api_usage_boundaries": {
+      "description": "定义受支持的公共 API。在“用法边界”中优先检索并引用必需证据包括导出、签名、类型、文档字符串和单基行号。",
+      "title": "用法边界"
+    },
+    "realtime_lifecycle_realtime_flow": {
+      "description": "说明调度、中断与时序。在“实时流程”中优先检索并引用必需证据包括任务、ISR、定时器、状态机和单基行号。",
+      "title": "实时流程"
+    },
+    "realtime_lifecycle_timing_constraints": {
+      "description": "说明调度、中断与时序。在“时序约束”中优先检索并引用必需证据包括任务、ISR、定时器、状态机和单基行号。",
+      "title": "时序约束"
+    },
+    "reproducibility_environment_inputs": {
+      "description": "说明可复现性控制。在“环境输入”中优先检索并引用必需证据包括锁文件、随机种子、环境、参数和单基行号。",
+      "title": "环境输入"
+    },
+    "reproducibility_reproduction_steps": {
+      "description": "说明可复现性控制。在“复现步骤”中优先检索并引用必需证据包括锁文件、随机种子、环境、参数和单基行号。",
+      "title": "复现步骤"
+    },
+    "request_validation_failure_responses": {
+      "description": "说明请求校验和错误映射。在“故障响应”中优先检索并引用必需证据包括校验器、解析器、错误类型和单基行号。",
+      "title": "故障响应"
+    },
+    "request_validation_validation_rules": {
+      "description": "说明请求校验和错误映射。在“校验规则”中优先检索并引用必需证据包括校验器、解析器、错误类型和单基行号。",
+      "title": "校验规则"
+    },
+    "resource_topology_dependency_topology": {
+      "description": "记录托管资源与依赖拓扑。在“依赖拓扑”中优先检索并引用必需证据包括声明、模块、堆栈、符号和单基行号。",
+      "title": "依赖拓扑"
+    },
+    "resource_topology_resource_inventory": {
+      "description": "记录托管资源与依赖拓扑。在“资源清单”中优先检索并引用必需证据包括声明、模块、堆栈、符号和单基行号。",
+      "title": "资源清单"
+    },
+    "routes_interfaces_interface_handlers": {
+      "description": "记录路由及外部接口契约。在“接口处理器”中优先检索并引用必需证据包括路由声明、处理器、模式、符号和单基行号。",
+      "title": "接口处理器"
+    },
+    "routes_interfaces_route_contracts": {
+      "description": "记录路由及外部接口契约。在“路由契约”中优先检索并引用必需证据包括路由声明、处理器、模式、符号和单基行号。",
+      "title": "路由契约"
+    },
+    "saas_facet_billing_operations": {
+      "description": "说明客户生命周期、权益、计费与运维。在“计费运维”中优先检索并引用必需证据包括账户、套餐、计量、计费和单基行号。",
+      "title": "计费运维"
+    },
+    "saas_facet_customer_lifecycle": {
+      "description": "说明客户生命周期、权益、计费与运维。在“客户生命周期”中优先检索并引用必需证据包括账户、套餐、计量、计费和单基行号。",
+      "title": "客户生命周期"
+    },
+    "safety_constraints_failure_mitigation": {
+      "description": "说明安全、保障与硬件约束。在“故障缓解”中优先检索并引用必需证据包括边界、看门狗、检查、安全启动和单基行号。",
+      "title": "故障缓解"
+    },
+    "safety_constraints_safety_requirements": {
+      "description": "说明安全、保障与硬件约束。在“安全保障要求”中优先检索并引用必需证据包括边界、看门狗、检查、安全启动和单基行号。",
+      "title": "安全保障要求"
+    },
+    "scene_world_scene_lifecycle": {
+      "description": "说明场景或世界组织。在“场景生命周期”中优先检索并引用必需证据包括场景、实体、地图、加载器和单基行号。",
+      "title": "场景生命周期"
+    },
+    "scene_world_world_structure": {
+      "description": "说明场景或世界组织。在“世界结构”中优先检索并引用必需证据包括场景、实体、地图、加载器和单基行号。",
+      "title": "世界结构"
+    },
+    "service_operations_deployment_workflow": {
+      "description": "说明服务部署与运维。在“部署工作流”中优先检索并引用必需证据包括清单、健康检查、遥测、运行手册和单基行号。",
+      "title": "部署工作流"
+    },
+    "service_operations_runtime_operations": {
+      "description": "说明服务部署与运维。在“运行时运维”中优先检索并引用必需证据包括清单、健康检查、遥测、运行手册和单基行号。",
+      "title": "运行时运维"
+    },
+    "service_persistence_data_model": {
+      "description": "说明服务数据所有权和一致性。在“数据模型”中优先检索并引用必需证据包括模型、查询、事务、迁移和单基行号。",
+      "title": "数据模型"
+    },
+    "service_persistence_persistence_workflow": {
+      "description": "说明服务数据所有权和一致性。在“持久化工作流”中优先检索并引用必需证据包括模型、查询、事务、迁移和单基行号。",
+      "title": "持久化工作流"
+    },
+    "service_runtime_architecture_request_lifecycle": {
+      "description": "说明服务启动与请求处理架构。在“请求生命周期”中优先检索并引用必需证据包括入口、中间件、处理器、依赖和单基行号。",
+      "title": "请求生命周期"
+    },
+    "service_runtime_architecture_runtime_components": {
+      "description": "说明服务启动与请求处理架构。在“运行时组件”中优先检索并引用必需证据包括入口、中间件、处理器、依赖和单基行号。",
+      "title": "运行时组件"
+    },
+    "service_security_authorization_flow": {
+      "description": "说明服务信任边界。在“授权流程”中优先检索并引用必需证据包括认证、授权、密钥处理和单基行号。",
+      "title": "授权流程"
+    },
+    "service_security_security_boundaries": {
+      "description": "说明服务信任边界。在“安全边界”中优先检索并引用必需证据包括认证、授权、密钥处理和单基行号。",
+      "title": "安全边界"
+    },
+    "shared_contracts_compatibility_boundaries": {
+      "description": "说明跨组件共享契约。在“兼容性边界”中优先检索并引用必需证据包括模式、协议、共享包和单基行号。",
+      "title": "兼容性边界"
+    },
+    "shared_contracts_shared_interfaces": {
+      "description": "说明跨组件共享契约。在“共享接口”中优先检索并引用必需证据包括模式、协议、共享包和单基行号。",
+      "title": "共享接口"
+    },
+    "single_project_topology_internal_dependencies": {
+      "description": "说明单一项目边界、模块与依赖。在“内部依赖”中优先检索并引用必需证据包括项目根、模块、构建文件、符号和单基行号。",
+      "title": "内部依赖"
+    },
+    "single_project_topology_project_boundary": {
+      "description": "说明单一项目边界、模块与依赖。在“项目边界”中优先检索并引用必需证据包括项目根、模块、构建文件、符号和单基行号。",
+      "title": "项目边界"
+    },
+    "target_hardware_hardware_profile": {
+      "description": "记录目标硬件与资源限制。在“硬件概况”中优先检索并引用必需证据包括板卡配置、内存映射、外设和单基行号。",
+      "title": "硬件概况"
+    },
+    "target_hardware_resource_constraints": {
+      "description": "记录目标硬件与资源限制。在“资源约束”中优先检索并引用必需证据包括板卡配置、内存映射、外设和单基行号。",
+      "title": "资源约束"
+    },
+    "terminology_reference_canonical_terms": {
+      "description": "定义一致的代码库术语与来源解释。在“规范术语”中优先检索并引用公共模型、Schema、状态字段、路径、符号与从一开始的行号。",
+      "title": "规范术语"
+    },
+    "terminology_reference_scope_interpretation": {
+      "description": "定义一致的代码库术语与来源解释。在“范围解读”中优先检索并引用公共模型、Schema、状态字段、路径、符号与从一开始的行号。",
+      "title": "范围解读"
+    },
+    "tool_architecture_data_flow": {
+      "description": "说明开发工具架构与边界。在“数据流程”中优先检索并引用必需证据包括入口、服务、适配器、协议和单基行号。",
+      "title": "数据流程"
+    },
+    "tool_architecture_runtime_components": {
+      "description": "说明开发工具架构与边界。在“运行时组件”中优先检索并引用必需证据包括入口、服务、适配器、协议和单基行号。",
+      "title": "运行时组件"
+    },
+    "tool_configuration_configuration_precedence": {
+      "description": "记录开发工具配置。在“配置优先级”中优先检索并引用必需证据包括模式、文件、标志、默认值和单基行号。",
+      "title": "配置优先级"
+    },
+    "tool_configuration_configuration_sources": {
+      "description": "记录开发工具配置。在“配置来源”中优先检索并引用必需证据包括模式、文件、标志、默认值和单基行号。",
+      "title": "配置来源"
+    },
+    "tool_diagnostics_diagnostic_signals": {
+      "description": "说明诊断与故障排查。在“诊断信号”中优先检索并引用必需证据包括错误、日志、检查、调试命令和单基行号。",
+      "title": "诊断信号"
+    },
+    "tool_diagnostics_failure_recovery": {
+      "description": "说明诊断与故障排查。在“故障恢复”中优先检索并引用必需证据包括错误、日志、检查、调试命令和单基行号。",
+      "title": "故障恢复"
+    },
+    "tool_distribution_packaging_workflow": {
+      "description": "说明测试、打包与分发。在“打包工作流”中优先检索并引用必需证据包括测试、包元数据、发布自动化和单基行号。",
+      "title": "打包工作流"
+    },
+    "tool_distribution_release_verification": {
+      "description": "说明测试、打包与分发。在“发布验证”中优先检索并引用必需证据包括测试、包元数据、发布自动化和单基行号。",
+      "title": "发布验证"
+    },
+    "tool_extension_points_implementation_workflow": {
+      "description": "说明开发工具支持的解析器、检索器与 Provider 扩展边界。在“实现工作流”中优先检索并引用必需证据包括协议声明、适配器接口、注册路径、构造器、符号和单基行号。",
+      "title": "实现工作流"
+    },
+    "tool_extension_points_protocol_contracts": {
+      "description": "说明开发工具支持的解析器、检索器与 Provider 扩展边界。在“协议契约”中优先检索并引用必需证据包括协议声明、适配器接口、注册路径、构造器、符号和单基行号。",
+      "title": "协议契约"
+    },
+    "tool_integrations_integration_contracts": {
+      "description": "记录编辑器、构建与服务集成。在“集成契约”中优先检索并引用必需证据包括适配器、清单、API、钩子和单基行号。",
+      "title": "集成契约"
+    },
+    "tool_integrations_integration_setup": {
+      "description": "记录编辑器、构建与服务集成。在“集成设置”中优先检索并引用必需证据包括适配器、清单、API、钩子和单基行号。",
+      "title": "集成设置"
+    },
+    "training_pipeline_training_reproducibility": {
+      "description": "说明模型训练流程。在“训练可复现性”中优先检索并引用必需证据包括训练脚本、配置、作业、命令和单基行号。",
+      "title": "训练可复现性"
+    },
+    "training_pipeline_training_stages": {
+      "description": "说明模型训练流程。在“训练阶段”中优先检索并引用必需证据包括训练脚本、配置、作业、命令和单基行号。",
+      "title": "训练阶段"
+    },
+    "ui_facet_interaction_accessibility": {
+      "description": "说明界面组合、交互、状态与无障碍。在“交互无障碍”中优先检索并引用必需证据包括视图、组件、状态、测试和单基行号。",
+      "title": "交互无障碍"
+    },
+    "ui_facet_interface_composition": {
+      "description": "说明界面组合、交互、状态与无障碍。在“接口组合”中优先检索并引用必需证据包括视图、组件、状态、测试和单基行号。",
+      "title": "接口组合"
+    },
+    "usage_examples_common_workflows": {
+      "description": "提供有依据的使用模式。在“常见工作流”中优先检索并引用必需证据包括示例、测试、夹具、调用点和单基行号。",
+      "title": "常见工作流"
+    },
+    "usage_examples_edge_cases": {
+      "description": "提供有依据的使用模式。在“边界情况”中优先检索并引用必需证据包括示例、测试、夹具、调用点和单基行号。",
+      "title": "边界情况"
+    },
+    "web_deployment_operations_deployment_workflow": {
+      "description": "说明构建、部署和运行运维。在“部署工作流”中优先检索并引用必需证据包括构建文件、环境配置、部署清单和单基行号。",
+      "title": "部署工作流"
+    },
+    "web_deployment_operations_runtime_operations": {
+      "description": "说明构建、部署和运行运维。在“运行时运维”中优先检索并引用必需证据包括构建文件、环境配置、部署清单和单基行号。",
+      "title": "运行时运维"
+    },
+    "web_runtime_architecture_request_lifecycle": {
+      "description": "说明浏览器与服务端运行边界和请求生命周期。在“请求生命周期”中优先检索并引用必需证据包括入口、组件、调用路径、符号和单基行号。",
+      "title": "请求生命周期"
+    },
+    "web_runtime_architecture_runtime_components": {
+      "description": "说明浏览器与服务端运行边界和请求生命周期。在“运行时组件”中优先检索并引用必需证据包括入口、组件、调用路径、符号和单基行号。",
+      "title": "运行时组件"
+    },
+    "web_security_security_boundaries": {
+      "description": "说明 Web 信任边界和安全控制。在“安全边界”中优先检索并引用必需证据包括认证、授权、校验、响应头、符号和单基行号。",
+      "title": "安全边界"
+    },
+    "web_security_security_verification": {
+      "description": "说明 Web 信任边界和安全控制。在“安全验证”中优先检索并引用必需证据包括认证、授权、校验、响应头、符号和单基行号。",
+      "title": "安全验证"
+    },
+    "web_state_persistence_persistence_workflow": {
+      "description": "说明客户端与服务端状态持久化。在“持久化工作流”中优先检索并引用必需证据包括存储、模型、迁移、缓存、符号和单基行号。",
+      "title": "持久化工作流"
+    },
+    "web_state_persistence_state_model": {
+      "description": "说明客户端与服务端状态持久化。在“状态模型”中优先检索并引用必需证据包括存储、模型、迁移、缓存、符号和单基行号。",
+      "title": "状态模型"
+    },
+    "web_testing_test_strategy": {
+      "description": "说明 Web 测试策略。在“测试策略”中优先检索并引用必需证据包括测试套件、夹具、浏览器工具、命令和单基行号。",
+      "title": "测试策略"
+    },
+    "web_testing_verification_commands": {
+      "description": "说明 Web 测试策略。在“验证命令”中优先检索并引用必需证据包括测试套件、夹具、浏览器工具、命令和单基行号。",
+      "title": "验证命令"
+    }
+  }
+}

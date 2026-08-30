@@ -137,12 +137,18 @@ def compose_registry(
     selected_labels = tuple(
         (key, value) for key, value in catalog.labels if key in used_ids
     )
+    selected_descriptions = tuple(
+        (key, value)
+        for key, value in catalog.subsection_descriptions
+        if key in used_ids
+    )
     localized_document = {
         "annotated_guidance": annotated,
         "compiled_guidance": compiled,
         "contract_sha256": canonical_sha256(contract_document),
         "labels": dict(selected_labels),
         "locale": locale,
+        "subsection_descriptions": dict(selected_descriptions),
     }
     identity = TemplateIdentity(
         registry.schema_version,
@@ -162,6 +168,7 @@ def compose_registry(
         registry.framework_shell,
         nodes,
         selected_labels,
+        selected_descriptions,
         annotated,
         compiled,
     )

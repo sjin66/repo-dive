@@ -12,6 +12,7 @@ import pytest
 from repo_dive.cli import main
 from repo_dive.commands.wiki import MAX_PAGE_INPUT_BYTES
 from repo_dive.wiki.models import Page, PageStatus
+from repo_dive.wiki.service import WikiService, structure_from_document
 from repo_dive.wiki.store import WikiStore
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "index_repo"
@@ -48,8 +49,8 @@ def initialize_wiki(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     run_json(capsys, ["index", str(repository)])
-    structure = {
-        "schema_version": "1.0",
+    structure: dict[str, Any] = {
+        "schema_version": "2.0",
         "title": "Example Wiki",
         "description": "Grounded repository documentation.",
         "output_language": "en",
@@ -64,6 +65,15 @@ def initialize_wiki(
                         "description": "Explain the greet application entrypoint.",
                         "relevant_files": ["src/app.py"],
                         "related_page_ids": ["utilities"],
+                        "subsections": [
+                            {
+                                "id": "runtime_flow",
+                                "title": "Runtime flow",
+                                "description": "Trace the application entrypoint.",
+                                "direct_source_paths": ["src/app.py"],
+                                "documentation_only": False,
+                            }
+                        ],
                     },
                     {
                         "id": "utilities",
@@ -71,23 +81,21 @@ def initialize_wiki(
                         "description": "Explain the format_name helper.",
                         "relevant_files": ["src/utils.py"],
                         "related_page_ids": ["overview"],
+                        "subsections": [
+                            {
+                                "id": "formatting_flow",
+                                "title": "Formatting",
+                                "description": "Explain the formatting helper.",
+                                "direct_source_paths": ["src/utils.py"],
+                                "documentation_only": False,
+                            }
+                        ],
                     },
                 ],
             }
         ],
     }
-    structure_path = tmp_path / "structure.json"
-    structure_path.write_text(json.dumps(structure), encoding="utf-8")
-    run_json(
-        capsys,
-        [
-            "wiki",
-            "structure",
-            str(repository),
-            "--input",
-            str(structure_path),
-        ],
-    )
+    WikiService(repository).initialize(structure_from_document(structure))
 
 
 def collect_evidence(
@@ -128,18 +136,25 @@ def write_submission(
     tmp_path: Path,
     page: Page,
     *,
-    body: str = "# Overview\n\nThe entrypoint calls `greet`.\n",
+    body: str = "##### Details\n\nThe entrypoint calls `greet`.\n",
     page_id: str | None = None,
     evidence_ids: list[str] | None = None,
     filename: str = "page.json",
 ) -> Path:
     document = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "page_id": page.id if page_id is None else page_id,
-        "body": body,
-        "evidence_ids": (
-            [page.evidence[0].evidence_id] if evidence_ids is None else evidence_ids
-        ),
+        "subsections": [
+            {
+                "subsection_id": page.subsections[0].id,
+                "body": body,
+                "evidence_ids": (
+                    [page.evidence[0].evidence_id]
+                    if evidence_ids is None
+                    else evidence_ids
+                ),
+            }
+        ],
     }
     path = tmp_path / filename
     path.write_text(json.dumps(document), encoding="utf-8")
@@ -165,7 +180,7 @@ def test_wiki_page_persists_body_and_citations_and_retries_idempotently(
     repository = copy_fixture(tmp_path)
     initialize_wiki(repository, tmp_path, capsys)
     evidence_page = collect_evidence(repository, "overview", capsys)
-    body = "# Overview\n\nThe entrypoint delegates greeting construction.\n"
+    body = "##### Details\n\nThe entrypoint delegates greeting construction.\n"
     input_path = write_submission(tmp_path, evidence_page, body=body)
 
     document = run_json(
@@ -186,7 +201,8 @@ def test_wiki_page_persists_body_and_citations_and_retries_idempotently(
     assert body not in document
     persisted = page_by_id(repository, "overview")
     assert persisted.status is PageStatus.GENERATED
-    assert persisted.body == body
+    assert persisted.body is None
+    assert persisted.subsection_contents[0].body == body
     assert persisted.citation_ids == (evidence_page.evidence[0].evidence_id,)
     assert persisted.error is None
     before_wiki = (repository / ".repo-dive/wiki.json").read_bytes()
@@ -210,19 +226,26 @@ def test_wiki_page_accepts_bounded_json_from_stdin(
     repository = copy_fixture(tmp_path)
     initialize_wiki(repository, tmp_path, capsys)
     page = collect_evidence(repository, "overview", capsys)
-    body = "# Overview\n\nGenerated through stdin.\n"
+    body = "##### Details\n\nGenerated through stdin.\n"
     document = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "page_id": "overview",
-        "body": body,
-        "evidence_ids": [page.evidence[0].evidence_id],
+        "subsections": [
+            {
+                "subsection_id": page.subsections[0].id,
+                "body": body,
+                "evidence_ids": [page.evidence[0].evidence_id],
+            }
+        ],
     }
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(document)))
 
     result = run_json(capsys, submit_arguments(repository, "overview", "-"))
 
     assert result["result"]["status"] == "generated"
-    assert page_by_id(repository, "overview").body == body
+    persisted = page_by_id(repository, "overview")
+    assert persisted.body is None
+    assert persisted.subsection_contents[0].body == body
 
 
 def test_failed_page_can_be_corrected_without_changing_generated_pages(
@@ -265,12 +288,12 @@ def test_failed_page_can_be_corrected_without_changing_generated_pages(
     assert error["code"] == "wiki_page_body_too_large"
     assert "x" * 1_000 not in captured.out
     assert "x" * 1_000 not in captured.err
-    assert page_by_id(repository, "utilities").status is PageStatus.FAILED
+    assert page_by_id(repository, "utilities").status is PageStatus.EVIDENCE_READY
 
     corrected = write_submission(
         tmp_path,
         utilities,
-        body="# Utilities\n\nThe helper formats a name.\n",
+        body="##### Details\n\nThe helper formats a name.\n",
         filename="corrected.json",
     )
     run_json(
@@ -294,7 +317,7 @@ def test_wiki_page_rejects_wrong_page_and_unknown_evidence_without_disclosure(
     repository = copy_fixture(tmp_path)
     initialize_wiki(repository, tmp_path, capsys)
     page = collect_evidence(repository, "overview", capsys)
-    private_body = "# PRIVATE BODY\n\nDo not echo this complete page.\n"
+    private_body = "Do not echo this complete page.\n"
     wrong_page = write_submission(
         tmp_path,
         page,
@@ -342,9 +365,9 @@ def test_wiki_page_rejects_wrong_page_and_unknown_evidence_without_disclosure(
     )
     assert private_body not in captured.out
     assert private_body not in captured.err
-    failed = page_by_id(repository, "overview")
-    assert failed.status is PageStatus.FAILED
-    assert failed.error == "wiki_page_evidence_unknown"
+    unchanged = page_by_id(repository, "overview")
+    assert unchanged.status is PageStatus.EVIDENCE_READY
+    assert unchanged.error is None
 
 
 def test_wiki_page_rejects_invalid_utf8_and_invalid_state_without_mutation(
@@ -422,9 +445,10 @@ def test_wiki_page_rejects_unencodable_json_body_as_safe_validation_error(
     initialize_wiki(repository, tmp_path, capsys)
     page = collect_evidence(repository, "overview", capsys)
     document = (
-        '{"schema_version":"1.0","page_id":"overview",'
+        '{"schema_version":"2.0","page_id":"overview","subsections":['
+        '{"subsection_id":"runtime_flow",'
         f'"evidence_ids":["{page.evidence[0].evidence_id}"],'
-        '"body":"\\ud800"}'
+        '"body":"\\ud800"}]}'
     )
     input_path = tmp_path / "surrogate.json"
     input_path.write_text(document, encoding="utf-8")
@@ -443,7 +467,7 @@ def test_wiki_page_rejects_unencodable_json_body_as_safe_validation_error(
     assert result_document(captured.out)["error"]["code"] == "wiki_page_body_invalid"
     assert "\\ud800" not in captured.out
     assert "\\ud800" not in captured.err
-    assert page_by_id(repository, "overview").status is PageStatus.FAILED
+    assert page_by_id(repository, "overview").status is PageStatus.EVIDENCE_READY
 
 
 def test_wiki_page_rejects_stale_evidence_and_changed_generated_page(

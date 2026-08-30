@@ -40,6 +40,7 @@ from repo_dive.indexing.vectors import (
 from repo_dive.parsing.models import Chunk, ParseDiagnostic, ParseResult
 from repo_dive.parsing.pipeline import ParsingPipeline
 from repo_dive.providers.embeddings import EmbeddingProvider, VectorFailurePolicy
+from repo_dive.scanner.candidates import effective_default_excluded_directories
 from repo_dive.scanner.models import Inventory, ReadStatus, SourceFile
 from repo_dive.scanner.service import scan_repository
 from repo_dive.schema import JsonObject, serialize_json_document
@@ -140,6 +141,9 @@ class IndexService:
                 exclude=parameters.exclude,
                 max_file_size=parameters.max_file_size,
             )
+            source_control, source_commit, source_dirty = _source_identity(
+                root, inventory.mode
+            )
             current = _load_current_index(root, allow_schema_upgrade=True)
             if (
                 current is not None
@@ -150,6 +154,9 @@ class IndexService:
                     embedding_provider is None
                     or current.manifest.embedding == embedding_identity
                 )
+                and current.manifest.source_control == source_control
+                and current.manifest.source_commit == source_commit
+                and current.manifest.source_dirty == source_dirty
             ):
                 return _result_from_manifest(
                     current.manifest,
@@ -173,6 +180,9 @@ class IndexService:
                 embedding_provider=embedding_provider,
                 embedding_identity=embedding_identity,
                 vector_failure=vector_failure,
+                source_control=source_control,
+                source_commit=source_commit,
+                source_dirty=source_dirty,
             )
 
             stage = "manifest"
@@ -182,6 +192,15 @@ class IndexService:
                 raise InternalOperationError(
                     "index_manifest_invalid",
                     "Generated repository index Manifest did not validate.",
+                )
+            if _source_identity(root, inventory.mode) != (
+                source_control,
+                source_commit,
+                source_dirty,
+            ):
+                raise RepositoryError(
+                    "git_source_identity_changed",
+                    "Git source identity changed while the repository index was built.",
                 )
 
             stage = "publish"
@@ -222,6 +241,9 @@ class IndexService:
         embedding_provider: EmbeddingProvider | None,
         embedding_identity: EmbeddingIdentity | None,
         vector_failure: VectorFailurePolicy,
+        source_control: str,
+        source_commit: str | None,
+        source_dirty: bool | None,
     ) -> tuple[IndexBuildResult, IndexManifest]:
         compatible = current is not None and current.manifest.parameters == parameters
         previous_paths = (
@@ -334,6 +356,12 @@ class IndexService:
                 if vector_result is not None and vector_result.status == "ready"
                 else None
             ),
+            source_control=source_control,
+            source_commit=source_commit,
+            source_dirty=source_dirty,
+            effective_default_excluded_directories=(
+                effective_default_excluded_directories(parameters.include)
+            ),
         )
         return (
             IndexBuildResult(
@@ -386,6 +414,53 @@ class _GenerationFailure(Exception):
         super().__init__(stage)
         self.stage = stage
         self.path = path
+
+
+def _source_identity(root: Path, mode: str) -> tuple[str, str | None, bool | None]:
+    if mode != "git":
+        return "non_git", None, None
+    try:
+        head = subprocess.run(
+            ["git", "-C", os.fspath(root), "rev-parse", "--verify", "HEAD"],
+            check=False,
+            capture_output=True,
+            timeout=10,
+        )
+        status = subprocess.run(
+            ["git", "-C", os.fspath(root), "status", "--porcelain=v1", "-z"],
+            check=False,
+            capture_output=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise RepositoryError(
+            "git_source_identity_failed",
+            "Could not capture Git source identity for the repository index.",
+        ) from error
+    if status.returncode != 0 or head.returncode not in {0, 128}:
+        raise RepositoryError(
+            "git_source_identity_failed",
+            "Could not capture Git source identity for the repository index.",
+        )
+    commit = os.fsdecode(head.stdout.strip()) if head.returncode == 0 else None
+    if commit is not None and (
+        len(commit) != 40
+        or any(character not in "0123456789abcdef" for character in commit)
+    ):
+        raise RepositoryError(
+            "git_source_identity_failed", "Git HEAD identity is invalid."
+        )
+    dirty_entries = tuple(item for item in status.stdout.split(b"\0") if item)
+    source_dirty = any(not _is_repo_dive_status_entry(entry) for entry in dirty_entries)
+    return "git", commit, source_dirty
+
+
+def _is_repo_dive_status_entry(entry: bytes) -> bool:
+    """Return whether a porcelain-v1 entry belongs only to generated artifacts."""
+    if len(entry) < 4:
+        return False
+    path = os.fsdecode(entry[3:]).replace("\\", "/")
+    return path == ".repo-dive" or path.startswith(".repo-dive/")
 
 
 def _parse_or_reuse(

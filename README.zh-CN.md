@@ -14,7 +14,7 @@
 - Python AST 与 Tree-sitter 解析，以及稳定的 Chunk、符号和关系；
 - 原子发布的本地 SQLite 索引、BM25 与结构检索；
 - 支持 JSON 或 Markdown 的只读 `search` 和 Token 预算 `context` 命令；
-- 带原子产物的可恢复 `wiki structure`、`wiki evidence`、`wiki page`、`wiki build` 和 `wiki status` 命令；
+- 治理式 `wiki classify`/`wiki init`，以及带原子产物的可恢复 `wiki evidence`、`wiki page`、`wiki validate`、`wiki build` 和 `wiki status` 命令；
 - 稳定的进程、Schema、评测及本地/CI Harness 契约。
 
 可选的 SQLite float32 Vector Store、确定性余弦检索器、显式本地 Sentence Transformers Provider，以及 `index`/`search`/`context` 三通道集成已经实现。离线 Wiki 工作流保持完整可用。
@@ -82,7 +82,8 @@ Skill。`npx skills` 方式让 OpenCode 无需 Python 即可使用：首次使�
 
 ```bash
 .venv/bin/repo-dive index /path/to/repository --format json
-.venv/bin/repo-dive wiki structure /path/to/repository --input structure.json --format json
+.venv/bin/repo-dive wiki classify /path/to/repository --format json
+.venv/bin/repo-dive wiki init /path/to/repository --locale en --format json
 .venv/bin/repo-dive wiki evidence /path/to/repository --page overview --token-budget 1200 --max-results 10 --format json
 # 调用方 Copilot 模型根据返回的 Evidence 编写 page.json。
 .venv/bin/repo-dive wiki page /path/to/repository --page overview --input page.json --format json
@@ -119,7 +120,8 @@ make test-all
 .venv/bin/repo-dive context /path/to/repository "architecture" --token-budget 1200 --format json
 .venv/bin/repo-dive index /path/to/repository --embedding-model /path/to/local/model --format json
 .venv/bin/repo-dive search /path/to/repository "request lifecycle" --embedding-model /path/to/local/model --format json
-.venv/bin/repo-dive wiki structure /path/to/repository --input structure.json --format json
+.venv/bin/repo-dive wiki classify /path/to/repository --format json
+.venv/bin/repo-dive wiki init /path/to/repository --locale en --format json
 .venv/bin/repo-dive wiki evidence /path/to/repository --page overview --token-budget 1200 --format json
 .venv/bin/repo-dive wiki page /path/to/repository --page overview --input page.json --format json
 .venv/bin/repo-dive wiki page /path/to/repository --page overview --input - --format json

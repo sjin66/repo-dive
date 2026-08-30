@@ -1,5 +1,10 @@
 下面是当前 `repo-dive` 从安装 Skill、建立索引、规划结构、逐页检索 Evidence、Agent 生成正文，到最终构建 `wiki.md` 的完整流程。
 
+> **兼容性参考：**下文使用 `wiki structure` 与 `structure.json` 的示例描述已弃用的
+> 手动工作流。新状态先运行 `wiki classify`，再运行
+> `wiki init <repository> --locale en|zh-CN|ja`；治理式 Schema 2.0 契约见
+> [Wiki 工作流](wiki-workflow.md)。
+
 ## 总览
 
 ```text

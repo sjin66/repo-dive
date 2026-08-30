@@ -69,7 +69,8 @@ CONTRACT_EXAMPLE_MARKERS = (
 )
 AGENT_WORKFLOW_LITERALS = (
     "repo-dive index",
-    "repo-dive wiki structure",
+    "repo-dive wiki classify",
+    "repo-dive wiki init",
     "repo-dive wiki evidence",
     "repo-dive wiki page",
     "repo-dive wiki build",

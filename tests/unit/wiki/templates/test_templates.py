@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -20,9 +22,32 @@ from repo_dive.wiki.templates import (
     expected_resource_names,
     load_builtin_registry,
 )
+from repo_dive.wiki.templates import subsection_copy as subsection_copy_module
+from repo_dive.wiki.templates.models import template_identity_from_document
 from repo_dive.wiki.templates.resources import read_guidance_resource
+from repo_dive.wiki.templates.subsection_copy import load_subsection_copy
 
 _CJK_OR_KANA = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]")
+
+
+def test_subsection_copy_rejects_duplicate_json_keys(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    resource_root = tmp_path / "resources"
+    locale_root = resource_root / "en"
+    locale_root.mkdir(parents=True)
+    (locale_root / "subsections.json").write_text(
+        '{"schema_version":"1.0","locale":"en","locale":"en","subsections":{}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(subsection_copy_module, "files", lambda _: resource_root)
+    load_subsection_copy.cache_clear()
+
+    try:
+        with pytest.raises(ValueError, match="duplicate keys"):
+            load_subsection_copy("en")
+    finally:
+        load_subsection_copy.cache_clear()
 
 
 def test_builtin_registry_covers_taxonomy_and_every_locale_resource() -> None:
@@ -102,6 +127,10 @@ def test_template_identity_is_version_1_and_serializes_both_guidance_forms() -> 
     assert "<!--" not in contract.compiled_guidance
     assert "{{repo_dive:" not in contract.annotated_guidance
     assert "{{repo_dive:" not in contract.compiled_guidance
+    assert (
+        template_identity_from_document(contract.identity.to_document())
+        == contract.identity
+    )
 
 
 def test_localized_hash_covers_both_canonical_guidance_forms() -> None:
@@ -116,6 +145,7 @@ def test_localized_hash_covers_both_canonical_guidance_forms() -> None:
         "contract_sha256": contract.identity.contract_sha256,
         "labels": document["labels"],
         "locale": "en",
+        "subsection_descriptions": document["subsection_descriptions"],
     }
     assert contract.identity.localized_sha256 == canonical_sha256(localized_projection)
 
@@ -162,6 +192,7 @@ def test_all_primary_archetypes_have_intended_distinct_page_signatures() -> None
             "execution_flow_page",
             "cli_extension_points_page",
             "errors_exit_codes_page",
+            "terminology_reference_page",
         ),
         "library_sdk": (
             "library_installation_page",
@@ -231,8 +262,10 @@ def test_all_primary_archetypes_have_intended_distinct_page_signatures() -> None
             "tool_architecture_page",
             "tool_configuration_page",
             "tool_integrations_page",
+            "tool_extension_points_page",
             "tool_diagnostics_page",
             "tool_distribution_page",
+            "terminology_reference_page",
         ),
         "plugin_extension": (
             "host_contract_page",
@@ -287,9 +320,210 @@ def test_representative_contracts_express_distinct_ast_shapes() -> None:
     node_types = {
         node.node_type for root in (*cli.nodes, *data.nodes) for node in root.walk()
     }
-    assert {"heading", "paragraph", "list", "table", "code_block"} <= node_types
+    assert {"subsection", "paragraph", "list", "table", "code_block"} <= node_types
     assert any(
         node.node_type == "extension_slot" for root in cli.nodes for node in root.walk()
+    )
+
+
+def test_every_builtin_page_owns_explicit_ordered_localized_subsections() -> None:
+    generic_suffixes = {
+        "overview",
+        "implementation",
+        "contract",
+        "examples",
+        "workflow",
+        "verification",
+        "comparison",
+        "decisions",
+    }
+    observed_page_ids: set[str] = set()
+    english_signatures: dict[str, tuple[str, ...]] = {}
+
+    for primary_id in PRIMARY_IDS:
+        contracts = tuple(
+            compose_template(
+                primary_id,
+                "microservices",
+                FACET_IDS,
+                locale,
+            )
+            for locale in SUPPORTED_LOCALES
+        )
+        pages = tuple(
+            node
+            for root in contracts[0].nodes
+            for node in root.walk()
+            if node.node_type == "page"
+        )
+        labels_by_locale = tuple(dict(contract.labels) for contract in contracts)
+        for page in pages:
+            observed_page_ids.add(page.logical_id)
+            assert len(page.children) == 2
+            stem = page.logical_id.removesuffix("_page")
+            subsection_ids = tuple(child.logical_id for child in page.children)
+            assert len(set(subsection_ids)) == 2
+            assert not {f"{stem}_{suffix}" for suffix in generic_suffixes}.intersection(
+                subsection_ids
+            )
+            previous = english_signatures.setdefault(page.logical_id, subsection_ids)
+            assert previous == subsection_ids
+            for labels in labels_by_locale:
+                assert all(labels[subsection_id] for subsection_id in subsection_ids)
+            descriptions = tuple(
+                tuple(
+                    dict(contract.subsection_descriptions)[subsection_id]
+                    for subsection_id in subsection_ids
+                )
+                for contract in contracts
+            )
+            assert all(
+                all(description for description in items) for items in descriptions
+            )
+            for labels in labels_by_locale[1:]:
+                assert all(
+                    _CJK_OR_KANA.search(labels[subsection_id])
+                    for subsection_id in subsection_ids
+                )
+
+    expected_overlay_ids = {
+        *(f"{topology_id}_topology_page" for topology_id in TOPOLOGY_IDS),
+        *(f"{facet_id}_facet_page" for facet_id in FACET_IDS),
+    }
+    for topology_id in TOPOLOGY_IDS:
+        contracts = tuple(
+            compose_template("cli_tool", topology_id, (), locale)
+            for locale in SUPPORTED_LOCALES
+        )
+        page_id = f"{topology_id}_topology_page"
+        page = next(
+            node
+            for root in contracts[0].nodes
+            for node in root.walk()
+            if node.logical_id == page_id
+        )
+        observed_page_ids.add(page_id)
+        assert len(page.children) == 2
+        for contract in contracts[1:]:
+            labels = dict(contract.labels)
+            assert all(
+                _CJK_OR_KANA.search(labels[child.logical_id]) for child in page.children
+            )
+    assert expected_overlay_ids <= observed_page_ids
+
+
+def test_subsection_copy_is_focused_explicit_and_not_synthesized() -> None:
+    expected = {
+        "en": (
+            "Prerequisites",
+            "Identify required runtimes, packages, and repository setup commands "
+            "before CLI installation begins.",
+        ),
+        "zh-CN": (
+            "前置条件",
+            "在开始安装 CLI 前，识别必需的运行时、软件包和代码库设置命令。",
+        ),
+        "ja": (
+            "前提条件",
+            "CLI のインストール前に必要なランタイム、パッケージ、"
+            "リポジトリ設定コマンドを特定します。",
+        ),
+    }
+    generic_prefixes = (
+        "Document ",
+        "使用代码库证据说明",
+        "リポジトリの根拠に基づいて",
+    )
+
+    for locale in SUPPORTED_LOCALES:
+        contract = compose_template("cli_tool", "single_project", FACET_IDS, locale)
+        labels = dict(contract.labels)
+        descriptions = dict(contract.subsection_descriptions)
+        subsection_ids = tuple(
+            child.logical_id
+            for root in contract.nodes
+            for node in root.walk()
+            if node.node_type == "page"
+            for child in node.children
+            if child.node_type == "subsection"
+        )
+        assert set(descriptions) == set(subsection_ids)
+        assert len(descriptions.values()) == len(set(descriptions.values()))
+        assert all(
+            not description.startswith(generic_prefixes)
+            for description in descriptions.values()
+        )
+        subsection_id = "cli_installation_prerequisites"
+        assert (labels[subsection_id], descriptions[subsection_id]) == expected[locale]
+
+
+def test_subsection_copy_resources_fail_closed_on_drift_or_generic_copy() -> None:
+    resources = {
+        locale: dict(load_subsection_copy(locale)) for locale in SUPPORTED_LOCALES
+    }
+    expected_ids = set(resources["en"])
+    banned_generic_copy = (
+        "Document {title}",
+        "Document this Subsection",
+        "使用代码库证据说明标题",
+        "リポジトリの根拠に基づいてタイトル",
+    )
+
+    assert expected_ids
+    assert all(set(copy) == expected_ids for copy in resources.values())
+    for locale, copy in resources.items():
+        descriptions = tuple(item.description for item in copy.values())
+        assert len(descriptions) == len(set(descriptions))
+        assert all(
+            generic not in description
+            for description in descriptions
+            for generic in banned_generic_copy
+        )
+        if locale != "en":
+            assert all(_CJK_OR_KANA.search(item.title) for item in copy.values())
+            assert all(_CJK_OR_KANA.search(item.description) for item in copy.values())
+
+    with pytest.raises(ValueError, match="locale"):
+        load_subsection_copy("EN")
+
+    registry = load_builtin_registry()
+    english = registry.catalogs[0]
+    missing = replace(
+        english,
+        subsection_descriptions=english.subsection_descriptions[:-1],
+    )
+    with pytest.raises(ValueError, match="description keys"):
+        replace(registry, catalogs=(missing, *registry.catalogs[1:]))
+
+    first_id, _ = english.subsection_descriptions[0]
+    second_id, _ = english.subsection_descriptions[1]
+    with pytest.raises(ValueError, match="unique sorted copy"):
+        replace(
+            english,
+            subsection_descriptions=((first_id, "duplicate"), (second_id, "duplicate")),
+        )
+
+
+def test_cli_template_uses_topic_specific_subsection_order() -> None:
+    contract = compose_template("cli_tool", "single_project", (), "en")
+    pages = {
+        node.logical_id: tuple(child.logical_id for child in node.children)
+        for root in contract.nodes
+        for node in root.walk()
+        if node.node_type == "page"
+    }
+
+    assert pages["cli_installation_page"] == (
+        "cli_installation_prerequisites",
+        "cli_installation_first_run",
+    )
+    assert pages["cli_extension_points_page"] == (
+        "cli_extension_points_extension_contracts",
+        "cli_extension_points_registration_workflow",
+    )
+    assert pages["errors_exit_codes_page"] == (
+        "errors_exit_codes_error_contracts",
+        "errors_exit_codes_recovery_workflows",
     )
 
 
@@ -683,13 +917,16 @@ def test_framework_shell_is_cli_owned_and_page_contract_excludes_shell_headings(
     contract = compose_template("cli_tool", "single_project", (), "ja")
     shell = contract.framework_shell
 
-    assert tuple(node.owner for node in shell.nodes) == ("cli",) * 6
-    assert tuple(node.logical_id for node in shell.nodes) == (
+    assert all(node.owner == "cli" for node in shell.nodes)
+    assert {
         "wiki",
         "contents",
         "section_heading",
         "page_heading",
         "related_pages",
         "sources",
-    )
+        "scope_version",
+        "source_commit",
+        "generated_at",
+    } <= {node.logical_id for node in shell.nodes}
     assert "page heading" not in contract.compiled_guidance.lower()

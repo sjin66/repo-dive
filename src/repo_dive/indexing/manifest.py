@@ -13,7 +13,7 @@ from repo_dive.indexing.store import INDEX_SCHEMA_VERSION
 from repo_dive.indexing.vectors import EmbeddingIdentity
 from repo_dive.schema import JsonObject, JsonValue, serialize_json_document
 
-INDEX_MANIFEST_VERSION = "1.0"
+INDEX_MANIFEST_VERSION = "2.0"
 PARSER_VERSION = "1"
 
 ManifestStatus = Literal["read", "skipped"]
@@ -125,6 +125,10 @@ class IndexManifest:
     files: tuple[ManifestFile, ...]
     counts: IndexCounts
     embedding: EmbeddingIdentity | None = None
+    source_control: str = "non_git"
+    source_commit: str | None = None
+    source_dirty: bool | None = None
+    effective_default_excluded_directories: tuple[str, ...] = ()
     schema_version: str = INDEX_MANIFEST_VERSION
 
     def __post_init__(self) -> None:
@@ -137,6 +141,25 @@ class IndexManifest:
             raise ValueError("manifest files must have unique sorted paths")
         if self.counts.files != len(self.files):
             raise ValueError("manifest file count does not match files")
+        if self.source_control not in {"git", "non_git"}:
+            raise ValueError("manifest source control is invalid")
+        if self.source_control == "git" and self.source_dirty is None:
+            raise ValueError("Git manifests require a dirty-worktree state")
+        if self.source_commit is not None and (
+            len(self.source_commit) != 40
+            or any(
+                character not in "0123456789abcdef" for character in self.source_commit
+            )
+        ):
+            raise ValueError("source commit must be a full lowercase Git object ID")
+        if self.source_control == "non_git" and (
+            self.source_commit is not None or self.source_dirty is not None
+        ):
+            raise ValueError("non-Git manifests cannot declare Git identity")
+        if tuple(sorted(set(self.effective_default_excluded_directories))) != (
+            self.effective_default_excluded_directories
+        ):
+            raise ValueError("effective default exclusions must be sorted and unique")
 
     def to_document(self) -> JsonObject:
         document: JsonObject = {
@@ -147,6 +170,12 @@ class IndexManifest:
             "repository_fingerprint": self.repository_fingerprint,
             "scan_mode": self.scan_mode,
             "schema_version": self.schema_version,
+            "source_commit": self.source_commit,
+            "source_control": self.source_control,
+            "source_dirty": self.source_dirty,
+            "effective_default_excluded_directories": list(
+                self.effective_default_excluded_directories
+            ),
         }
         if self.embedding is not None:
             document["embedding"] = {
@@ -242,6 +271,12 @@ def _manifest_from_document(document: JsonObject) -> IndexManifest:
             relationships=_integer(counts["relationships"]),
         ),
         embedding=_embedding_identity(document.get("embedding")),
+        source_control=_string(document["source_control"]),
+        source_commit=_optional_string(document["source_commit"]),
+        source_dirty=_optional_boolean(document["source_dirty"]),
+        effective_default_excluded_directories=_string_tuple(
+            document["effective_default_excluded_directories"]
+        ),
         schema_version=_string(document["schema_version"]),
     )
 
@@ -311,6 +346,18 @@ def _enum(value: JsonValue, allowed: set[str]) -> str:
     if text not in allowed:
         raise ValueError("enum value is invalid")
     return text
+
+
+def _optional_string(value: JsonValue) -> str | None:
+    if value is None or isinstance(value, str):
+        return value
+    raise TypeError("value must be a string or null")
+
+
+def _optional_boolean(value: JsonValue) -> bool | None:
+    if value is None or isinstance(value, bool):
+        return value
+    raise TypeError("value must be a boolean or null")
 
 
 __all__ = [

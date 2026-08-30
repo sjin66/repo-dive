@@ -1,0 +1,862 @@
+{
+  "locale": "en",
+  "schema_version": "1.0",
+  "subsections": {
+    "analysis_artifacts_artifact_catalog": {
+      "description": "Catalog generated analysis artifacts. For Artifact Catalog, retrieve and cite Output writers, reports, models, plots, paths, symbols, and one-based lines.",
+      "title": "Artifact Catalog"
+    },
+    "analysis_artifacts_artifact_lineage": {
+      "description": "Catalog generated analysis artifacts. For Artifact Lineage, retrieve and cite Output writers, reports, models, plots, paths, symbols, and one-based lines.",
+      "title": "Artifact Lineage"
+    },
+    "analysis_evaluation_evaluation_metrics": {
+      "description": "Explain analytical validation and metrics. For Evaluation Metrics, retrieve and cite Metric code, checks, baselines, tests, paths, and one-based lines.",
+      "title": "Evaluation Metrics"
+    },
+    "analysis_evaluation_result_interpretation": {
+      "description": "Explain analytical validation and metrics. For Result Interpretation, retrieve and cite Metric code, checks, baselines, tests, paths, and one-based lines.",
+      "title": "Result Interpretation"
+    },
+    "analysis_operationalization_delivery_workflow": {
+      "description": "Explain how analysis becomes repeatable operation. For Delivery Workflow, retrieve and cite Jobs, exports, automation, monitoring, paths, and one-based lines.",
+      "title": "Delivery Workflow"
+    },
+    "analysis_operationalization_runtime_monitoring": {
+      "description": "Explain how analysis becomes repeatable operation. For Runtime Monitoring, retrieve and cite Jobs, exports, automation, monitoring, paths, and one-based lines.",
+      "title": "Runtime Monitoring"
+    },
+    "analysis_workflow_analysis_stages": {
+      "description": "Explain the analysis workflow. For Analysis Stages, retrieve and cite Notebooks, scripts, transformations, commands, paths, and one-based lines.",
+      "title": "Analysis Stages"
+    },
+    "analysis_workflow_execution_workflow": {
+      "description": "Explain the analysis workflow. For Execution Workflow, retrieve and cite Notebooks, scripts, transformations, commands, paths, and one-based lines.",
+      "title": "Execution Workflow"
+    },
+    "api_contracts_api_surfaces": {
+      "description": "Catalog stable API contracts. For Api Surfaces, retrieve and cite Specifications, schemas, endpoint declarations, paths, symbols, and one-based lines.",
+      "title": "Api Surfaces"
+    },
+    "api_contracts_compatibility_contracts": {
+      "description": "Catalog stable API contracts. For Compatibility Contracts, retrieve and cite Specifications, schemas, endpoint declarations, paths, symbols, and one-based lines.",
+      "title": "Compatibility Contracts"
+    },
+    "api_facet_api_surfaces": {
+      "description": "Explain API surfaces contracts authorization and compatibility. For Api Surfaces, retrieve and cite Specifications, handlers, schemas, paths, symbols, and one-based lines.",
+      "title": "Api Surfaces"
+    },
+    "api_facet_authorization_compatibility": {
+      "description": "Explain API surfaces contracts authorization and compatibility. For Authorization Compatibility, retrieve and cite Specifications, handlers, schemas, paths, symbols, and one-based lines.",
+      "title": "Authorization Compatibility"
+    },
+    "assets_content_asset_pipeline": {
+      "description": "Explain assets and content pipeline. For Asset Pipeline, retrieve and cite Asset manifests, importers, formats, paths, and one-based lines.",
+      "title": "Asset Pipeline"
+    },
+    "assets_content_content_lifecycle": {
+      "description": "Explain assets and content pipeline. For Content Lifecycle, retrieve and cite Asset manifests, importers, formats, paths, and one-based lines.",
+      "title": "Content Lifecycle"
+    },
+    "authoring_conventions_authoring_rules": {
+      "description": "Catalog authoring formats and conventions. For Authoring Rules, retrieve and cite Examples, style config, templates, paths, and one-based lines.",
+      "title": "Authoring Rules"
+    },
+    "authoring_conventions_content_examples": {
+      "description": "Catalog authoring formats and conventions. For Content Examples, retrieve and cite Examples, style config, templates, paths, and one-based lines.",
+      "title": "Content Examples"
+    },
+    "build_test_matrix_build_matrix": {
+      "description": "Explain per-component build and test contracts. For Build Matrix, retrieve and cite Build files, test suites, automation, paths, and one-based lines.",
+      "title": "Build Matrix"
+    },
+    "build_test_matrix_test_coverage": {
+      "description": "Explain per-component build and test contracts. For Test Coverage, retrieve and cite Build files, test suites, automation, paths, and one-based lines.",
+      "title": "Test Coverage"
+    },
+    "cli_configuration_configuration_precedence": {
+      "description": "Explain CLI configuration precedence and validation. For Configuration Precedence, retrieve and cite Configuration models, files, flags, paths, symbols, and one-based lines.",
+      "title": "Configuration Precedence"
+    },
+    "cli_configuration_configuration_sources": {
+      "description": "Explain CLI configuration precedence and validation. For Configuration Sources, retrieve and cite Configuration models, files, flags, paths, symbols, and one-based lines.",
+      "title": "Configuration Sources"
+    },
+    "cli_extension_points_extension_contracts": {
+      "description": "Explain supported CLI extension boundaries. For Extension Contracts, retrieve and cite Protocols, registries, adapters, constructors, paths, symbols, and one-based lines.",
+      "title": "Extension Contracts"
+    },
+    "cli_extension_points_registration_workflow": {
+      "description": "Explain supported CLI extension boundaries. For Registration Workflow, retrieve and cite Protocols, registries, adapters, constructors, paths, symbols, and one-based lines.",
+      "title": "Registration Workflow"
+    },
+    "cli_installation_first_run": {
+      "description": "Explain supported CLI installation and startup. For First Run, retrieve and cite Package metadata, executable entry points, setup commands, paths, symbols, and one-based lines.",
+      "title": "First Run"
+    },
+    "cli_installation_prerequisites": {
+      "description": "Identify required runtimes, packages, and repository setup commands before CLI installation begins.",
+      "title": "Prerequisites"
+    },
+    "command_reference_command_examples": {
+      "description": "Provide an exact command and option reference. For Command Examples, retrieve and cite Argument declarations, help contracts, handlers, paths, symbols, and one-based lines.",
+      "title": "Command Examples"
+    },
+    "command_reference_command_syntax": {
+      "description": "Provide an exact command and option reference. For Command Syntax, retrieve and cite Argument declarations, help contracts, handlers, paths, symbols, and one-based lines.",
+      "title": "Command Syntax"
+    },
+    "compatibility_migration_constraints": {
+      "description": "Explain version and platform compatibility. For Migration Constraints, retrieve and cite Version metadata, deprecations, matrices, tests, paths, and one-based lines.",
+      "title": "Migration Constraints"
+    },
+    "compatibility_supported_versions": {
+      "description": "Explain version and platform compatibility. For Supported Versions, retrieve and cite Version metadata, deprecations, matrices, tests, paths, and one-based lines.",
+      "title": "Supported Versions"
+    },
+    "component_catalog_component_inventory": {
+      "description": "Catalog independently evidenced repository components. For Component Inventory, retrieve and cite Entrypoints, manifests, modules, paths, symbols, and one-based lines.",
+      "title": "Component Inventory"
+    },
+    "component_catalog_component_ownership": {
+      "description": "Catalog independently evidenced repository components. For Component Ownership, retrieve and cite Entrypoints, manifests, modules, paths, symbols, and one-based lines.",
+      "title": "Component Ownership"
+    },
+    "contribution_points_contribution_contracts": {
+      "description": "Catalog plugin contribution points. For Contribution Contracts, retrieve and cite Commands, providers, hooks, schemas, paths, and one-based lines.",
+      "title": "Contribution Contracts"
+    },
+    "contribution_points_registered_contributions": {
+      "description": "Catalog plugin contribution points. For Registered Contributions, retrieve and cite Commands, providers, hooks, schemas, paths, and one-based lines.",
+      "title": "Registered Contributions"
+    },
+    "cross_component_workflows_component_handoffs": {
+      "description": "Trace workflows crossing component boundaries. For Component Handoffs, retrieve and cite Call paths, jobs, scripts, tests, paths, symbols, and one-based lines.",
+      "title": "Component Handoffs"
+    },
+    "cross_component_workflows_workflow_stages": {
+      "description": "Trace workflows crossing component boundaries. For Workflow Stages, retrieve and cite Call paths, jobs, scripts, tests, paths, symbols, and one-based lines.",
+      "title": "Workflow Stages"
+    },
+    "data_quality_quality_monitoring": {
+      "description": "Explain data-quality enforcement. For Quality Monitoring, retrieve and cite Assertions, validators, thresholds, tests, paths, and one-based lines.",
+      "title": "Quality Monitoring"
+    },
+    "data_quality_quality_rules": {
+      "description": "Explain data-quality enforcement. For Quality Rules, retrieve and cite Assertions, validators, thresholds, tests, paths, and one-based lines.",
+      "title": "Quality Rules"
+    },
+    "data_sources_ingestion_constraints": {
+      "description": "Catalog analysis data sources and assumptions. For Ingestion Constraints, retrieve and cite Loaders, schemas, notebooks, paths, symbols, and one-based lines.",
+      "title": "Ingestion Constraints"
+    },
+    "data_sources_source_catalog": {
+      "description": "Catalog analysis data sources and assumptions. For Source Catalog, retrieve and cite Loaders, schemas, notebooks, paths, symbols, and one-based lines.",
+      "title": "Source Catalog"
+    },
+    "database_facet_consistency_migrations": {
+      "description": "Explain data models access consistency migrations and recovery. For Consistency Migrations, retrieve and cite Models, queries, transactions, migrations, paths, symbols, and one-based lines.",
+      "title": "Consistency Migrations"
+    },
+    "database_facet_data_models": {
+      "description": "Explain data models access consistency migrations and recovery. For Data Models, retrieve and cite Models, queries, transactions, migrations, paths, symbols, and one-based lines.",
+      "title": "Data Models"
+    },
+    "desktop_distribution_testing_distribution_workflow": {
+      "description": "Explain desktop testing packaging and updates. For Distribution Workflow, retrieve and cite Test suites, builders, signing, update code, paths, and one-based lines.",
+      "title": "Distribution Workflow"
+    },
+    "desktop_distribution_testing_platform_testing": {
+      "description": "Explain desktop testing packaging and updates. For Platform Testing, retrieve and cite Test suites, builders, signing, update code, paths, and one-based lines.",
+      "title": "Platform Testing"
+    },
+    "desktop_process_architecture_process_boundaries": {
+      "description": "Explain desktop processes and runtime boundaries. For Process Boundaries, retrieve and cite Entrypoints, processes, IPC, modules, paths, symbols, and one-based lines.",
+      "title": "Process Boundaries"
+    },
+    "desktop_process_architecture_runtime_coordination": {
+      "description": "Explain desktop processes and runtime boundaries. For Runtime Coordination, retrieve and cite Entrypoints, processes, IPC, modules, paths, symbols, and one-based lines.",
+      "title": "Runtime Coordination"
+    },
+    "desktop_security_os_permissions": {
+      "description": "Explain desktop trust boundaries. For Os Permissions, retrieve and cite Sandboxing, updates, IPC validation, secrets, paths, and one-based lines.",
+      "title": "Os Permissions"
+    },
+    "desktop_security_security_boundaries": {
+      "description": "Explain desktop trust boundaries. For Security Boundaries, retrieve and cite Sandboxing, updates, IPC validation, secrets, paths, and one-based lines.",
+      "title": "Security Boundaries"
+    },
+    "desktop_state_storage_state_model": {
+      "description": "Explain desktop state and local storage. For State Model, retrieve and cite Models, preferences, databases, caches, paths, and one-based lines.",
+      "title": "State Model"
+    },
+    "desktop_state_storage_storage_boundaries": {
+      "description": "Explain desktop state and local storage. For Storage Boundaries, retrieve and cite Models, preferences, databases, caches, paths, and one-based lines.",
+      "title": "Storage Boundaries"
+    },
+    "desktop_ui_lifecycle_ui_components": {
+      "description": "Explain windows UI and application lifecycle. For Ui Components, retrieve and cite Windows, views, menus, lifecycle hooks, paths, symbols, and one-based lines.",
+      "title": "Ui Components"
+    },
+    "desktop_ui_lifecycle_window_lifecycle": {
+      "description": "Explain windows UI and application lifecycle. For Window Lifecycle, retrieve and cite Windows, views, menus, lifecycle hooks, paths, symbols, and one-based lines.",
+      "title": "Window Lifecycle"
+    },
+    "developer_workflow_local_setup": {
+      "description": "Explain the developer workflow the tool enables. For Local Setup, retrieve and cite Commands, hooks, tasks, examples, paths, and one-based lines.",
+      "title": "Local Setup"
+    },
+    "developer_workflow_verification_commands": {
+      "description": "Explain the developer workflow the tool enables. For Verification Commands, retrieve and cite Commands, hooks, tasks, examples, paths, and one-based lines.",
+      "title": "Verification Commands"
+    },
+    "documentation_generation_generated_artifacts": {
+      "description": "Explain documentation generation flow. For Generated Artifacts, retrieve and cite Generators, plugins, commands, configuration, paths, and one-based lines.",
+      "title": "Generated Artifacts"
+    },
+    "documentation_generation_generation_workflow": {
+      "description": "Explain documentation generation flow. For Generation Workflow, retrieve and cite Generators, plugins, commands, configuration, paths, and one-based lines.",
+      "title": "Generation Workflow"
+    },
+    "documentation_publishing_publishing_workflow": {
+      "description": "Explain documentation publication and maintenance. For Publishing Workflow, retrieve and cite Build pipelines, hosting config, release jobs, paths, and one-based lines.",
+      "title": "Publishing Workflow"
+    },
+    "documentation_publishing_release_verification": {
+      "description": "Explain documentation publication and maintenance. For Release Verification, retrieve and cite Build pipelines, hosting config, release jobs, paths, and one-based lines.",
+      "title": "Release Verification"
+    },
+    "documentation_validation_validation_rules": {
+      "description": "Explain documentation validation. For Validation Rules, retrieve and cite Linters, link checks, tests, commands, paths, and one-based lines.",
+      "title": "Validation Rules"
+    },
+    "documentation_validation_verification_commands": {
+      "description": "Explain documentation validation. For Verification Commands, retrieve and cite Linters, link checks, tests, commands, paths, and one-based lines.",
+      "title": "Verification Commands"
+    },
+    "environments_state_environment_matrix": {
+      "description": "Explain environments configuration and state. For Environment Matrix, retrieve and cite Backends, variables, workspaces, paths, symbols, and one-based lines.",
+      "title": "Environment Matrix"
+    },
+    "environments_state_state_management": {
+      "description": "Explain environments configuration and state. For State Management, retrieve and cite Backends, variables, workspaces, paths, symbols, and one-based lines.",
+      "title": "State Management"
+    },
+    "errors_exit_codes_error_contracts": {
+      "description": "Map failures to diagnostics and process exit codes. For Error Contracts, retrieve and cite Exception types, error envelopes, exit constants, paths, symbols, and one-based lines.",
+      "title": "Error Contracts"
+    },
+    "errors_exit_codes_recovery_workflows": {
+      "description": "Map failures to diagnostics and process exit codes. For Recovery Workflows, retrieve and cite Exception types, error envelopes, exit constants, paths, symbols, and one-based lines.",
+      "title": "Recovery Workflows"
+    },
+    "execution_flow_execution_pipeline": {
+      "description": "Trace command execution across module boundaries. For Execution Pipeline, retrieve and cite Entrypoint, dispatch, services, adapters, paths, symbols, and one-based lines.",
+      "title": "Execution Pipeline"
+    },
+    "execution_flow_failure_boundaries": {
+      "description": "Trace command execution across module boundaries. For Failure Boundaries, retrieve and cite Entrypoint, dispatch, services, adapters, paths, symbols, and one-based lines.",
+      "title": "Failure Boundaries"
+    },
+    "firmware_architecture_firmware_boundaries": {
+      "description": "Explain firmware modules and startup. For Firmware Boundaries, retrieve and cite Boot code, drivers, tasks, linker config, paths, symbols, and one-based lines.",
+      "title": "Firmware Boundaries"
+    },
+    "firmware_architecture_runtime_components": {
+      "description": "Explain firmware modules and startup. For Runtime Components, retrieve and cite Boot code, drivers, tasks, linker config, paths, symbols, and one-based lines.",
+      "title": "Runtime Components"
+    },
+    "firmware_testing_distribution_distribution_workflow": {
+      "description": "Explain firmware test build flash and release. For Distribution Workflow, retrieve and cite Harnesses, simulators, build configs, flashing tools, paths, and one-based lines.",
+      "title": "Distribution Workflow"
+    },
+    "firmware_testing_distribution_hardware_testing": {
+      "description": "Explain firmware test build flash and release. For Hardware Testing, retrieve and cite Harnesses, simulators, build configs, flashing tools, paths, and one-based lines.",
+      "title": "Hardware Testing"
+    },
+    "game_build_testing_build_workflow": {
+      "description": "Explain game tests builds and distribution. For Build Workflow, retrieve and cite Tests, export presets, builders, platform config, paths, and one-based lines.",
+      "title": "Build Workflow"
+    },
+    "game_build_testing_runtime_testing": {
+      "description": "Explain game tests builds and distribution. For Runtime Testing, retrieve and cite Tests, export presets, builders, platform config, paths, and one-based lines.",
+      "title": "Runtime Testing"
+    },
+    "game_persistence_networking_networking_flow": {
+      "description": "Explain save data and networking lifecycle. For Networking Flow, retrieve and cite Serializers, protocols, sessions, paths, symbols, and one-based lines.",
+      "title": "Networking Flow"
+    },
+    "game_persistence_networking_persistence_model": {
+      "description": "Explain save data and networking lifecycle. For Persistence Model, retrieve and cite Serializers, protocols, sessions, paths, symbols, and one-based lines.",
+      "title": "Persistence Model"
+    },
+    "game_runtime_loop_frame_lifecycle": {
+      "description": "Explain the game runtime loop and state. For Frame Lifecycle, retrieve and cite Entrypoints, loops, update code, paths, symbols, and one-based lines.",
+      "title": "Frame Lifecycle"
+    },
+    "game_runtime_loop_runtime_loop": {
+      "description": "Explain the game runtime loop and state. For Runtime Loop, retrieve and cite Entrypoints, loops, update code, paths, symbols, and one-based lines.",
+      "title": "Runtime Loop"
+    },
+    "gameplay_systems_system_catalog": {
+      "description": "Catalog gameplay systems and interactions. For System Catalog, retrieve and cite Systems, components, rules, paths, symbols, and one-based lines.",
+      "title": "System Catalog"
+    },
+    "gameplay_systems_system_interactions": {
+      "description": "Catalog gameplay systems and interactions. For System Interactions, retrieve and cite Systems, components, rules, paths, symbols, and one-based lines.",
+      "title": "System Interactions"
+    },
+    "host_contract_host_interfaces": {
+      "description": "Define the plugin host contract. For Host Interfaces, retrieve and cite Host APIs, manifests, protocols, paths, symbols, and one-based lines.",
+      "title": "Host Interfaces"
+    },
+    "host_contract_lifecycle_contracts": {
+      "description": "Define the plugin host contract. For Lifecycle Contracts, retrieve and cite Host APIs, manifests, protocols, paths, symbols, and one-based lines.",
+      "title": "Lifecycle Contracts"
+    },
+    "inference_architecture_inference_flow": {
+      "description": "Explain inference execution and serving. For Inference Flow, retrieve and cite Loaders, predictors, endpoints, queues, paths, symbols, and one-based lines.",
+      "title": "Inference Flow"
+    },
+    "inference_architecture_serving_boundaries": {
+      "description": "Explain inference execution and serving. For Serving Boundaries, retrieve and cite Loaders, predictors, endpoints, queues, paths, symbols, and one-based lines.",
+      "title": "Serving Boundaries"
+    },
+    "information_architecture_content_structure": {
+      "description": "Explain documentation information architecture. For Content Structure, retrieve and cite Navigation, content trees, metadata, paths, and one-based lines.",
+      "title": "Content Structure"
+    },
+    "information_architecture_navigation_model": {
+      "description": "Explain documentation information architecture. For Navigation Model, retrieve and cite Navigation, content trees, metadata, paths, and one-based lines.",
+      "title": "Navigation Model"
+    },
+    "infrastructure_change_change_workflow": {
+      "description": "Explain plan apply deployment and change control. For Change Workflow, retrieve and cite Automation, commands, pipelines, policies, paths, and one-based lines.",
+      "title": "Change Workflow"
+    },
+    "infrastructure_change_rollback_verification": {
+      "description": "Explain plan apply deployment and change control. For Rollback Verification, retrieve and cite Automation, commands, pipelines, policies, paths, and one-based lines.",
+      "title": "Rollback Verification"
+    },
+    "infrastructure_facet_runtime_resources": {
+      "description": "Explain runtime resources networking delivery security and recovery. For Runtime Resources, retrieve and cite Resource declarations, manifests, policies, paths, symbols, and one-based lines.",
+      "title": "Runtime Resources"
+    },
+    "infrastructure_facet_security_recovery": {
+      "description": "Explain runtime resources networking delivery security and recovery. For Security Recovery, retrieve and cite Resource declarations, manifests, policies, paths, symbols, and one-based lines.",
+      "title": "Security Recovery"
+    },
+    "infrastructure_testing_deployment_verification": {
+      "description": "Explain infrastructure validation and testing. For Deployment Verification, retrieve and cite Static checks, policy tests, integration tests, commands, paths, and one-based lines.",
+      "title": "Deployment Verification"
+    },
+    "infrastructure_testing_validation_strategy": {
+      "description": "Explain infrastructure validation and testing. For Validation Strategy, retrieve and cite Static checks, policy tests, integration tests, commands, paths, and one-based lines.",
+      "title": "Validation Strategy"
+    },
+    "io_protocols_io_contracts": {
+      "description": "Catalog device input output and protocols. For Io Contracts, retrieve and cite Drivers, packet definitions, pins, paths, symbols, and one-based lines.",
+      "title": "Io Contracts"
+    },
+    "io_protocols_protocol_handling": {
+      "description": "Catalog device input output and protocols. For Protocol Handling, retrieve and cite Drivers, packet definitions, pins, paths, symbols, and one-based lines.",
+      "title": "Protocol Handling"
+    },
+    "library_extension_extension_contracts": {
+      "description": "Explain supported customization and extension. For Extension Contracts, retrieve and cite Protocols, hooks, subclasses, adapters, paths, symbols, and one-based lines.",
+      "title": "Extension Contracts"
+    },
+    "library_extension_extension_workflow": {
+      "description": "Explain supported customization and extension. For Extension Workflow, retrieve and cite Protocols, hooks, subclasses, adapters, paths, symbols, and one-based lines.",
+      "title": "Extension Workflow"
+    },
+    "library_installation_first_usage": {
+      "description": "Explain supported library installation and imports. For First Usage, retrieve and cite Package metadata, exports, version constraints, paths, symbols, and one-based lines.",
+      "title": "First Usage"
+    },
+    "library_installation_prerequisites": {
+      "description": "Explain supported library installation and imports. For Prerequisites, retrieve and cite Package metadata, exports, version constraints, paths, symbols, and one-based lines.",
+      "title": "Prerequisites"
+    },
+    "messaging_facet_delivery_retries": {
+      "description": "Explain producers consumers delivery retries and observability. For Delivery Retries, retrieve and cite Topics, schemas, handlers, retry code, paths, symbols, and one-based lines.",
+      "title": "Delivery Retries"
+    },
+    "messaging_facet_producer_consumer_flow": {
+      "description": "Explain producers consumers delivery retries and observability. For Producer Consumer Flow, retrieve and cite Topics, schemas, handlers, retry code, paths, symbols, and one-based lines.",
+      "title": "Producer Consumer Flow"
+    },
+    "microservices_topology_service_boundaries": {
+      "description": "Explain service boundaries communication and independent deployment. For Service Boundaries, retrieve and cite Service manifests, contracts, data ownership, paths, symbols, and one-based lines.",
+      "title": "Service Boundaries"
+    },
+    "microservices_topology_service_communication": {
+      "description": "Explain service boundaries communication and independent deployment. For Service Communication, retrieve and cite Service manifests, contracts, data ownership, paths, symbols, and one-based lines.",
+      "title": "Service Communication"
+    },
+    "mixed_operations_operational_ownership": {
+      "description": "Explain coordinated operation and release. For Operational Ownership, retrieve and cite Deployment, publishing, runbooks, commands, paths, and one-based lines.",
+      "title": "Operational Ownership"
+    },
+    "mixed_operations_recovery_workflows": {
+      "description": "Explain coordinated operation and release. For Recovery Workflows, retrieve and cite Deployment, publishing, runbooks, commands, paths, and one-based lines.",
+      "title": "Recovery Workflows"
+    },
+    "ml_data_features_feature_pipeline": {
+      "description": "Explain model data and feature contracts. For Feature Pipeline, retrieve and cite Datasets, feature code, schemas, paths, symbols, and one-based lines.",
+      "title": "Feature Pipeline"
+    },
+    "ml_data_features_training_data": {
+      "description": "Explain model data and feature contracts. For Training Data, retrieve and cite Datasets, feature code, schemas, paths, symbols, and one-based lines.",
+      "title": "Training Data"
+    },
+    "ml_operations_deployment_workflow": {
+      "description": "Explain model operation after release. For Deployment Workflow, retrieve and cite Deployment, monitoring, alerts, retraining, paths, and one-based lines.",
+      "title": "Deployment Workflow"
+    },
+    "ml_operations_model_monitoring": {
+      "description": "Explain model operation after release. For Model Monitoring, retrieve and cite Deployment, monitoring, alerts, retraining, paths, and one-based lines.",
+      "title": "Model Monitoring"
+    },
+    "mobile_distribution_testing_device_testing": {
+      "description": "Explain mobile testing build and distribution. For Device Testing, retrieve and cite Test targets, build settings, signing, automation, paths, and one-based lines.",
+      "title": "Device Testing"
+    },
+    "mobile_distribution_testing_distribution_workflow": {
+      "description": "Explain mobile testing build and distribution. For Distribution Workflow, retrieve and cite Test targets, build settings, signing, automation, paths, and one-based lines.",
+      "title": "Distribution Workflow"
+    },
+    "mobile_navigation_navigation_graph": {
+      "description": "Explain screens and navigation flow. For Navigation Graph, retrieve and cite Routes, coordinators, views, deep links, paths, symbols, and one-based lines.",
+      "title": "Navigation Graph"
+    },
+    "mobile_navigation_transition_workflow": {
+      "description": "Explain screens and navigation flow. For Transition Workflow, retrieve and cite Routes, coordinators, views, deep links, paths, symbols, and one-based lines.",
+      "title": "Transition Workflow"
+    },
+    "mobile_runtime_architecture_application_lifecycle": {
+      "description": "Explain mobile runtime and module boundaries. For Application Lifecycle, retrieve and cite Application entrypoints, modules, services, paths, symbols, and one-based lines.",
+      "title": "Application Lifecycle"
+    },
+    "mobile_runtime_architecture_runtime_components": {
+      "description": "Explain mobile runtime and module boundaries. For Runtime Components, retrieve and cite Application entrypoints, modules, services, paths, symbols, and one-based lines.",
+      "title": "Runtime Components"
+    },
+    "mobile_security_platform_permissions": {
+      "description": "Explain mobile security and privacy boundaries. For Platform Permissions, retrieve and cite Key storage, transport, permissions, validation, paths, and one-based lines.",
+      "title": "Platform Permissions"
+    },
+    "mobile_security_security_boundaries": {
+      "description": "Explain mobile security and privacy boundaries. For Security Boundaries, retrieve and cite Key storage, transport, permissions, validation, paths, and one-based lines.",
+      "title": "Security Boundaries"
+    },
+    "mobile_state_storage_state_model": {
+      "description": "Explain mobile state and storage. For State Model, retrieve and cite Stores, databases, caches, models, paths, symbols, and one-based lines.",
+      "title": "State Model"
+    },
+    "mobile_state_storage_storage_boundaries": {
+      "description": "Explain mobile state and storage. For Storage Boundaries, retrieve and cite Stores, databases, caches, models, paths, symbols, and one-based lines.",
+      "title": "Storage Boundaries"
+    },
+    "model_artifacts_artifact_lineage": {
+      "description": "Catalog model artifacts and identity. For Artifact Lineage, retrieve and cite Checkpoints, registries, metadata, serializers, paths, and one-based lines.",
+      "title": "Artifact Lineage"
+    },
+    "model_artifacts_model_versions": {
+      "description": "Catalog model artifacts and identity. For Model Versions, retrieve and cite Checkpoints, registries, metadata, serializers, paths, and one-based lines.",
+      "title": "Model Versions"
+    },
+    "model_evaluation_acceptance_decisions": {
+      "description": "Explain model evaluation and gates. For Acceptance Decisions, retrieve and cite Metrics, datasets, baselines, tests, paths, and one-based lines.",
+      "title": "Acceptance Decisions"
+    },
+    "model_evaluation_evaluation_metrics": {
+      "description": "Explain model evaluation and gates. For Evaluation Metrics, retrieve and cite Metrics, datasets, baselines, tests, paths, and one-based lines.",
+      "title": "Evaluation Metrics"
+    },
+    "model_training_inference_facet_inference_monitoring": {
+      "description": "Explain model data training evaluation serving and monitoring. For Inference Monitoring, retrieve and cite Training, evaluation, artifact, serving paths, symbols, and one-based lines.",
+      "title": "Inference Monitoring"
+    },
+    "model_training_inference_facet_training_evaluation": {
+      "description": "Explain model data training evaluation serving and monitoring. For Training Evaluation, retrieve and cite Training, evaluation, artifact, serving paths, symbols, and one-based lines.",
+      "title": "Training Evaluation"
+    },
+    "monorepo_topology_cross_package_dependencies": {
+      "description": "Explain workspace ownership and cross-package dependencies. For Cross Package Dependencies, retrieve and cite Workspace manifests, packages, orchestration, paths, symbols, and one-based lines.",
+      "title": "Cross Package Dependencies"
+    },
+    "monorepo_topology_workspace_inventory": {
+      "description": "Explain workspace ownership and cross-package dependencies. For Workspace Inventory, retrieve and cite Workspace manifests, packages, orchestration, paths, symbols, and one-based lines.",
+      "title": "Workspace Inventory"
+    },
+    "multi_tenancy_facet_isolation_operations": {
+      "description": "Explain tenant identity isolation and scoped operations. For Isolation Operations, retrieve and cite Tenant resolution, authorization, partitioning, paths, symbols, and one-based lines.",
+      "title": "Isolation Operations"
+    },
+    "multi_tenancy_facet_tenant_identity": {
+      "description": "Explain tenant identity isolation and scoped operations. For Tenant Identity, retrieve and cite Tenant resolution, authorization, partitioning, paths, symbols, and one-based lines.",
+      "title": "Tenant Identity"
+    },
+    "navigation_discovery_discovery_mechanisms": {
+      "description": "Explain navigation and content discovery. For Discovery Mechanisms, retrieve and cite Menus, indexes, search config, paths, and one-based lines.",
+      "title": "Discovery Mechanisms"
+    },
+    "navigation_discovery_navigation_paths": {
+      "description": "Explain navigation and content discovery. For Navigation Paths, retrieve and cite Menus, indexes, search config, paths, and one-based lines.",
+      "title": "Navigation Paths"
+    },
+    "network_security_network_boundaries": {
+      "description": "Explain network and identity boundaries. For Network Boundaries, retrieve and cite Policies, routes, roles, encryption config, paths, and one-based lines.",
+      "title": "Network Boundaries"
+    },
+    "network_security_security_controls": {
+      "description": "Explain network and identity boundaries. For Security Controls, retrieve and cite Policies, routes, roles, encryption config, paths, and one-based lines.",
+      "title": "Security Controls"
+    },
+    "observability_recovery_observability_signals": {
+      "description": "Explain infrastructure monitoring and recovery. For Observability Signals, retrieve and cite Metrics, logs, alerts, backups, runbooks, paths, and one-based lines.",
+      "title": "Observability Signals"
+    },
+    "observability_recovery_recovery_workflows": {
+      "description": "Explain infrastructure monitoring and recovery. For Recovery Workflows, retrieve and cite Metrics, logs, alerts, backups, runbooks, paths, and one-based lines.",
+      "title": "Recovery Workflows"
+    },
+    "os_integration_integration_lifecycle": {
+      "description": "Catalog operating-system integrations. For Integration Lifecycle, retrieve and cite Native APIs, file associations, protocols, paths, symbols, and one-based lines.",
+      "title": "Integration Lifecycle"
+    },
+    "os_integration_os_contracts": {
+      "description": "Catalog operating-system integrations. For Os Contracts, retrieve and cite Native APIs, file associations, protocols, paths, symbols, and one-based lines.",
+      "title": "Os Contracts"
+    },
+    "pipeline_failure_recovery_failure_modes": {
+      "description": "Explain pipeline failure and recovery. For Failure Modes, retrieve and cite Retry policies, checkpoints, dead letters, runbooks, paths, and one-based lines.",
+      "title": "Failure Modes"
+    },
+    "pipeline_failure_recovery_recovery_workflows": {
+      "description": "Explain pipeline failure and recovery. For Recovery Workflows, retrieve and cite Retry policies, checkpoints, dead letters, runbooks, paths, and one-based lines.",
+      "title": "Recovery Workflows"
+    },
+    "pipeline_operations_operational_verification": {
+      "description": "Explain ongoing pipeline operation. For Operational Verification, retrieve and cite Deployment, telemetry, alerts, commands, paths, and one-based lines.",
+      "title": "Operational Verification"
+    },
+    "pipeline_operations_runtime_operations": {
+      "description": "Explain ongoing pipeline operation. For Runtime Operations, retrieve and cite Deployment, telemetry, alerts, commands, paths, and one-based lines.",
+      "title": "Runtime Operations"
+    },
+    "pipeline_orchestration_execution_graph": {
+      "description": "Explain scheduling and dependency orchestration. For Execution Graph, retrieve and cite DAGs, jobs, schedules, commands, paths, and one-based lines.",
+      "title": "Execution Graph"
+    },
+    "pipeline_orchestration_scheduling_workflow": {
+      "description": "Explain scheduling and dependency orchestration. For Scheduling Workflow, retrieve and cite DAGs, jobs, schedules, commands, paths, and one-based lines.",
+      "title": "Scheduling Workflow"
+    },
+    "pipeline_sources_sinks_sink_contracts": {
+      "description": "Catalog pipeline inputs and outputs. For Sink Contracts, retrieve and cite Connectors, schemas, manifests, paths, symbols, and one-based lines.",
+      "title": "Sink Contracts"
+    },
+    "pipeline_sources_sinks_source_contracts": {
+      "description": "Catalog pipeline inputs and outputs. For Source Contracts, retrieve and cite Connectors, schemas, manifests, paths, symbols, and one-based lines.",
+      "title": "Source Contracts"
+    },
+    "pipeline_transformations_data_contracts": {
+      "description": "Explain transformation contracts. For Data Contracts, retrieve and cite Transform code, queries, schemas, paths, symbols, and one-based lines.",
+      "title": "Data Contracts"
+    },
+    "pipeline_transformations_transformation_stages": {
+      "description": "Explain transformation contracts. For Transformation Stages, retrieve and cite Transform code, queries, schemas, paths, symbols, and one-based lines.",
+      "title": "Transformation Stages"
+    },
+    "platform_integration_integration_lifecycle": {
+      "description": "Catalog operating-system integrations. For Integration Lifecycle, retrieve and cite Permissions, services, manifests, adapters, paths, and one-based lines.",
+      "title": "Integration Lifecycle"
+    },
+    "platform_integration_platform_contracts": {
+      "description": "Catalog operating-system integrations. For Platform Contracts, retrieve and cite Permissions, services, manifests, adapters, paths, and one-based lines.",
+      "title": "Platform Contracts"
+    },
+    "plugin_activation_activation_conditions": {
+      "description": "Explain plugin discovery activation and shutdown. For Activation Conditions, retrieve and cite Entrypoints, registration, events, paths, symbols, and one-based lines.",
+      "title": "Activation Conditions"
+    },
+    "plugin_activation_activation_workflow": {
+      "description": "Explain plugin discovery activation and shutdown. For Activation Workflow, retrieve and cite Entrypoints, registration, events, paths, symbols, and one-based lines.",
+      "title": "Activation Workflow"
+    },
+    "plugin_compatibility_compatibility_testing": {
+      "description": "Explain host and plugin compatibility. For Compatibility Testing, retrieve and cite Version ranges, feature checks, migrations, tests, paths, and one-based lines.",
+      "title": "Compatibility Testing"
+    },
+    "plugin_compatibility_supported_versions": {
+      "description": "Explain host and plugin compatibility. For Supported Versions, retrieve and cite Version ranges, feature checks, migrations, tests, paths, and one-based lines.",
+      "title": "Supported Versions"
+    },
+    "plugin_packaging_testing_host_testing": {
+      "description": "Explain plugin testing packaging and publication. For Host Testing, retrieve and cite Harnesses, manifests, builders, release config, paths, and one-based lines.",
+      "title": "Host Testing"
+    },
+    "plugin_packaging_testing_packaging_workflow": {
+      "description": "Explain plugin testing packaging and publication. For Packaging Workflow, retrieve and cite Harnesses, manifests, builders, release config, paths, and one-based lines.",
+      "title": "Packaging Workflow"
+    },
+    "plugin_permissions_permission_model": {
+      "description": "Explain permissions isolation and trust. For Permission Model, retrieve and cite Permission declarations, sandbox boundaries, validation, paths, and one-based lines.",
+      "title": "Permission Model"
+    },
+    "plugin_permissions_trust_boundaries": {
+      "description": "Explain permissions isolation and trust. For Trust Boundaries, retrieve and cite Permission declarations, sandbox boundaries, validation, paths, and one-based lines.",
+      "title": "Trust Boundaries"
+    },
+    "public_api_public_contracts": {
+      "description": "Define the supported public API. For Public Contracts, retrieve and cite Exports, signatures, types, docstrings, paths, symbols, and one-based lines.",
+      "title": "Public Contracts"
+    },
+    "public_api_usage_boundaries": {
+      "description": "Define the supported public API. For Usage Boundaries, retrieve and cite Exports, signatures, types, docstrings, paths, symbols, and one-based lines.",
+      "title": "Usage Boundaries"
+    },
+    "realtime_lifecycle_realtime_flow": {
+      "description": "Explain scheduling interrupts and timing. For Realtime Flow, retrieve and cite Tasks, ISRs, timers, state machines, paths, symbols, and one-based lines.",
+      "title": "Realtime Flow"
+    },
+    "realtime_lifecycle_timing_constraints": {
+      "description": "Explain scheduling interrupts and timing. For Timing Constraints, retrieve and cite Tasks, ISRs, timers, state machines, paths, symbols, and one-based lines.",
+      "title": "Timing Constraints"
+    },
+    "reproducibility_environment_inputs": {
+      "description": "Explain reproducibility controls. For Environment Inputs, retrieve and cite Locks, seeds, environments, parameters, paths, and one-based lines.",
+      "title": "Environment Inputs"
+    },
+    "reproducibility_reproduction_steps": {
+      "description": "Explain reproducibility controls. For Reproduction Steps, retrieve and cite Locks, seeds, environments, parameters, paths, and one-based lines.",
+      "title": "Reproduction Steps"
+    },
+    "request_validation_failure_responses": {
+      "description": "Explain request validation and error mapping. For Failure Responses, retrieve and cite Validators, parsers, error types, paths, symbols, and one-based lines.",
+      "title": "Failure Responses"
+    },
+    "request_validation_validation_rules": {
+      "description": "Explain request validation and error mapping. For Validation Rules, retrieve and cite Validators, parsers, error types, paths, symbols, and one-based lines.",
+      "title": "Validation Rules"
+    },
+    "resource_topology_dependency_topology": {
+      "description": "Catalog managed infrastructure resources and dependencies. For Dependency Topology, retrieve and cite Declarations, modules, stacks, paths, symbols, and one-based lines.",
+      "title": "Dependency Topology"
+    },
+    "resource_topology_resource_inventory": {
+      "description": "Catalog managed infrastructure resources and dependencies. For Resource Inventory, retrieve and cite Declarations, modules, stacks, paths, symbols, and one-based lines.",
+      "title": "Resource Inventory"
+    },
+    "routes_interfaces_interface_handlers": {
+      "description": "Catalog routes and external interfaces. For Interface Handlers, retrieve and cite Route declarations, handlers, schemas, symbols, and one-based lines.",
+      "title": "Interface Handlers"
+    },
+    "routes_interfaces_route_contracts": {
+      "description": "Catalog routes and external interfaces. For Route Contracts, retrieve and cite Route declarations, handlers, schemas, symbols, and one-based lines.",
+      "title": "Route Contracts"
+    },
+    "saas_facet_billing_operations": {
+      "description": "Explain customer lifecycle entitlements billing and operations. For Billing Operations, retrieve and cite Account, plan, metering, billing, support paths, symbols, and one-based lines.",
+      "title": "Billing Operations"
+    },
+    "saas_facet_customer_lifecycle": {
+      "description": "Explain customer lifecycle entitlements billing and operations. For Customer Lifecycle, retrieve and cite Account, plan, metering, billing, support paths, symbols, and one-based lines.",
+      "title": "Customer Lifecycle"
+    },
+    "safety_constraints_failure_mitigation": {
+      "description": "Explain safety security and hardware constraints. For Failure Mitigation, retrieve and cite Bounds, watchdogs, checks, boot security, paths, and one-based lines.",
+      "title": "Failure Mitigation"
+    },
+    "safety_constraints_safety_requirements": {
+      "description": "Explain safety security and hardware constraints. For Safety Requirements, retrieve and cite Bounds, watchdogs, checks, boot security, paths, and one-based lines.",
+      "title": "Safety Requirements"
+    },
+    "scene_world_scene_lifecycle": {
+      "description": "Explain scene or world organization. For Scene Lifecycle, retrieve and cite Scenes, entities, maps, loaders, paths, symbols, and one-based lines.",
+      "title": "Scene Lifecycle"
+    },
+    "scene_world_world_structure": {
+      "description": "Explain scene or world organization. For World Structure, retrieve and cite Scenes, entities, maps, loaders, paths, symbols, and one-based lines.",
+      "title": "World Structure"
+    },
+    "service_operations_deployment_workflow": {
+      "description": "Explain deployment and service operation. For Deployment Workflow, retrieve and cite Manifests, health checks, telemetry, runbooks, paths, and one-based lines.",
+      "title": "Deployment Workflow"
+    },
+    "service_operations_runtime_operations": {
+      "description": "Explain deployment and service operation. For Runtime Operations, retrieve and cite Manifests, health checks, telemetry, runbooks, paths, and one-based lines.",
+      "title": "Runtime Operations"
+    },
+    "service_persistence_data_model": {
+      "description": "Explain service data ownership and consistency. For Data Model, retrieve and cite Models, queries, transactions, migrations, paths, symbols, and one-based lines.",
+      "title": "Data Model"
+    },
+    "service_persistence_persistence_workflow": {
+      "description": "Explain service data ownership and consistency. For Persistence Workflow, retrieve and cite Models, queries, transactions, migrations, paths, symbols, and one-based lines.",
+      "title": "Persistence Workflow"
+    },
+    "service_runtime_architecture_request_lifecycle": {
+      "description": "Explain service startup and request processing. For Request Lifecycle, retrieve and cite Entrypoints, middleware, handlers, dependencies, paths, symbols, and one-based lines.",
+      "title": "Request Lifecycle"
+    },
+    "service_runtime_architecture_runtime_components": {
+      "description": "Explain service startup and request processing. For Runtime Components, retrieve and cite Entrypoints, middleware, handlers, dependencies, paths, symbols, and one-based lines.",
+      "title": "Runtime Components"
+    },
+    "service_security_authorization_flow": {
+      "description": "Explain service trust boundaries. For Authorization Flow, retrieve and cite Authentication, authorization, secret handling, paths, symbols, and one-based lines.",
+      "title": "Authorization Flow"
+    },
+    "service_security_security_boundaries": {
+      "description": "Explain service trust boundaries. For Security Boundaries, retrieve and cite Authentication, authorization, secret handling, paths, symbols, and one-based lines.",
+      "title": "Security Boundaries"
+    },
+    "shared_contracts_compatibility_boundaries": {
+      "description": "Explain contracts shared across components. For Compatibility Boundaries, retrieve and cite Schemas, protocols, shared packages, paths, symbols, and one-based lines.",
+      "title": "Compatibility Boundaries"
+    },
+    "shared_contracts_shared_interfaces": {
+      "description": "Explain contracts shared across components. For Shared Interfaces, retrieve and cite Schemas, protocols, shared packages, paths, symbols, and one-based lines.",
+      "title": "Shared Interfaces"
+    },
+    "single_project_topology_internal_dependencies": {
+      "description": "Explain the single-project boundary and internal dependencies. For Internal Dependencies, retrieve and cite Project roots, modules, build files, paths, symbols, and one-based lines.",
+      "title": "Internal Dependencies"
+    },
+    "single_project_topology_project_boundary": {
+      "description": "Explain the single-project boundary and internal dependencies. For Project Boundary, retrieve and cite Project roots, modules, build files, paths, symbols, and one-based lines.",
+      "title": "Project Boundary"
+    },
+    "target_hardware_hardware_profile": {
+      "description": "Catalog target hardware and resource limits. For Hardware Profile, retrieve and cite Board configs, memory maps, datasheets referenced in source, paths, and one-based lines.",
+      "title": "Hardware Profile"
+    },
+    "target_hardware_resource_constraints": {
+      "description": "Catalog target hardware and resource limits. For Resource Constraints, retrieve and cite Board configs, memory maps, datasheets referenced in source, paths, and one-based lines.",
+      "title": "Resource Constraints"
+    },
+    "terminology_reference_canonical_terms": {
+      "description": "Define consistent repository terminology and provenance interpretation. For Canonical Terms, retrieve and cite Public models, schemas, status fields, paths, symbols, and one-based lines.",
+      "title": "Canonical Terms"
+    },
+    "terminology_reference_scope_interpretation": {
+      "description": "Define consistent repository terminology and provenance interpretation. For Scope Interpretation, retrieve and cite Public models, schemas, status fields, paths, symbols, and one-based lines.",
+      "title": "Scope Interpretation"
+    },
+    "tool_architecture_data_flow": {
+      "description": "Explain developer-tool architecture and boundaries. For Data Flow, retrieve and cite Entrypoints, services, adapters, protocols, paths, symbols, and one-based lines.",
+      "title": "Data Flow"
+    },
+    "tool_architecture_runtime_components": {
+      "description": "Explain developer-tool architecture and boundaries. For Runtime Components, retrieve and cite Entrypoints, services, adapters, protocols, paths, symbols, and one-based lines.",
+      "title": "Runtime Components"
+    },
+    "tool_configuration_configuration_precedence": {
+      "description": "Catalog developer-tool configuration. For Configuration Precedence, retrieve and cite Schemas, files, flags, defaults, paths, and one-based lines.",
+      "title": "Configuration Precedence"
+    },
+    "tool_configuration_configuration_sources": {
+      "description": "Catalog developer-tool configuration. For Configuration Sources, retrieve and cite Schemas, files, flags, defaults, paths, and one-based lines.",
+      "title": "Configuration Sources"
+    },
+    "tool_diagnostics_diagnostic_signals": {
+      "description": "Explain diagnostics and troubleshooting. For Diagnostic Signals, retrieve and cite Errors, logs, checks, debug commands, paths, and one-based lines.",
+      "title": "Diagnostic Signals"
+    },
+    "tool_diagnostics_failure_recovery": {
+      "description": "Explain diagnostics and troubleshooting. For Failure Recovery, retrieve and cite Errors, logs, checks, debug commands, paths, and one-based lines.",
+      "title": "Failure Recovery"
+    },
+    "tool_distribution_packaging_workflow": {
+      "description": "Explain testing packaging and distribution. For Packaging Workflow, retrieve and cite Tests, package metadata, release automation, paths, and one-based lines.",
+      "title": "Packaging Workflow"
+    },
+    "tool_distribution_release_verification": {
+      "description": "Explain testing packaging and distribution. For Release Verification, retrieve and cite Tests, package metadata, release automation, paths, and one-based lines.",
+      "title": "Release Verification"
+    },
+    "tool_extension_points_implementation_workflow": {
+      "description": "Explain supported developer-tool parser retriever and Provider extension boundaries. For Implementation Workflow, retrieve and cite Protocol declarations, adapter interfaces, registration paths, constructors, symbols, and one-based lines.",
+      "title": "Implementation Workflow"
+    },
+    "tool_extension_points_protocol_contracts": {
+      "description": "Explain supported developer-tool parser retriever and Provider extension boundaries. For Protocol Contracts, retrieve and cite Protocol declarations, adapter interfaces, registration paths, constructors, symbols, and one-based lines.",
+      "title": "Protocol Contracts"
+    },
+    "tool_integrations_integration_contracts": {
+      "description": "Catalog editor build and service integrations. For Integration Contracts, retrieve and cite Adapters, manifests, APIs, hooks, paths, and one-based lines.",
+      "title": "Integration Contracts"
+    },
+    "tool_integrations_integration_setup": {
+      "description": "Catalog editor build and service integrations. For Integration Setup, retrieve and cite Adapters, manifests, APIs, hooks, paths, and one-based lines.",
+      "title": "Integration Setup"
+    },
+    "training_pipeline_training_reproducibility": {
+      "description": "Explain model training flow. For Training Reproducibility, retrieve and cite Training scripts, configs, jobs, commands, paths, and one-based lines.",
+      "title": "Training Reproducibility"
+    },
+    "training_pipeline_training_stages": {
+      "description": "Explain model training flow. For Training Stages, retrieve and cite Training scripts, configs, jobs, commands, paths, and one-based lines.",
+      "title": "Training Stages"
+    },
+    "ui_facet_interaction_accessibility": {
+      "description": "Explain interface composition interaction state and accessibility. For Interaction Accessibility, retrieve and cite Views, components, state, tests, paths, symbols, and one-based lines.",
+      "title": "Interaction Accessibility"
+    },
+    "ui_facet_interface_composition": {
+      "description": "Explain interface composition interaction state and accessibility. For Interface Composition, retrieve and cite Views, components, state, tests, paths, symbols, and one-based lines.",
+      "title": "Interface Composition"
+    },
+    "usage_examples_common_workflows": {
+      "description": "Provide grounded usage patterns. For Common Workflows, retrieve and cite Examples, tests, fixtures, call sites, paths, symbols, and one-based lines.",
+      "title": "Common Workflows"
+    },
+    "usage_examples_edge_cases": {
+      "description": "Provide grounded usage patterns. For Edge Cases, retrieve and cite Examples, tests, fixtures, call sites, paths, symbols, and one-based lines.",
+      "title": "Edge Cases"
+    },
+    "web_deployment_operations_deployment_workflow": {
+      "description": "Explain build deployment and runtime operation. For Deployment Workflow, retrieve and cite Build files, environment configuration, deployment manifests, paths, and one-based lines.",
+      "title": "Deployment Workflow"
+    },
+    "web_deployment_operations_runtime_operations": {
+      "description": "Explain build deployment and runtime operation. For Runtime Operations, retrieve and cite Build files, environment configuration, deployment manifests, paths, and one-based lines.",
+      "title": "Runtime Operations"
+    },
+    "web_runtime_architecture_request_lifecycle": {
+      "description": "Explain browser and server runtime boundaries. For Request Lifecycle, retrieve and cite Entry points, components, request paths, symbols, and one-based lines.",
+      "title": "Request Lifecycle"
+    },
+    "web_runtime_architecture_runtime_components": {
+      "description": "Explain browser and server runtime boundaries. For Runtime Components, retrieve and cite Entry points, components, request paths, symbols, and one-based lines.",
+      "title": "Runtime Components"
+    },
+    "web_security_security_boundaries": {
+      "description": "Explain web trust boundaries and controls. For Security Boundaries, retrieve and cite Authentication, authorization, validation, headers, paths, symbols, and one-based lines.",
+      "title": "Security Boundaries"
+    },
+    "web_security_security_verification": {
+      "description": "Explain web trust boundaries and controls. For Security Verification, retrieve and cite Authentication, authorization, validation, headers, paths, symbols, and one-based lines.",
+      "title": "Security Verification"
+    },
+    "web_state_persistence_persistence_workflow": {
+      "description": "Explain client and server state persistence. For Persistence Workflow, retrieve and cite Stores, models, migrations, caches, paths, symbols, and one-based lines.",
+      "title": "Persistence Workflow"
+    },
+    "web_state_persistence_state_model": {
+      "description": "Explain client and server state persistence. For State Model, retrieve and cite Stores, models, migrations, caches, paths, symbols, and one-based lines.",
+      "title": "State Model"
+    },
+    "web_testing_test_strategy": {
+      "description": "Explain the web testing strategy. For Test Strategy, retrieve and cite Test suites, fixtures, browser harnesses, commands, paths, and one-based lines.",
+      "title": "Test Strategy"
+    },
+    "web_testing_verification_commands": {
+      "description": "Explain the web testing strategy. For Verification Commands, retrieve and cite Test suites, fixtures, browser harnesses, commands, paths, and one-based lines.",
+      "title": "Verification Commands"
+    }
+  }
+}

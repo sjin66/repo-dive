@@ -67,6 +67,15 @@ class EvidenceBundle:
         return self.budget
 
 
+class RequiredEvidenceBudgetError(ValueError):
+    """Raised when complete mandatory Chunks cannot fit the explicit budget."""
+
+    def __init__(self, required_tokens: int, required_items: int) -> None:
+        super().__init__("required complete Evidence exceeds the token budget")
+        self.required_tokens = required_tokens
+        self.required_items = required_items
+
+
 class EvidencePacker:
     """Select high-value implementation evidence without partial Chunks."""
 
@@ -100,6 +109,7 @@ class EvidencePacker:
         hits: Iterable[SearchHit],
         *,
         token_budget: int,
+        required_hits: Iterable[SearchHit] = (),
     ) -> EvidenceBundle:
         """Pack complete evidence with stable ranking and exclusion diagnostics."""
         if token_budget < 0:
@@ -113,7 +123,20 @@ class EvidencePacker:
         file_counts: dict[str, int] = {}
         chunks_by_id: dict[str, Chunk] = {}
 
-        ranked = sorted(tuple(hits), key=_ranking_key)
+        mandatory = _unique_hits(required_hits)
+        mandatory_tokens = required_reserve
+        for hit in mandatory:
+            _validate_hit(hit)
+            evidence_id = _evidence_id(hit.chunk.id)
+            mandatory_tokens += (
+                self._item_metadata_reserve
+                + self._estimate(_metadata_text(evidence_id, hit))
+                + self._estimate(hit.chunk.text)
+            )
+        if mandatory and mandatory_tokens > token_budget:
+            raise RequiredEvidenceBudgetError(mandatory_tokens, len(mandatory))
+        ranked = (*mandatory, *sorted(tuple(hits), key=_ranking_key))
+        mandatory_ids = {hit.chunk.id for hit in mandatory}
         for hit in ranked:
             _validate_hit(hit)
             previous_chunk = chunks_by_id.get(hit.chunk.id)
@@ -136,9 +159,13 @@ class EvidencePacker:
                 + self._estimate(_metadata_text(evidence_id, hit))
                 + self._estimate(hit.chunk.text)
             )
+            mandatory_hit = hit.chunk.id in mandatory_ids
+            if estimated_tokens + item_tokens > token_budget:
+                excluded.append(_excluded(hit, ExclusionReason.BUDGET))
+                continue
             if (
-                file_counts.get(hit.chunk.path, 0) >= self._max_items_per_file
-                or estimated_tokens + item_tokens > token_budget
+                not mandatory_hit
+                and file_counts.get(hit.chunk.path, 0) >= self._max_items_per_file
             ):
                 excluded.append(_excluded(hit, ExclusionReason.BUDGET))
                 continue
@@ -180,6 +207,16 @@ def _ranking_key(hit: SearchHit) -> tuple[object, ...]:
         hit.chunk.end_line,
         hit.chunk.id,
     )
+
+
+def _unique_hits(hits: Iterable[SearchHit]) -> tuple[SearchHit, ...]:
+    selected: list[SearchHit] = []
+    seen: set[str] = set()
+    for hit in hits:
+        if hit.chunk.id not in seen:
+            seen.add(hit.chunk.id)
+            selected.append(hit)
+    return tuple(selected)
 
 
 def _validate_hit(hit: SearchHit) -> None:
@@ -224,6 +261,7 @@ __all__ = [
     "EvidenceBundle",
     "EvidenceItem",
     "EvidencePacker",
+    "RequiredEvidenceBudgetError",
     "ExcludedEvidence",
     "ExclusionReason",
 ]

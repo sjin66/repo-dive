@@ -65,23 +65,26 @@ For ad hoc repository questions:
 For a persistent Wiki, use this resumable sequence:
 
 1. `repo-dive index <repository> --format json`
-2. `repo-dive wiki structure <repository> --input structure.json --format json`
-3. `repo-dive wiki evidence <repository> --page <page-id> --token-budget
+2. `repo-dive wiki classify <repository> --format json`
+3. `repo-dive wiki init <repository> --locale en|zh-CN|ja --format json`
+4. `repo-dive wiki evidence <repository> --page <page-id> --token-budget
    <tokens> --format json`
-4. Use the calling agent's current model to generate page Markdown from the
+5. Use the calling agent's current model to generate page Markdown from the
    returned Evidence. This is the context-to-generate boundary; the CLI does
    not call a model. Do not use generic `context` as a substitute for persisted
    Wiki Evidence.
-5. Submit `page.json` with the exact returned `evidence_id` values using
+6. Submit `page.json` with the exact returned `evidence_id` values using
    `repo-dive wiki page <repository> --page <page-id> --input page.json
    --format json`. For pipelines, pass the same JSON through `--input -`.
-6. Repeat Evidence collection, generation, and page submission until
+7. Repeat Evidence collection, generation, and page submission until
    `repo-dive wiki status <repository> --format json` reports every page as
    `generated`.
-7. Run `repo-dive wiki build <repository> --format json`; consume
+8. Run `repo-dive wiki validate <repository> --format json` and correct any
+   contract violation before publication.
+9. Run `repo-dive wiki build <repository> --format json`; consume
    `<repository>/.repo-dive/wiki.md` only after exit code `0`.
 
-In short: `index -> context (wiki evidence) -> generate -> wiki page -> build`.
+In short: `index -> context (wiki evidence) -> generate -> wiki page -> validate -> build`.
 On exit code `2`, correct the invocation or JSON input without retrying it
 unchanged. On exit code `3`, inspect the stable error code; rebuild the index
 for `index_not_found` or `index_stale`, recollect Evidence for

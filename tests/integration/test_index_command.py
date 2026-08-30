@@ -42,7 +42,7 @@ def test_index_command_reports_counts_versions_and_idempotent_reuse(
     assert first["result"]["rebuilt_files"] == 3
     assert first["result"]["reused_files"] == 0
     assert first["result"]["index_schema_version"] == 4
-    assert first["result"]["manifest_schema_version"] == "1.0"
+    assert first["result"]["manifest_schema_version"] == "2.0"
 
     assert main(["index", str(repository), "--format=json"]) == 0
     second = json.loads(capsys.readouterr().out)

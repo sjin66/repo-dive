@@ -46,7 +46,7 @@ def measured_search(repository: Path) -> tuple[RepositorySearchResult, int]:
 
 def wiki_structure() -> dict[str, Any]:
     return {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "title": "Scale Wiki",
         "description": "Runtime-generated performance fixture.",
         "output_language": "en",
@@ -61,6 +61,17 @@ def wiki_structure() -> dict[str, Any]:
                         "description": "Explain the shared marker service.",
                         "relevant_files": ["src/service_0000.py"],
                         "related_page_ids": [],
+                        "subsections": [
+                            {
+                                "id": "runtime_flow",
+                                "title": "Runtime flow",
+                                "description": (
+                                    "Explain the shared marker service flow."
+                                ),
+                                "direct_source_paths": ["src/service_0000.py"],
+                                "documentation_only": False,
+                            }
+                        ],
                     }
                 ],
             }

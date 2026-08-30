@@ -49,27 +49,34 @@ code `0` before advancing.
 
 1. Run `repo-dive index <repository> ... --format json`. Save the exact
    Include/Exclude parameters because later freshness checks reuse them.
-2. Design stable Wiki sections and page IDs. Each page needs a focused
-   description, real `relevant_files`, and useful `related_page_ids`.
-3. Put `structure.json` in a temporary directory outside the analyzed
-   repository. Writing orchestration inputs inside the repository after
-   indexing makes the index stale.
-4. Submit it with `repo-dive wiki structure <repository> --input structure.json
-   --format json`.
-5. For every page, run `repo-dive wiki evidence <repository> --page <page-id>
+2. Run `repo-dive wiki classify <repository> --format json` and inspect the
+   detected/effective Primary, Topology, Facets, matched signals, and index
+   identity. Use `--template <registered-primary-id>` only for an intentional
+   explicit override.
+3. Run `repo-dive wiki init <repository> --locale en|zh-CN|ja --format json`
+   with the same override, if any. The CLI composes and owns the exact ordered
+   Section, Page, and Subsection contracts, including direct paths and
+   documentation-only policy. Do not submit a caller-authored outline.
+   `repo-dive wiki structure` is deprecated; do not use it for new state.
+4. For every page, run `repo-dive wiki evidence <repository> --page <page-id>
    --token-budget <tokens> --format json` and review the returned Evidence
    before writing. Use 4,000–8,000 tokens for substantial pages and a bounded
    result count appropriate to the repository.
-6. Generate one Markdown body with the current Agent model using only that
-   page's Evidence. Explain design intent and trade-offs, not just syntax. Add
-   diagrams only when supported by Evidence. Do not repeat the page title.
-7. Submit the body with exact selected `evidence_id` values using
+5. Review `role: direct` and its Subsection/path coverage, then generate one
+   ordered Markdown fragment per Subsection using only that Page's Evidence.
+   Every non-documentation Subsection must cite direct Evidence. Use only H5/H6
+   headings; the CLI owns H1-H4. On first use, pair localized terminology with
+   canonical names such as Evidence, Chunk, Index, Context, Provider, Corpus,
+   and Skill, then keep one term consistently within the Page.
+6. Submit all Subsection fragments with exact selected `evidence_id` values using
    `repo-dive wiki page <repository> --page <page-id> --input page.json
    --format json`. Citations must belong to the current page snapshot.
-8. Repeat Evidence collection and page submission sequentially. These commands
+7. Repeat Evidence collection and page submission sequentially. These commands
    update one shared `wiki.json`; do not run their writes concurrently.
-9. Run `repo-dive wiki status <repository> --format json` until every page is
+8. Run `repo-dive wiki status <repository> --format json` until every page is
    `generated` and `complete` is true.
+9. Run `repo-dive wiki validate <repository> --format json` and correct any
+   reported contract violation before publication.
 10. Run `repo-dive wiki build <repository> --format json`, require exit code
     `0`, and report the final `<repository>/.repo-dive/wiki.md` path.
 
@@ -97,8 +104,10 @@ different download URL or modify an installed Skill directory.
 ## Completion checks
 
 - `wiki status` reports no pending, failed, or evidence-ready pages.
+- `wiki validate` reports `valid: true` for the complete governed state.
 - `wiki build` reports the expected page, section, and source counts.
-- The final Markdown contains a contents section, page headings, source links,
+- The final Markdown contains three-level contents, H4 Subsections, source links,
+  localized framework labels, Corpus scope, source commit/dirty state,
   and every requested diagram or topic.
 - Run an unchanged second Build when practical; it should return
   `changed: false` with the same SHA-256.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -58,7 +59,7 @@ def test_manifest_round_trip_is_stable_and_metadata_points_to_generation(
     assert read_manifest(path) == expected
     assert path.read_text(encoding="utf-8").endswith("\n")
     assert metadata_document(expected) == {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "index": {
             "build_id": "build-123",
             "database": ".repo-dive/index/index.sqlite3",
@@ -117,5 +118,15 @@ def test_manifest_rejects_invalid_external_data_without_leaking_it(
     with pytest.raises(RepositoryError) as exc_info:
         read_manifest(path)
 
-    assert exc_info.value.code == "index_manifest_invalid"
-    assert exc_info.value.details is None
+    assert exc_info.value.code == "index_manifest_version_unsupported"
+    assert exc_info.value.details == {"actual": "1.0", "expected": "2.0"}
+
+
+def test_manifest_rejects_malformed_git_commit_identity() -> None:
+    with pytest.raises(ValueError, match="full lowercase Git object ID"):
+        replace(
+            manifest(),
+            source_control="git",
+            source_commit="ABC123",
+            source_dirty=False,
+        )

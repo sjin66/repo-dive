@@ -1,0 +1,862 @@
+{
+  "locale": "ja",
+  "schema_version": "1.0",
+  "subsections": {
+    "analysis_artifacts_artifact_catalog": {
+      "description": "分析成果物を記録する。成果物・カタログでは必須の根拠は output、report、model、path、行番号を優先して取得し、引用します。",
+      "title": "成果物・カタログ"
+    },
+    "analysis_artifacts_artifact_lineage": {
+      "description": "分析成果物を記録する。成果物・系譜では必須の根拠は output、report、model、path、行番号を優先して取得し、引用します。",
+      "title": "成果物・系譜"
+    },
+    "analysis_evaluation_evaluation_metrics": {
+      "description": "分析評価と指標を説明する。評価・指標では必須の根拠は metric、check、baseline、行番号を優先して取得し、引用します。",
+      "title": "評価・指標"
+    },
+    "analysis_evaluation_result_interpretation": {
+      "description": "分析評価と指標を説明する。結果・解釈では必須の根拠は metric、check、baseline、行番号を優先して取得し、引用します。",
+      "title": "結果・解釈"
+    },
+    "analysis_operationalization_delivery_workflow": {
+      "description": "分析の運用化を説明する。デリバリー・ワークフローでは必須の根拠は job、automation、monitor、行番号を優先して取得し、引用します。",
+      "title": "デリバリー・ワークフロー"
+    },
+    "analysis_operationalization_runtime_monitoring": {
+      "description": "分析の運用化を説明する。ランタイム・監視では必須の根拠は job、automation、monitor、行番号を優先して取得し、引用します。",
+      "title": "ランタイム・監視"
+    },
+    "analysis_workflow_analysis_stages": {
+      "description": "分析 workflow を説明する。分析・段階では必須の根拠は notebook、script、transform、行番号を優先して取得し、引用します。",
+      "title": "分析・段階"
+    },
+    "analysis_workflow_execution_workflow": {
+      "description": "分析 workflow を説明する。実行・ワークフローでは必須の根拠は notebook、script、transform、行番号を優先して取得し、引用します。",
+      "title": "実行・ワークフロー"
+    },
+    "api_contracts_api_surfaces": {
+      "description": "安定 API 契約を記録する。API・表面では必須の根拠は仕様、スキーマ、endpoint、行番号を優先して取得し、引用します。",
+      "title": "API・表面"
+    },
+    "api_contracts_compatibility_contracts": {
+      "description": "安定 API 契約を記録する。互換性・契約では必須の根拠は仕様、スキーマ、endpoint、行番号を優先して取得し、引用します。",
+      "title": "互換性・契約"
+    },
+    "api_facet_api_surfaces": {
+      "description": "API 面、契約、認可、互換性を説明する。API・表面では必須の根拠は spec、handler、schema、行番号を優先して取得し、引用します。",
+      "title": "API・表面"
+    },
+    "api_facet_authorization_compatibility": {
+      "description": "API 面、契約、認可、互換性を説明する。認可・互換性では必須の根拠は spec、handler、schema、行番号を優先して取得し、引用します。",
+      "title": "認可・互換性"
+    },
+    "assets_content_asset_pipeline": {
+      "description": "asset pipeline を説明する。アセット・パイプラインでは必須の根拠は manifest、importer、format、行番号を優先して取得し、引用します。",
+      "title": "アセット・パイプライン"
+    },
+    "assets_content_content_lifecycle": {
+      "description": "asset pipeline を説明する。コンテンツ・ライフサイクルでは必須の根拠は manifest、importer、format、行番号を優先して取得し、引用します。",
+      "title": "コンテンツ・ライフサイクル"
+    },
+    "authoring_conventions_authoring_rules": {
+      "description": "執筆規約を記録する。執筆・規則では必須の根拠は example、style、template、行番号を優先して取得し、引用します。",
+      "title": "執筆・規則"
+    },
+    "authoring_conventions_content_examples": {
+      "description": "執筆規約を記録する。コンテンツ・例では必須の根拠は example、style、template、行番号を優先して取得し、引用します。",
+      "title": "コンテンツ・例"
+    },
+    "build_test_matrix_build_matrix": {
+      "description": "build と test 契約を説明する。ビルド・マトリクスでは必須の根拠は build file、test、CI、行番号を優先して取得し、引用します。",
+      "title": "ビルド・マトリクス"
+    },
+    "build_test_matrix_test_coverage": {
+      "description": "build と test 契約を説明する。テスト・カバレッジでは必須の根拠は build file、test、CI、行番号を優先して取得し、引用します。",
+      "title": "テスト・カバレッジ"
+    },
+    "cli_configuration_configuration_precedence": {
+      "description": "CLI 設定の優先順位と検証を説明する。設定・優先順位では必須の根拠は設定 model、file、flag、行番号を優先して取得し、引用します。",
+      "title": "設定・優先順位"
+    },
+    "cli_configuration_configuration_sources": {
+      "description": "CLI 設定の優先順位と検証を説明する。設定・出典では必須の根拠は設定 model、file、flag、行番号を優先して取得し、引用します。",
+      "title": "設定・出典"
+    },
+    "cli_extension_points_extension_contracts": {
+      "description": "対応する CLI 拡張境界を説明する。拡張・契約では必須の根拠は protocol、registry、adapter、constructor、行番号を優先して取得し、引用します。",
+      "title": "拡張・契約"
+    },
+    "cli_extension_points_registration_workflow": {
+      "description": "対応する CLI 拡張境界を説明する。登録・ワークフローでは必須の根拠は protocol、registry、adapter、constructor、行番号を優先して取得し、引用します。",
+      "title": "登録・ワークフロー"
+    },
+    "cli_installation_first_run": {
+      "description": "CLI の導入と起動を説明する。初回・実行では必須の根拠は package metadata、実行入口、導入命令、行番号を優先して取得し、引用します。",
+      "title": "初回・実行"
+    },
+    "cli_installation_prerequisites": {
+      "description": "CLI のインストール前に必要なランタイム、パッケージ、リポジトリ設定コマンドを特定します。",
+      "title": "前提条件"
+    },
+    "command_reference_command_examples": {
+      "description": "正確なコマンドとオプションのリファレンスを提供する。コマンド・例では必須の根拠は引数宣言、help 契約、handler、行番号を優先して取得し、引用します。",
+      "title": "コマンド・例"
+    },
+    "command_reference_command_syntax": {
+      "description": "正確なコマンドとオプションのリファレンスを提供する。コマンド・構文では必須の根拠は引数宣言、help 契約、handler、行番号を優先して取得し、引用します。",
+      "title": "コマンド・構文"
+    },
+    "compatibility_migration_constraints": {
+      "description": "version と platform 互換性を説明する。移行・制約では必須の根拠は metadata、deprecation、test、行番号を優先して取得し、引用します。",
+      "title": "移行・制約"
+    },
+    "compatibility_supported_versions": {
+      "description": "version と platform 互換性を説明する。対応済み・バージョンでは必須の根拠は metadata、deprecation、test、行番号を優先して取得し、引用します。",
+      "title": "対応済み・バージョン"
+    },
+    "component_catalog_component_inventory": {
+      "description": "独立した component を記録する。コンポーネント・一覧では必須の根拠は entry、manifest、module、行番号を優先して取得し、引用します。",
+      "title": "コンポーネント・一覧"
+    },
+    "component_catalog_component_ownership": {
+      "description": "独立した component を記録する。コンポーネント・所有権では必須の根拠は entry、manifest、module、行番号を優先して取得し、引用します。",
+      "title": "コンポーネント・所有権"
+    },
+    "contribution_points_contribution_contracts": {
+      "description": "contribution point を記録する。コントリビューション・契約では必須の根拠は command、provider、hook、行番号を優先して取得し、引用します。",
+      "title": "コントリビューション・契約"
+    },
+    "contribution_points_registered_contributions": {
+      "description": "contribution point を記録する。登録済み・コントリビューションでは必須の根拠は command、provider、hook、行番号を優先して取得し、引用します。",
+      "title": "登録済み・コントリビューション"
+    },
+    "cross_component_workflows_component_handoffs": {
+      "description": "component 間 workflow を追跡する。コンポーネント・引き継ぎでは必須の根拠は call path、job、script、行番号を優先して取得し、引用します。",
+      "title": "コンポーネント・引き継ぎ"
+    },
+    "cross_component_workflows_workflow_stages": {
+      "description": "component 間 workflow を追跡する。ワークフロー・段階では必須の根拠は call path、job、script、行番号を優先して取得し、引用します。",
+      "title": "ワークフロー・段階"
+    },
+    "data_quality_quality_monitoring": {
+      "description": "データ品質制御を説明する。品質・監視では必須の根拠は assertion、validator、test、行番号を優先して取得し、引用します。",
+      "title": "品質・監視"
+    },
+    "data_quality_quality_rules": {
+      "description": "データ品質制御を説明する。品質・規則では必須の根拠は assertion、validator、test、行番号を優先して取得し、引用します。",
+      "title": "品質・規則"
+    },
+    "data_sources_ingestion_constraints": {
+      "description": "分析データ源と前提を記録する。取り込み・制約では必須の根拠は loader、schema、notebook、行番号を優先して取得し、引用します。",
+      "title": "取り込み・制約"
+    },
+    "data_sources_source_catalog": {
+      "description": "分析データ源と前提を記録する。ソース・カタログでは必須の根拠は loader、schema、notebook、行番号を優先して取得し、引用します。",
+      "title": "ソース・カタログ"
+    },
+    "database_facet_consistency_migrations": {
+      "description": "data model、access、整合性、移行を説明する。整合性・移行では必須の根拠は model、query、transaction、行番号を優先して取得し、引用します。",
+      "title": "整合性・移行"
+    },
+    "database_facet_data_models": {
+      "description": "data model、access、整合性、移行を説明する。データ・モデルでは必須の根拠は model、query、transaction、行番号を優先して取得し、引用します。",
+      "title": "データ・モデル"
+    },
+    "desktop_distribution_testing_distribution_workflow": {
+      "description": "test、package、update を説明する。配布・ワークフローでは必須の根拠は test、builder、signing、行番号を優先して取得し、引用します。",
+      "title": "配布・ワークフロー"
+    },
+    "desktop_distribution_testing_platform_testing": {
+      "description": "test、package、update を説明する。プラットフォーム・テストでは必須の根拠は test、builder、signing、行番号を優先して取得し、引用します。",
+      "title": "プラットフォーム・テスト"
+    },
+    "desktop_process_architecture_process_boundaries": {
+      "description": "desktop process 境界を説明する。プロセス・境界では必須の根拠は入口、process、IPC、行番号を優先して取得し、引用します。",
+      "title": "プロセス・境界"
+    },
+    "desktop_process_architecture_runtime_coordination": {
+      "description": "desktop process 境界を説明する。ランタイム・協調では必須の根拠は入口、process、IPC、行番号を優先して取得し、引用します。",
+      "title": "ランタイム・協調"
+    },
+    "desktop_security_os_permissions": {
+      "description": "desktop 信頼境界を説明する。オペレーティングシステム・権限では必須の根拠は sandbox、IPC validation、secret、行番号を優先して取得し、引用します。",
+      "title": "オペレーティングシステム・権限"
+    },
+    "desktop_security_security_boundaries": {
+      "description": "desktop 信頼境界を説明する。セキュリティ・境界では必須の根拠は sandbox、IPC validation、secret、行番号を優先して取得し、引用します。",
+      "title": "セキュリティ・境界"
+    },
+    "desktop_state_storage_state_model": {
+      "description": "desktop 状態と保存を説明する。状態・モデルでは必須の根拠は model、preference、database、行番号を優先して取得し、引用します。",
+      "title": "状態・モデル"
+    },
+    "desktop_state_storage_storage_boundaries": {
+      "description": "desktop 状態と保存を説明する。ストレージ・境界では必須の根拠は model、preference、database、行番号を優先して取得し、引用します。",
+      "title": "ストレージ・境界"
+    },
+    "desktop_ui_lifecycle_ui_components": {
+      "description": "window と UI lifecycle を説明する。ユーザーインターフェース・コンポーネントでは必須の根拠は view、menu、hook、行番号を優先して取得し、引用します。",
+      "title": "ユーザーインターフェース・コンポーネント"
+    },
+    "desktop_ui_lifecycle_window_lifecycle": {
+      "description": "window と UI lifecycle を説明する。ウィンドウ・ライフサイクルでは必須の根拠は view、menu、hook、行番号を優先して取得し、引用します。",
+      "title": "ウィンドウ・ライフサイクル"
+    },
+    "developer_workflow_local_setup": {
+      "description": "開発 workflow を説明する。ローカル・セットアップでは必須の根拠は command、hook、task、行番号を優先して取得し、引用します。",
+      "title": "ローカル・セットアップ"
+    },
+    "developer_workflow_verification_commands": {
+      "description": "開発 workflow を説明する。検証・コマンドでは必須の根拠は command、hook、task、行番号を優先して取得し、引用します。",
+      "title": "検証・コマンド"
+    },
+    "documentation_generation_generated_artifacts": {
+      "description": "文書生成 flow を説明する。生成済み・成果物では必須の根拠は generator、plugin、command、行番号を優先して取得し、引用します。",
+      "title": "生成済み・成果物"
+    },
+    "documentation_generation_generation_workflow": {
+      "description": "文書生成 flow を説明する。生成・ワークフローでは必須の根拠は generator、plugin、command、行番号を優先して取得し、引用します。",
+      "title": "生成・ワークフロー"
+    },
+    "documentation_publishing_publishing_workflow": {
+      "description": "公開と保守を説明する。公開・ワークフローでは必須の根拠は pipeline、hosting、release、行番号を優先して取得し、引用します。",
+      "title": "公開・ワークフロー"
+    },
+    "documentation_publishing_release_verification": {
+      "description": "公開と保守を説明する。リリース・検証では必須の根拠は pipeline、hosting、release、行番号を優先して取得し、引用します。",
+      "title": "リリース・検証"
+    },
+    "documentation_validation_validation_rules": {
+      "description": "文書検証を説明する。検証・規則では必須の根拠は linter、link check、test、行番号を優先して取得し、引用します。",
+      "title": "検証・規則"
+    },
+    "documentation_validation_verification_commands": {
+      "description": "文書検証を説明する。検証・コマンドでは必須の根拠は linter、link check、test、行番号を優先して取得し、引用します。",
+      "title": "検証・コマンド"
+    },
+    "environments_state_environment_matrix": {
+      "description": "environment、config、state を説明する。環境・マトリクスでは必須の根拠は backend、variable、workspace、行番号を優先して取得し、引用します。",
+      "title": "環境・マトリクス"
+    },
+    "environments_state_state_management": {
+      "description": "environment、config、state を説明する。状態・管理では必須の根拠は backend、variable、workspace、行番号を優先して取得し、引用します。",
+      "title": "状態・管理"
+    },
+    "errors_exit_codes_error_contracts": {
+      "description": "失敗、診断、終了コードを対応付ける。エラー・契約では必須の根拠は exception、error envelope、exit constant、行番号を優先して取得し、引用します。",
+      "title": "エラー・契約"
+    },
+    "errors_exit_codes_recovery_workflows": {
+      "description": "失敗、診断、終了コードを対応付ける。復旧・ワークフローでは必須の根拠は exception、error envelope、exit constant、行番号を優先して取得し、引用します。",
+      "title": "復旧・ワークフロー"
+    },
+    "execution_flow_execution_pipeline": {
+      "description": "モジュール間の実行フローを追跡する。実行・パイプラインでは必須の根拠は入口、dispatch、service、adapter、行番号を優先して取得し、引用します。",
+      "title": "実行・パイプライン"
+    },
+    "execution_flow_failure_boundaries": {
+      "description": "モジュール間の実行フローを追跡する。障害・境界では必須の根拠は入口、dispatch、service、adapter、行番号を優先して取得し、引用します。",
+      "title": "障害・境界"
+    },
+    "firmware_architecture_firmware_boundaries": {
+      "description": "firmware module と boot を説明する。ファームウェア・境界では必須の根拠は boot、driver、task、行番号を優先して取得し、引用します。",
+      "title": "ファームウェア・境界"
+    },
+    "firmware_architecture_runtime_components": {
+      "description": "firmware module と boot を説明する。ランタイム・コンポーネントでは必須の根拠は boot、driver、task、行番号を優先して取得し、引用します。",
+      "title": "ランタイム・コンポーネント"
+    },
+    "firmware_testing_distribution_distribution_workflow": {
+      "description": "test、build、flash、release を説明する。配布・ワークフローでは必須の根拠は harness、simulator、command、行番号を優先して取得し、引用します。",
+      "title": "配布・ワークフロー"
+    },
+    "firmware_testing_distribution_hardware_testing": {
+      "description": "test、build、flash、release を説明する。ハードウェア・テストでは必須の根拠は harness、simulator、command、行番号を優先して取得し、引用します。",
+      "title": "ハードウェア・テスト"
+    },
+    "game_build_testing_build_workflow": {
+      "description": "test、build、配布を説明する。ビルド・ワークフローでは必須の根拠は test、preset、builder、行番号を優先して取得し、引用します。",
+      "title": "ビルド・ワークフロー"
+    },
+    "game_build_testing_runtime_testing": {
+      "description": "test、build、配布を説明する。ランタイム・テストでは必須の根拠は test、preset、builder、行番号を優先して取得し、引用します。",
+      "title": "ランタイム・テスト"
+    },
+    "game_persistence_networking_networking_flow": {
+      "description": "save と network を説明する。ネットワーキング・フローでは必須の根拠は serializer、protocol、session、行番号を優先して取得し、引用します。",
+      "title": "ネットワーキング・フロー"
+    },
+    "game_persistence_networking_persistence_model": {
+      "description": "save と network を説明する。永続化・モデルでは必須の根拠は serializer、protocol、session、行番号を優先して取得し、引用します。",
+      "title": "永続化・モデル"
+    },
+    "game_runtime_loop_frame_lifecycle": {
+      "description": "game loop と状態を説明する。フレーム・ライフサイクルでは必須の根拠は entry、loop、update、行番号を優先して取得し、引用します。",
+      "title": "フレーム・ライフサイクル"
+    },
+    "game_runtime_loop_runtime_loop": {
+      "description": "game loop と状態を説明する。ランタイム・ループでは必須の根拠は entry、loop、update、行番号を優先して取得し、引用します。",
+      "title": "ランタイム・ループ"
+    },
+    "gameplay_systems_system_catalog": {
+      "description": "gameplay system を記録する。システム・カタログでは必須の根拠は system、component、rule、行番号を優先して取得し、引用します。",
+      "title": "システム・カタログ"
+    },
+    "gameplay_systems_system_interactions": {
+      "description": "gameplay system を記録する。システム・相互作用では必須の根拠は system、component、rule、行番号を優先して取得し、引用します。",
+      "title": "システム・相互作用"
+    },
+    "host_contract_host_interfaces": {
+      "description": "host 契約を定義する。ホスト・インターフェースでは必須の根拠は API、manifest、protocol、行番号を優先して取得し、引用します。",
+      "title": "ホスト・インターフェース"
+    },
+    "host_contract_lifecycle_contracts": {
+      "description": "host 契約を定義する。ライフサイクル・契約では必須の根拠は API、manifest、protocol、行番号を優先して取得し、引用します。",
+      "title": "ライフサイクル・契約"
+    },
+    "inference_architecture_inference_flow": {
+      "description": "推論実行と serving を説明する。推論・フローでは必須の根拠は loader、predictor、endpoint、行番号を優先して取得し、引用します。",
+      "title": "推論・フロー"
+    },
+    "inference_architecture_serving_boundaries": {
+      "description": "推論実行と serving を説明する。サービング・境界では必須の根拠は loader、predictor、endpoint、行番号を優先して取得し、引用します。",
+      "title": "サービング・境界"
+    },
+    "information_architecture_content_structure": {
+      "description": "情報 architecture を説明する。コンテンツ・構造では必須の根拠は navigation、content tree、metadata、行番号を優先して取得し、引用します。",
+      "title": "コンテンツ・構造"
+    },
+    "information_architecture_navigation_model": {
+      "description": "情報 architecture を説明する。ナビゲーション・モデルでは必須の根拠は navigation、content tree、metadata、行番号を優先して取得し、引用します。",
+      "title": "ナビゲーション・モデル"
+    },
+    "infrastructure_change_change_workflow": {
+      "description": "plan、apply、change control を説明する。変更・ワークフローでは必須の根拠は automation、command、pipeline、行番号を優先して取得し、引用します。",
+      "title": "変更・ワークフロー"
+    },
+    "infrastructure_change_rollback_verification": {
+      "description": "plan、apply、change control を説明する。ロールバック・検証では必須の根拠は automation、command、pipeline、行番号を優先して取得し、引用します。",
+      "title": "ロールバック・検証"
+    },
+    "infrastructure_facet_runtime_resources": {
+      "description": "runtime 資源、network、配備、安全を説明する。ランタイム・リソースでは必須の根拠は resource、manifest、policy、行番号を優先して取得し、引用します。",
+      "title": "ランタイム・リソース"
+    },
+    "infrastructure_facet_security_recovery": {
+      "description": "runtime 資源、network、配備、安全を説明する。セキュリティ・復旧では必須の根拠は resource、manifest、policy、行番号を優先して取得し、引用します。",
+      "title": "セキュリティ・復旧"
+    },
+    "infrastructure_testing_deployment_verification": {
+      "description": "検証と test を説明する。デプロイ・検証では必須の根拠は static check、policy test、command、行番号を優先して取得し、引用します。",
+      "title": "デプロイ・検証"
+    },
+    "infrastructure_testing_validation_strategy": {
+      "description": "検証と test を説明する。検証・戦略では必須の根拠は static check、policy test、command、行番号を優先して取得し、引用します。",
+      "title": "検証・戦略"
+    },
+    "io_protocols_io_contracts": {
+      "description": "I/O と protocol を記録する。入出力・契約では必須の根拠は driver、packet、pin、行番号を優先して取得し、引用します。",
+      "title": "入出力・契約"
+    },
+    "io_protocols_protocol_handling": {
+      "description": "I/O と protocol を記録する。プロトコル・処理では必須の根拠は driver、packet、pin、行番号を優先して取得し、引用します。",
+      "title": "プロトコル・処理"
+    },
+    "library_extension_extension_contracts": {
+      "description": "対応する拡張境界を説明する。拡張・契約では必須の根拠は protocol、hook、adapter、行番号を優先して取得し、引用します。",
+      "title": "拡張・契約"
+    },
+    "library_extension_extension_workflow": {
+      "description": "対応する拡張境界を説明する。拡張・ワークフローでは必須の根拠は protocol、hook、adapter、行番号を優先して取得し、引用します。",
+      "title": "拡張・ワークフロー"
+    },
+    "library_installation_first_usage": {
+      "description": "ライブラリ導入と import を説明する。初回・使用法では必須の根拠は package、export、version、path、行番号を優先して取得し、引用します。",
+      "title": "初回・使用法"
+    },
+    "library_installation_prerequisites": {
+      "description": "ライブラリ導入と import を説明する。前提条件では必須の根拠は package、export、version、path、行番号を優先して取得し、引用します。",
+      "title": "前提条件"
+    },
+    "messaging_facet_delivery_retries": {
+      "description": "producer、consumer、配信、retry を説明する。デリバリー・再試行では必須の根拠は topic、schema、handler、行番号を優先して取得し、引用します。",
+      "title": "デリバリー・再試行"
+    },
+    "messaging_facet_producer_consumer_flow": {
+      "description": "producer、consumer、配信、retry を説明する。プロデューサー・コンシューマー・フローでは必須の根拠は topic、schema、handler、行番号を優先して取得し、引用します。",
+      "title": "プロデューサー・コンシューマー・フロー"
+    },
+    "microservices_topology_service_boundaries": {
+      "description": "service 境界、通信、独立配備を説明する。サービス・境界では必須の根拠は manifest、契約、data ownership、行番号を優先して取得し、引用します。",
+      "title": "サービス・境界"
+    },
+    "microservices_topology_service_communication": {
+      "description": "service 境界、通信、独立配備を説明する。サービス・通信では必須の根拠は manifest、契約、data ownership、行番号を優先して取得し、引用します。",
+      "title": "サービス・通信"
+    },
+    "mixed_operations_operational_ownership": {
+      "description": "協調運用と release を説明する。運用・所有権では必須の根拠は deploy、publish、runbook、行番号を優先して取得し、引用します。",
+      "title": "運用・所有権"
+    },
+    "mixed_operations_recovery_workflows": {
+      "description": "協調運用と release を説明する。復旧・ワークフローでは必須の根拠は deploy、publish、runbook、行番号を優先して取得し、引用します。",
+      "title": "復旧・ワークフロー"
+    },
+    "ml_data_features_feature_pipeline": {
+      "description": "モデルデータと feature 契約を説明する。特徴・パイプラインでは必須の根拠は dataset、feature code、schema、行番号を優先して取得し、引用します。",
+      "title": "特徴・パイプライン"
+    },
+    "ml_data_features_training_data": {
+      "description": "モデルデータと feature 契約を説明する。学習・データでは必須の根拠は dataset、feature code、schema、行番号を優先して取得し、引用します。",
+      "title": "学習・データ"
+    },
+    "ml_operations_deployment_workflow": {
+      "description": "公開後のモデル運用を説明する。デプロイ・ワークフローでは必須の根拠は deploy、monitor、retrain、行番号を優先して取得し、引用します。",
+      "title": "デプロイ・ワークフロー"
+    },
+    "ml_operations_model_monitoring": {
+      "description": "公開後のモデル運用を説明する。モデル・監視では必須の根拠は deploy、monitor、retrain、行番号を優先して取得し、引用します。",
+      "title": "モデル・監視"
+    },
+    "mobile_distribution_testing_device_testing": {
+      "description": "test、build、配布を説明する。デバイス・テストでは必須の根拠は test target、signing、automation、行番号を優先して取得し、引用します。",
+      "title": "デバイス・テスト"
+    },
+    "mobile_distribution_testing_distribution_workflow": {
+      "description": "test、build、配布を説明する。配布・ワークフローでは必須の根拠は test target、signing、automation、行番号を優先して取得し、引用します。",
+      "title": "配布・ワークフロー"
+    },
+    "mobile_navigation_navigation_graph": {
+      "description": "画面と navigation を説明する。ナビゲーション・グラフでは必須の根拠は route、view、deep link、行番号を優先して取得し、引用します。",
+      "title": "ナビゲーション・グラフ"
+    },
+    "mobile_navigation_transition_workflow": {
+      "description": "画面と navigation を説明する。遷移・ワークフローでは必須の根拠は route、view、deep link、行番号を優先して取得し、引用します。",
+      "title": "遷移・ワークフロー"
+    },
+    "mobile_runtime_architecture_application_lifecycle": {
+      "description": "モバイル runtime と lifecycle を説明する。アプリケーション・ライフサイクルでは必須の根拠は入口、module、service、行番号を優先して取得し、引用します。",
+      "title": "アプリケーション・ライフサイクル"
+    },
+    "mobile_runtime_architecture_runtime_components": {
+      "description": "モバイル runtime と lifecycle を説明する。ランタイム・コンポーネントでは必須の根拠は入口、module、service、行番号を優先して取得し、引用します。",
+      "title": "ランタイム・コンポーネント"
+    },
+    "mobile_security_platform_permissions": {
+      "description": "security と privacy 境界を説明する。プラットフォーム・権限では必須の根拠は key storage、transport、permission、行番号を優先して取得し、引用します。",
+      "title": "プラットフォーム・権限"
+    },
+    "mobile_security_security_boundaries": {
+      "description": "security と privacy 境界を説明する。セキュリティ・境界では必須の根拠は key storage、transport、permission、行番号を優先して取得し、引用します。",
+      "title": "セキュリティ・境界"
+    },
+    "mobile_state_storage_state_model": {
+      "description": "状態と storage を説明する。状態・モデルでは必須の根拠は store、database、cache、行番号を優先して取得し、引用します。",
+      "title": "状態・モデル"
+    },
+    "mobile_state_storage_storage_boundaries": {
+      "description": "状態と storage を説明する。ストレージ・境界では必須の根拠は store、database、cache、行番号を優先して取得し、引用します。",
+      "title": "ストレージ・境界"
+    },
+    "model_artifacts_artifact_lineage": {
+      "description": "モデル成果物と identity を記録する。成果物・系譜では必須の根拠は checkpoint、registry、metadata、行番号を優先して取得し、引用します。",
+      "title": "成果物・系譜"
+    },
+    "model_artifacts_model_versions": {
+      "description": "モデル成果物と identity を記録する。モデル・バージョンでは必須の根拠は checkpoint、registry、metadata、行番号を優先して取得し、引用します。",
+      "title": "モデル・バージョン"
+    },
+    "model_evaluation_acceptance_decisions": {
+      "description": "モデル評価と gate を説明する。受け入れ・判断では必須の根拠は metric、dataset、baseline、行番号を優先して取得し、引用します。",
+      "title": "受け入れ・判断"
+    },
+    "model_evaluation_evaluation_metrics": {
+      "description": "モデル評価と gate を説明する。評価・指標では必須の根拠は metric、dataset、baseline、行番号を優先して取得し、引用します。",
+      "title": "評価・指標"
+    },
+    "model_training_inference_facet_inference_monitoring": {
+      "description": "model data、学習、評価、serving を説明する。推論・監視では必須の根拠は training、evaluation、artifact、行番号を優先して取得し、引用します。",
+      "title": "推論・監視"
+    },
+    "model_training_inference_facet_training_evaluation": {
+      "description": "model data、学習、評価、serving を説明する。学習・評価では必須の根拠は training、evaluation、artifact、行番号を優先して取得し、引用します。",
+      "title": "学習・評価"
+    },
+    "monorepo_topology_cross_package_dependencies": {
+      "description": "workspace 所有と package 依存を説明する。横断・パッケージ・依存関係では必須の根拠は manifest、package、orchestration、行番号を優先して取得し、引用します。",
+      "title": "横断・パッケージ・依存関係"
+    },
+    "monorepo_topology_workspace_inventory": {
+      "description": "workspace 所有と package 依存を説明する。ワークスペース・一覧では必須の根拠は manifest、package、orchestration、行番号を優先して取得し、引用します。",
+      "title": "ワークスペース・一覧"
+    },
+    "multi_tenancy_facet_isolation_operations": {
+      "description": "tenant identity、分離、範囲運用を説明する。分離・運用では必須の根拠は resolution、authorization、partition、行番号を優先して取得し、引用します。",
+      "title": "分離・運用"
+    },
+    "multi_tenancy_facet_tenant_identity": {
+      "description": "tenant identity、分離、範囲運用を説明する。テナント・識別子では必須の根拠は resolution、authorization、partition、行番号を優先して取得し、引用します。",
+      "title": "テナント・識別子"
+    },
+    "navigation_discovery_discovery_mechanisms": {
+      "description": "navigation と検索を説明する。探索・仕組みでは必須の根拠は menu、index、search、行番号を優先して取得し、引用します。",
+      "title": "探索・仕組み"
+    },
+    "navigation_discovery_navigation_paths": {
+      "description": "navigation と検索を説明する。ナビゲーション・パスでは必須の根拠は menu、index、search、行番号を優先して取得し、引用します。",
+      "title": "ナビゲーション・パス"
+    },
+    "network_security_network_boundaries": {
+      "description": "network と identity 境界を説明する。ネットワーク・境界では必須の根拠は policy、route、role、行番号を優先して取得し、引用します。",
+      "title": "ネットワーク・境界"
+    },
+    "network_security_security_controls": {
+      "description": "network と identity 境界を説明する。セキュリティ・制御では必須の根拠は policy、route、role、行番号を優先して取得し、引用します。",
+      "title": "セキュリティ・制御"
+    },
+    "observability_recovery_observability_signals": {
+      "description": "監視と復旧を説明する。可観測性・シグナルでは必須の根拠は metric、log、alert、backup、行番号を優先して取得し、引用します。",
+      "title": "可観測性・シグナル"
+    },
+    "observability_recovery_recovery_workflows": {
+      "description": "監視と復旧を説明する。復旧・ワークフローでは必須の根拠は metric、log、alert、backup、行番号を優先して取得し、引用します。",
+      "title": "復旧・ワークフロー"
+    },
+    "os_integration_integration_lifecycle": {
+      "description": "OS integration を記録する。統合・ライフサイクルでは必須の根拠は native API、association、protocol、行番号を優先して取得し、引用します。",
+      "title": "統合・ライフサイクル"
+    },
+    "os_integration_os_contracts": {
+      "description": "OS integration を記録する。オペレーティングシステム・契約では必須の根拠は native API、association、protocol、行番号を優先して取得し、引用します。",
+      "title": "オペレーティングシステム・契約"
+    },
+    "pipeline_failure_recovery_failure_modes": {
+      "description": "失敗と復旧を説明する。障害・モードでは必須の根拠は retry、checkpoint、runbook、行番号を優先して取得し、引用します。",
+      "title": "障害・モード"
+    },
+    "pipeline_failure_recovery_recovery_workflows": {
+      "description": "失敗と復旧を説明する。復旧・ワークフローでは必須の根拠は retry、checkpoint、runbook、行番号を優先して取得し、引用します。",
+      "title": "復旧・ワークフロー"
+    },
+    "pipeline_operations_operational_verification": {
+      "description": "継続運用を説明する。運用・検証では必須の根拠は deploy、telemetry、alert、行番号を優先して取得し、引用します。",
+      "title": "運用・検証"
+    },
+    "pipeline_operations_runtime_operations": {
+      "description": "継続運用を説明する。ランタイム・運用では必須の根拠は deploy、telemetry、alert、行番号を優先して取得し、引用します。",
+      "title": "ランタイム・運用"
+    },
+    "pipeline_orchestration_execution_graph": {
+      "description": "schedule と依存編成を説明する。実行・グラフでは必須の根拠は DAG、job、command、行番号を優先して取得し、引用します。",
+      "title": "実行・グラフ"
+    },
+    "pipeline_orchestration_scheduling_workflow": {
+      "description": "schedule と依存編成を説明する。スケジューリング・ワークフローでは必須の根拠は DAG、job、command、行番号を優先して取得し、引用します。",
+      "title": "スケジューリング・ワークフロー"
+    },
+    "pipeline_sources_sinks_sink_contracts": {
+      "description": "入力元と出力先を記録する。シンク・契約では必須の根拠は connector、schema、manifest、行番号を優先して取得し、引用します。",
+      "title": "シンク・契約"
+    },
+    "pipeline_sources_sinks_source_contracts": {
+      "description": "入力元と出力先を記録する。ソース・契約では必須の根拠は connector、schema、manifest、行番号を優先して取得し、引用します。",
+      "title": "ソース・契約"
+    },
+    "pipeline_transformations_data_contracts": {
+      "description": "変換契約を説明する。データ・契約では必須の根拠は code、query、schema、行番号を優先して取得し、引用します。",
+      "title": "データ・契約"
+    },
+    "pipeline_transformations_transformation_stages": {
+      "description": "変換契約を説明する。変換・段階では必須の根拠は code、query、schema、行番号を優先して取得し、引用します。",
+      "title": "変換・段階"
+    },
+    "platform_integration_integration_lifecycle": {
+      "description": "OS integration を記録する。統合・ライフサイクルでは必須の根拠は permission、service、manifest、行番号を優先して取得し、引用します。",
+      "title": "統合・ライフサイクル"
+    },
+    "platform_integration_platform_contracts": {
+      "description": "OS integration を記録する。プラットフォーム・契約では必須の根拠は permission、service、manifest、行番号を優先して取得し、引用します。",
+      "title": "プラットフォーム・契約"
+    },
+    "plugin_activation_activation_conditions": {
+      "description": "発見、activation、停止を説明する。有効化・条件では必須の根拠は entry、registration、event、行番号を優先して取得し、引用します。",
+      "title": "有効化・条件"
+    },
+    "plugin_activation_activation_workflow": {
+      "description": "発見、activation、停止を説明する。有効化・ワークフローでは必須の根拠は entry、registration、event、行番号を優先して取得し、引用します。",
+      "title": "有効化・ワークフロー"
+    },
+    "plugin_compatibility_compatibility_testing": {
+      "description": "host 互換性を説明する。互換性・テストでは必須の根拠は version、feature check、test、行番号を優先して取得し、引用します。",
+      "title": "互換性・テスト"
+    },
+    "plugin_compatibility_supported_versions": {
+      "description": "host 互換性を説明する。対応済み・バージョンでは必須の根拠は version、feature check、test、行番号を優先して取得し、引用します。",
+      "title": "対応済み・バージョン"
+    },
+    "plugin_packaging_testing_host_testing": {
+      "description": "test、package、公開を説明する。ホスト・テストでは必須の根拠は harness、builder、release、行番号を優先して取得し、引用します。",
+      "title": "ホスト・テスト"
+    },
+    "plugin_packaging_testing_packaging_workflow": {
+      "description": "test、package、公開を説明する。パッケージング・ワークフローでは必須の根拠は harness、builder、release、行番号を優先して取得し、引用します。",
+      "title": "パッケージング・ワークフロー"
+    },
+    "plugin_permissions_permission_model": {
+      "description": "権限と分離を説明する。権限・モデルでは必須の根拠は permission、sandbox、validation、行番号を優先して取得し、引用します。",
+      "title": "権限・モデル"
+    },
+    "plugin_permissions_trust_boundaries": {
+      "description": "権限と分離を説明する。信頼・境界では必須の根拠は permission、sandbox、validation、行番号を優先して取得し、引用します。",
+      "title": "信頼・境界"
+    },
+    "public_api_public_contracts": {
+      "description": "公開 API 契約を定義する。公開・契約では必須の根拠は export、signature、type、行番号を優先して取得し、引用します。",
+      "title": "公開・契約"
+    },
+    "public_api_usage_boundaries": {
+      "description": "公開 API 契約を定義する。使用法・境界では必須の根拠は export、signature、type、行番号を優先して取得し、引用します。",
+      "title": "使用法・境界"
+    },
+    "realtime_lifecycle_realtime_flow": {
+      "description": "scheduling、interrupt、timing を説明する。リアルタイム・フローでは必須の根拠は task、ISR、timer、行番号を優先して取得し、引用します。",
+      "title": "リアルタイム・フロー"
+    },
+    "realtime_lifecycle_timing_constraints": {
+      "description": "scheduling、interrupt、timing を説明する。タイミング・制約では必須の根拠は task、ISR、timer、行番号を優先して取得し、引用します。",
+      "title": "タイミング・制約"
+    },
+    "reproducibility_environment_inputs": {
+      "description": "再現性制御を説明する。環境・入力では必須の根拠は lock、seed、environment、parameter、行番号を優先して取得し、引用します。",
+      "title": "環境・入力"
+    },
+    "reproducibility_reproduction_steps": {
+      "description": "再現性制御を説明する。再現・手順では必須の根拠は lock、seed、environment、parameter、行番号を優先して取得し、引用します。",
+      "title": "再現・手順"
+    },
+    "request_validation_failure_responses": {
+      "description": "要求検証とエラー対応を説明する。障害・レスポンスでは必須の根拠は validator、parser、error type、行番号を優先して取得し、引用します。",
+      "title": "障害・レスポンス"
+    },
+    "request_validation_validation_rules": {
+      "description": "要求検証とエラー対応を説明する。検証・規則では必須の根拠は validator、parser、error type、行番号を優先して取得し、引用します。",
+      "title": "検証・規則"
+    },
+    "resource_topology_dependency_topology": {
+      "description": "管理資源と依存を記録する。依存関係・トポロジーでは必須の根拠は declaration、module、stack、行番号を優先して取得し、引用します。",
+      "title": "依存関係・トポロジー"
+    },
+    "resource_topology_resource_inventory": {
+      "description": "管理資源と依存を記録する。リソース・一覧では必須の根拠は declaration、module、stack、行番号を優先して取得し、引用します。",
+      "title": "リソース・一覧"
+    },
+    "routes_interfaces_interface_handlers": {
+      "description": "ルートと外部インターフェースを記録する。インターフェース・ハンドラーでは必須の根拠は宣言、ハンドラー、スキーマ、シンボル、行番号を優先して取得し、引用します。",
+      "title": "インターフェース・ハンドラー"
+    },
+    "routes_interfaces_route_contracts": {
+      "description": "ルートと外部インターフェースを記録する。ルート・契約では必須の根拠は宣言、ハンドラー、スキーマ、シンボル、行番号を優先して取得し、引用します。",
+      "title": "ルート・契約"
+    },
+    "saas_facet_billing_operations": {
+      "description": "顧客 lifecycle、権利、課金、運用を説明する。請求・運用では必須の根拠は account、plan、metering、行番号を優先して取得し、引用します。",
+      "title": "請求・運用"
+    },
+    "saas_facet_customer_lifecycle": {
+      "description": "顧客 lifecycle、権利、課金、運用を説明する。顧客・ライフサイクルでは必須の根拠は account、plan、metering、行番号を優先して取得し、引用します。",
+      "title": "顧客・ライフサイクル"
+    },
+    "safety_constraints_failure_mitigation": {
+      "description": "safety と制約を説明する。障害・緩和では必須の根拠は bound、watchdog、check、行番号を優先して取得し、引用します。",
+      "title": "障害・緩和"
+    },
+    "safety_constraints_safety_requirements": {
+      "description": "safety と制約を説明する。安全性・要件では必須の根拠は bound、watchdog、check、行番号を優先して取得し、引用します。",
+      "title": "安全性・要件"
+    },
+    "scene_world_scene_lifecycle": {
+      "description": "scene と world 構成を説明する。シーン・ライフサイクルでは必須の根拠は scene、entity、loader、行番号を優先して取得し、引用します。",
+      "title": "シーン・ライフサイクル"
+    },
+    "scene_world_world_structure": {
+      "description": "scene と world 構成を説明する。ワールド・構造では必須の根拠は scene、entity、loader、行番号を優先して取得し、引用します。",
+      "title": "ワールド・構造"
+    },
+    "service_operations_deployment_workflow": {
+      "description": "配備とサービス運用を説明する。デプロイ・ワークフローでは必須の根拠は manifest、health check、telemetry、runbook、行番号を優先して取得し、引用します。",
+      "title": "デプロイ・ワークフロー"
+    },
+    "service_operations_runtime_operations": {
+      "description": "配備とサービス運用を説明する。ランタイム・運用では必須の根拠は manifest、health check、telemetry、runbook、行番号を優先して取得し、引用します。",
+      "title": "ランタイム・運用"
+    },
+    "service_persistence_data_model": {
+      "description": "データ所有と整合性を説明する。データ・モデルでは必須の根拠は model、query、transaction、migration、行番号を優先して取得し、引用します。",
+      "title": "データ・モデル"
+    },
+    "service_persistence_persistence_workflow": {
+      "description": "データ所有と整合性を説明する。永続化・ワークフローでは必須の根拠は model、query、transaction、migration、行番号を優先して取得し、引用します。",
+      "title": "永続化・ワークフロー"
+    },
+    "service_runtime_architecture_request_lifecycle": {
+      "description": "サービス起動と要求処理を説明する。リクエスト・ライフサイクルでは必須の根拠は入口、middleware、handler、依存、行番号を優先して取得し、引用します。",
+      "title": "リクエスト・ライフサイクル"
+    },
+    "service_runtime_architecture_runtime_components": {
+      "description": "サービス起動と要求処理を説明する。ランタイム・コンポーネントでは必須の根拠は入口、middleware、handler、依存、行番号を優先して取得し、引用します。",
+      "title": "ランタイム・コンポーネント"
+    },
+    "service_security_authorization_flow": {
+      "description": "サービス信頼境界を説明する。認可・フローでは必須の根拠は認証、認可、秘密処理、行番号を優先して取得し、引用します。",
+      "title": "認可・フロー"
+    },
+    "service_security_security_boundaries": {
+      "description": "サービス信頼境界を説明する。セキュリティ・境界では必須の根拠は認証、認可、秘密処理、行番号を優先して取得し、引用します。",
+      "title": "セキュリティ・境界"
+    },
+    "shared_contracts_compatibility_boundaries": {
+      "description": "共有契約を説明する。互換性・境界では必須の根拠は schema、protocol、package、行番号を優先して取得し、引用します。",
+      "title": "互換性・境界"
+    },
+    "shared_contracts_shared_interfaces": {
+      "description": "共有契約を説明する。共有・インターフェースでは必須の根拠は schema、protocol、package、行番号を優先して取得し、引用します。",
+      "title": "共有・インターフェース"
+    },
+    "single_project_topology_internal_dependencies": {
+      "description": "単一 project 境界と依存を説明する。内部・依存関係では必須の根拠は root、module、build、行番号を優先して取得し、引用します。",
+      "title": "内部・依存関係"
+    },
+    "single_project_topology_project_boundary": {
+      "description": "単一 project 境界と依存を説明する。プロジェクト・境界では必須の根拠は root、module、build、行番号を優先して取得し、引用します。",
+      "title": "プロジェクト・境界"
+    },
+    "target_hardware_hardware_profile": {
+      "description": "対象 hardware と資源制限を記録する。ハードウェア・プロファイルでは必須の根拠は board、memory、peripheral、行番号を優先して取得し、引用します。",
+      "title": "ハードウェア・プロファイル"
+    },
+    "target_hardware_resource_constraints": {
+      "description": "対象 hardware と資源制限を記録する。リソース・制約では必須の根拠は board、memory、peripheral、行番号を優先して取得し、引用します。",
+      "title": "リソース・制約"
+    },
+    "terminology_reference_canonical_terms": {
+      "description": "一貫したリポジトリ用語と来歴の解釈を定義する。標準・用語では公開モデル、スキーマ、状態フィールド、パス、シンボル、1始まりの行範囲を優先して取得し、引用します。",
+      "title": "標準・用語"
+    },
+    "terminology_reference_scope_interpretation": {
+      "description": "一貫したリポジトリ用語と来歴の解釈を定義する。スコープ・解釈では公開モデル、スキーマ、状態フィールド、パス、シンボル、1始まりの行範囲を優先して取得し、引用します。",
+      "title": "スコープ・解釈"
+    },
+    "tool_architecture_data_flow": {
+      "description": "tool architecture を説明する。データ・フローでは必須の根拠は entry、service、adapter、行番号を優先して取得し、引用します。",
+      "title": "データ・フロー"
+    },
+    "tool_architecture_runtime_components": {
+      "description": "tool architecture を説明する。ランタイム・コンポーネントでは必須の根拠は entry、service、adapter、行番号を優先して取得し、引用します。",
+      "title": "ランタイム・コンポーネント"
+    },
+    "tool_configuration_configuration_precedence": {
+      "description": "tool 設定を記録する。設定・優先順位では必須の根拠は schema、file、flag、行番号を優先して取得し、引用します。",
+      "title": "設定・優先順位"
+    },
+    "tool_configuration_configuration_sources": {
+      "description": "tool 設定を記録する。設定・出典では必須の根拠は schema、file、flag、行番号を優先して取得し、引用します。",
+      "title": "設定・出典"
+    },
+    "tool_diagnostics_diagnostic_signals": {
+      "description": "診断と障害対応を説明する。診断・シグナルでは必須の根拠は error、log、check、行番号を優先して取得し、引用します。",
+      "title": "診断・シグナル"
+    },
+    "tool_diagnostics_failure_recovery": {
+      "description": "診断と障害対応を説明する。障害・復旧では必須の根拠は error、log、check、行番号を優先して取得し、引用します。",
+      "title": "障害・復旧"
+    },
+    "tool_distribution_packaging_workflow": {
+      "description": "test、package、配布を説明する。パッケージング・ワークフローでは必須の根拠は test、metadata、release、行番号を優先して取得し、引用します。",
+      "title": "パッケージング・ワークフロー"
+    },
+    "tool_distribution_release_verification": {
+      "description": "test、package、配布を説明する。リリース・検証では必須の根拠は test、metadata、release、行番号を優先して取得し、引用します。",
+      "title": "リリース・検証"
+    },
+    "tool_extension_points_implementation_workflow": {
+      "description": "developer tool が対応する parser、retriever、Provider 拡張境界を説明する。実装・ワークフローでは必須の根拠は protocol 宣言、adapter interface、登録 path、constructor、symbol、行番号を優先して取得し、引用します。",
+      "title": "実装・ワークフロー"
+    },
+    "tool_extension_points_protocol_contracts": {
+      "description": "developer tool が対応する parser、retriever、Provider 拡張境界を説明する。プロトコル・契約では必須の根拠は protocol 宣言、adapter interface、登録 path、constructor、symbol、行番号を優先して取得し、引用します。",
+      "title": "プロトコル・契約"
+    },
+    "tool_integrations_integration_contracts": {
+      "description": "外部 integration を記録する。統合・契約では必須の根拠は adapter、manifest、API、行番号を優先して取得し、引用します。",
+      "title": "統合・契約"
+    },
+    "tool_integrations_integration_setup": {
+      "description": "外部 integration を記録する。統合・セットアップでは必須の根拠は adapter、manifest、API、行番号を優先して取得し、引用します。",
+      "title": "統合・セットアップ"
+    },
+    "training_pipeline_training_reproducibility": {
+      "description": "学習 pipeline を説明する。学習・再現性では必須の根拠は script、config、job、行番号を優先して取得し、引用します。",
+      "title": "学習・再現性"
+    },
+    "training_pipeline_training_stages": {
+      "description": "学習 pipeline を説明する。学習・段階では必須の根拠は script、config、job、行番号を優先して取得し、引用します。",
+      "title": "学習・段階"
+    },
+    "ui_facet_interaction_accessibility": {
+      "description": "UI 構成、操作、状態、accessibility を説明する。操作・アクセシビリティでは必須の根拠は view、component、state、test、行番号を優先して取得し、引用します。",
+      "title": "操作・アクセシビリティ"
+    },
+    "ui_facet_interface_composition": {
+      "description": "UI 構成、操作、状態、accessibility を説明する。インターフェース・構成では必須の根拠は view、component、state、test、行番号を優先して取得し、引用します。",
+      "title": "インターフェース・構成"
+    },
+    "usage_examples_common_workflows": {
+      "description": "根拠ある利用例を示す。共通・ワークフローでは必須の根拠は example、test、fixture、call site、行番号を優先して取得し、引用します。",
+      "title": "共通・ワークフロー"
+    },
+    "usage_examples_edge_cases": {
+      "description": "根拠ある利用例を示す。境界・ケースでは必須の根拠は example、test、fixture、call site、行番号を優先して取得し、引用します。",
+      "title": "境界・ケース"
+    },
+    "web_deployment_operations_deployment_workflow": {
+      "description": "ビルド、配備、運用を説明する。デプロイ・ワークフローでは必須の根拠はビルド、環境、配備マニフェスト、行番号を優先して取得し、引用します。",
+      "title": "デプロイ・ワークフロー"
+    },
+    "web_deployment_operations_runtime_operations": {
+      "description": "ビルド、配備、運用を説明する。ランタイム・運用では必須の根拠はビルド、環境、配備マニフェスト、行番号を優先して取得し、引用します。",
+      "title": "ランタイム・運用"
+    },
+    "web_runtime_architecture_request_lifecycle": {
+      "description": "ブラウザとサーバーの実行境界を説明する。リクエスト・ライフサイクルでは必須の根拠は入口、構成要素、呼出経路、シンボル、1 始まり行番号を優先して取得し、引用します。",
+      "title": "リクエスト・ライフサイクル"
+    },
+    "web_runtime_architecture_runtime_components": {
+      "description": "ブラウザとサーバーの実行境界を説明する。ランタイム・コンポーネントでは必須の根拠は入口、構成要素、呼出経路、シンボル、1 始まり行番号を優先して取得し、引用します。",
+      "title": "ランタイム・コンポーネント"
+    },
+    "web_security_security_boundaries": {
+      "description": "Web の信頼境界と制御を説明する。セキュリティ・境界では必須の根拠は認証、認可、検証、ヘッダー、行番号を優先して取得し、引用します。",
+      "title": "セキュリティ・境界"
+    },
+    "web_security_security_verification": {
+      "description": "Web の信頼境界と制御を説明する。セキュリティ・検証では必須の根拠は認証、認可、検証、ヘッダー、行番号を優先して取得し、引用します。",
+      "title": "セキュリティ・検証"
+    },
+    "web_state_persistence_persistence_workflow": {
+      "description": "クライアントとサーバーの状態永続化を説明する。永続化・ワークフローでは必須の根拠はストア、モデル、移行、キャッシュ、行番号を優先して取得し、引用します。",
+      "title": "永続化・ワークフロー"
+    },
+    "web_state_persistence_state_model": {
+      "description": "クライアントとサーバーの状態永続化を説明する。状態・モデルでは必須の根拠はストア、モデル、移行、キャッシュ、行番号を優先して取得し、引用します。",
+      "title": "状態・モデル"
+    },
+    "web_testing_test_strategy": {
+      "description": "Web テスト戦略を説明する。テスト・戦略では必須の根拠はテスト、fixture、ブラウザ harness、命令、行番号を優先して取得し、引用します。",
+      "title": "テスト・戦略"
+    },
+    "web_testing_verification_commands": {
+      "description": "Web テスト戦略を説明する。検証・コマンドでは必須の根拠はテスト、fixture、ブラウザ harness、命令、行番号を優先して取得し、引用します。",
+      "title": "検証・コマンド"
+    }
+  }
+}

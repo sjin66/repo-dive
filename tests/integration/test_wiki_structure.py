@@ -3,15 +3,12 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
-from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from repo_dive.cli import main
-from repo_dive.wiki.models import PageStatus
-from repo_dive.wiki.store import WikiStore
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "index_repo"
 
@@ -146,7 +143,7 @@ def test_wiki_structure_creates_versioned_state_and_is_byte_idempotent(
     assert metadata_document["repository"] == str(repository.resolve())
 
 
-def test_structure_change_invalidates_only_affected_page_and_preserves_body(
+def test_structure_change_invalidates_only_affected_page_in_legacy_state(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -156,16 +153,6 @@ def test_structure_change_invalidates_only_affected_page_and_preserves_body(
     input_path = write_structure(tmp_path, document)
     assert submit_structure(repository, input_path) == 0
     capsys.readouterr()
-    store = WikiStore(repository)
-    current = store.read_wiki()
-    section = current.sections[0]
-    generated_pages = tuple(
-        replace(page, status=PageStatus.GENERATED, body=f"# {page.title}\n")
-        for page in section.pages
-    )
-    store.write_wiki(
-        replace(current, sections=(replace(section, pages=generated_pages),))
-    )
     document["sections"][0]["pages"][0]["description"] = (
         "Explain the application entrypoint and call flow."
     )
@@ -177,90 +164,77 @@ def test_structure_change_invalidates_only_affected_page_and_preserves_body(
     result = result_document(capsys.readouterr().out)["result"]
     assert result["changed"] is True
     assert result["invalidated_page_ids"] == ["overview"]
-    updated = store.read_wiki()
-    pages_by_id = {page.id: page for page in updated.sections[0].pages}
+    updated = json.loads(
+        (repository / ".repo-dive/wiki.json").read_text(encoding="utf-8")
+    )
+    pages_by_id = {page["id"]: page for page in updated["sections"][0]["pages"]}
     overview = pages_by_id["overview"]
     utilities = pages_by_id["utilities"]
-    assert [page.id for page in updated.sections[0].pages] == [
+    assert [page["id"] for page in updated["sections"][0]["pages"]] == [
         "utilities",
         "overview",
     ]
-    assert overview.status is PageStatus.PENDING
-    assert overview.body == "# Overview\n"
-    assert overview.description.endswith("call flow.")
-    assert utilities.status is PageStatus.GENERATED
-    assert utilities.body == "# Utilities\n"
+    assert overview["status"] == "pending"
+    assert overview["description"].endswith("call flow.")
+    assert utilities["status"] == "pending"
 
 
-def test_wiki_status_reports_every_page_state_and_next_action(
+def test_governed_commands_reject_legacy_state_without_rewriting_bytes(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     repository = copy_fixture(tmp_path)
     build_index(repository, capsys)
-    document = structure_document()
-    pages = document["sections"][0]["pages"]
-    pages.extend(
-        [
-            {
-                "id": "generated",
-                "title": "Generated",
-                "description": "A generated page.",
-                "relevant_files": [],
-                "related_page_ids": [],
-            },
-            {
-                "id": "failed",
-                "title": "Failed",
-                "description": "A failed page.",
-                "relevant_files": [],
-                "related_page_ids": [],
-            },
-        ]
-    )
-    input_path = write_structure(tmp_path, document)
+    input_path = write_structure(tmp_path, structure_document())
     assert submit_structure(repository, input_path) == 0
     capsys.readouterr()
-    store = WikiStore(repository)
-    current = store.read_wiki()
-    section = current.sections[0]
-    states = (
-        replace(section.pages[0], status=PageStatus.PENDING),
-        replace(section.pages[1], status=PageStatus.EVIDENCE_READY),
-        replace(
-            section.pages[2],
-            status=PageStatus.GENERATED,
-            body="# Generated\n",
+    before = artifact_digest(repository)
+    page_path = tmp_path / "page.json"
+    page_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "2.0",
+                "page_id": "overview",
+                "subsections": [
+                    {
+                        "subsection_id": "any",
+                        "body": "Evidence-grounded content.",
+                        "evidence_ids": ["evidence:unresolved"],
+                    }
+                ],
+            }
         ),
-        replace(section.pages[3], status=PageStatus.FAILED, error="generation_failed"),
+        encoding="utf-8",
     )
-    store.write_wiki(replace(current, sections=(replace(section, pages=states),)))
+    commands = (
+        ["wiki", "status", str(repository)],
+        ["wiki", "validate", str(repository)],
+        ["wiki", "build", str(repository)],
+        [
+            "wiki",
+            "evidence",
+            str(repository),
+            "--page",
+            "overview",
+            "--token-budget",
+            "100",
+        ],
+        [
+            "wiki",
+            "page",
+            str(repository),
+            "--page",
+            "overview",
+            "--input",
+            str(page_path),
+        ],
+    )
 
-    assert main(["wiki", "status", str(repository), "--format", "json"]) == 0
-
-    result = result_document(capsys.readouterr().out)["result"]
-    assert result["counts"] == {
-        "evidence_ready": 1,
-        "failed": 1,
-        "generated": 1,
-        "pending": 1,
-    }
-    status_pages = result["sections"][0]["pages"]
-    assert {page["status"]: page["next_action"] for page in status_pages} == {
-        "pending": "collect_evidence",
-        "evidence_ready": "generate_page",
-        "generated": "complete",
-        "failed": "retry",
-    }
-    assert all("body" not in page for page in status_pages)
-
-    assert main(["wiki", "status", str(repository), "--format", "markdown"]) == 0
-    markdown = capsys.readouterr().out
-    assert "`overview` — pending → collect_evidence" in markdown
-    assert "`utilities` — evidence_ready → generate_page" in markdown
-    assert "`generated` — generated → complete" in markdown
-    assert "`failed` — failed → retry" in markdown
-    assert "# Generated\n" not in markdown
+    for command in commands:
+        assert main([*command, "--format", "json"]) == 3
+        error = result_document(capsys.readouterr().out)["error"]
+        assert error["code"] == "wiki_state_version_unsupported"
+        assert artifact_digest(repository) == before
 
 
 @pytest.mark.parametrize("invalid_kind", ["unknown_path", "duplicate_page"])
@@ -322,3 +296,36 @@ def test_wiki_status_rejects_uninitialized_repository(
 
     error = result_document(capsys.readouterr().out)["error"]
     assert error["code"] == "wiki_not_initialized"
+
+
+def test_deprecated_structure_rejects_governed_state_without_rewriting_bytes(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repository = copy_fixture(tmp_path)
+    build_index(repository, capsys)
+    assert (
+        main(
+            [
+                "wiki",
+                "init",
+                str(repository),
+                "--locale",
+                "en",
+                "--template",
+                "general_mixed",
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    before = artifact_digest(repository)
+    input_path = write_structure(tmp_path, structure_document())
+
+    assert submit_structure(repository, input_path) == 3
+
+    error = result_document(capsys.readouterr().out)["error"]
+    assert error["code"] == "wiki_state_version_unsupported"
+    assert artifact_digest(repository) == before

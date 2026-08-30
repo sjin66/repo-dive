@@ -12,6 +12,7 @@ from repo_dive.wiki.models import (
     Page,
     PageStatus,
     Section,
+    Subsection,
     Wiki,
 )
 from repo_dive.wiki.store import METADATA_PATH, WIKI_PATH, WikiStore
@@ -46,10 +47,19 @@ def wiki() -> Wiki:
                         ),
                         body=None,
                         error=None,
+                        subsections=(
+                            Subsection(
+                                id="overview_content",
+                                title="Overview content",
+                                description="Explain the entrypoint.",
+                                direct_source_paths=("src/app.py",),
+                            ),
+                        ),
                     ),
                 ),
             ),
         ),
+        framework_labels=(("contents", "Contents"),),
     )
 
 
@@ -57,7 +67,9 @@ def metadata() -> Metadata:
     return Metadata(
         repository=REPOSITORY_IDENTITY,
         repository_fingerprint="fingerprint",
-        source_commit="abc123",
+        source_commit="a" * 40,
+        source_control="git",
+        source_dirty=True,
         output_language="en",
         index_schema_version=3,
         index_build_id="build-1",
@@ -139,7 +151,7 @@ def test_store_reports_unknown_artifact_schema_versions(
         getattr(WikiStore(repository), reader)()
 
     assert exc_info.value.code == error_code
-    assert exc_info.value.details == {"actual": "99.0", "expected": "1.0"}
+    assert exc_info.value.details == {"actual": "99.0", "expected": "2.0"}
 
 
 @pytest.mark.parametrize(
@@ -187,5 +199,5 @@ def test_store_rejects_missing_required_fields_without_rewriting_file(
     with pytest.raises(RepositoryError) as exc_info:
         WikiStore(repository).read_wiki()
 
-    assert exc_info.value.code == "wiki_state_invalid"
+    assert exc_info.value.code == "wiki_state_version_unsupported"
     assert target.read_bytes() == original

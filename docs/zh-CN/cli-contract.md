@@ -14,7 +14,7 @@
 repo-dive <command> [repository] --format json
 ```
 
-当前版本除 `--help` 和 `--version` 外，已经实现 `index`、`search`、`context`、`wiki structure`、`wiki evidence`、`wiki page`、`wiki build` 和 `wiki status`。
+当前版本除 `--help` 和 `--version` 外，已经实现 `index`、`search`、`context`、`wiki classify`、`wiki init`、`wiki evidence`、`wiki page`、`wiki validate`、`wiki build` 和 `wiki status`；已弃用的 `wiki structure` 仅为兼容保留。
 
 ## RAG 命令边界
 
@@ -25,7 +25,7 @@ repo-dive <command> [repository] --format json
 - `context`：去重，并在调用方给定的 Token 预算下打包证据。
 - `wiki`：持久化 Agent 生成的页面状态，并汇总 `.repo-dive/wiki.md`。
 
-`index`、`search` 和 `context` 是确定性 RAG 操作。`wiki structure`、`wiki evidence`、`wiki page`、`wiki build` 和 `wiki status` 提供完整、持久且可恢复的离线 Wiki 工作流。这些命令都不会隐式调用生成模型。
+`index`、`search` 和 `context` 是确定性 RAG 操作。`wiki classify`、`wiki init`、`wiki evidence`、`wiki page`、`wiki validate`、`wiki build` 和 `wiki status` 提供完整、受治理、持久且可恢复的离线 Wiki 工作流。这些命令都不会隐式调用生成模型。
 
 `context` 命令要求正整数 Token 预算，并接受有上限的检索候选数量：
 
@@ -59,9 +59,11 @@ Sentence Transformers、增加 Vector 结果元数据，也不会改变 BM25/结
 结构命令从显式文件读取有大小上限的 UTF-8 JSON 文档：
 
 ```text
-repo-dive wiki structure <repository> --input structure.json --format json|markdown
+repo-dive wiki classify <repository> [--template ID] --format json|markdown
+repo-dive wiki init <repository> [--template ID] --locale en|zh-CN|ja --format json|markdown
 repo-dive wiki evidence <repository> --page <page-id> --token-budget N [--max-results COUNT] --format json|markdown
 repo-dive wiki page <repository> --page <page-id> --input <page.json|-> --format json|markdown
+repo-dive wiki validate <repository> --format json|markdown
 repo-dive wiki build <repository> --format json|markdown
 repo-dive wiki status <repository> --format json|markdown
 ```
@@ -72,17 +74,17 @@ repo-dive wiki status <repository> --format json|markdown
 
 状态输出包含有序章节与页面、状态计数、正文或错误是否存在，以及每页的下一步动作，但不返回已生成正文。映射为 `pending -> collect_evidence`、`evidence_ready -> generate_page`、`generated -> complete`、`failed -> retry`。
 
-`wiki evidence` 根据已持久化的页面标题、描述和 `path:<相关文件>` 提示确定性构造 Query。它使用与 `context` 相同的有界混合检索和完整 Chunk 上下文打包，但会先写入页面 Evidence 快照，再向 stdout 返回源码。成功后页面进入 `evidence_ready`；空 Bundle 或仓库/索引检索失败时，只把请求页面标为 `failed`，并保存安全错误码。
+`wiki evidence` 根据已持久化的 Page 与 Subsection 标题、描述和直接来源路径确定性构造 Query。它先为每个必需直接路径预留一个完整 Chunk，再用有界混合检索结果填充剩余预算；随后先写入 Page Evidence 快照，再向 stdout 返回源码。成功后 Page 进入 `evidence_ready`；直接 Evidence 预算不足不会修改状态，其他空 Bundle 或仓库/索引检索失败只把请求 Page 标为 `failed`，并保存安全错误码。
 
 持久化快照记录 Query、仓库指纹、索引 Schema/build 身份、Token 账目、估算器、截断标志、检索/融合参数和生成时间；每条引用记录 Chunk ID、内容哈希、路径和首尾都包含的行号范围。Build 身份用于审计；新鲜度依据当前索引 Schema 和逐 Chunk 身份/哈希判断，因此无关索引重建不会使未受影响页面失效。页面提交与 build 校验边界会拒绝过期 Evidence。
 
-`wiki page` 接受有界 UTF-8 JSON 文件，或通过 `--input -` 从 stdin 读取。提交 Schema `1.0` 只接受 `schema_version`、`page_id`、Markdown `body` 和非空且唯一的 `evidence_ids` 数组。命令行与输入中的 Page ID 必须一致；每个引用 ID 必须属于该页当前 Evidence 快照；快照仍须匹配已发布索引；正文最多为 200,000 个 UTF-8 字节。外层输入上限是 1,500,000 字节，避免转义后的 JSON 造成无界读取。
+`wiki page` 接受有界 UTF-8 JSON 文件，或通过 `--input -` 从 stdin 读取。治理提交 Schema `2.0` 只接受 `schema_version`、`page_id`，以及与持久化 Subsection 一一对应且顺序完全一致的 `subsections`。每项包含 `subsection_id`、Markdown `body` 和非空且唯一的 `evidence_ids`；非文档 Subsection 必须引用覆盖它的直接 Evidence。Page ID、Subsection 顺序和当前 Evidence 快照必须匹配；H1-H4 与原始 HTML 会被拒绝；全部正文合计最多为 200,000 个 UTF-8 字节。外层输入上限是 1,500,000 字节，避免转义后的 JSON 造成无界读取。
 
 合法的 `evidence_ready` 页面进入 `generated`。拥有仍然有效 Evidence 快照的 `failed` 页面可以修正后重提，其他页面不会变化。完全相同的正文和引用列表重复提交时成功但不写文件；通过该命令替换已生成页面会被拒绝。结果和诊断只报告大小、数量、ID、状态和安全错误码，不回显提交正文或仓库源码。
 
 `wiki build` 要求每个页面都是 `generated`，并且拥有正文和至少一个当前有效引用。命令基于同一个当前已发布索引视图校验全部页面 Evidence，并在写入前再次确认 build 身份。未完成页面返回 `wiki_build_incomplete`，过期页面返回 `wiki_evidence_stale`，并发索引发布返回 `index_changed_during_operation`。这些失败都会保留已有 `.repo-dive/wiki.md`；页面相关错误只包含有序 Page ID。
 
-汇总文档保留 Section/Page 顺序，包含 Wiki 标题与描述、目录、显式稳定锚点、页面标题、调用方生成正文、相关页面链接以及带首尾行号的来源链接。锚点由 `section-` 或 `page-` 前缀加持久化 ID 的完整 SHA-256 构成。来源目标是相对于 `.repo-dive/wiki.md` 的 URL 编码路径。调用方提交的页面正文应省略由 CLI 统一生成的页面标题。CLI 把 Markdown 当作数据保存，不执行页面正文，也不承诺正文已经过 HTML 清理；把产物渲染为 HTML 的消费者必须使用可信 Markdown 渲染器和合适的 HTML 清理策略。
+汇总文档保留 Section/Page/Subsection 顺序，包含本地化范围与版本披露、三级目录、显式稳定锚点、CLI 所有的 H2/H3/H4 标题、调用方 H5/H6 内容、相关页面链接以及带首尾行号的来源链接。Section/Page 锚点对持久化 ID 取哈希；Subsection 锚点对 Page ID、NUL 分隔符和 Subsection ID 取哈希。来源目标是相对于 `.repo-dive/wiki.md` 的 URL 编码路径。CLI 拒绝原始 HTML，并把接受的 Markdown 当作数据保存；把产物渲染为 HTML 的消费者仍必须使用可信 Markdown 渲染器和合适的 HTML 清理策略。
 
 JSON 输出报告 `artifact_path`、UTF-8 `bytes`、`changed`、Section/Page/来源数量和 `sha256`，不返回汇总正文。Markdown 输出把完全相同的汇总文档写入 stdout；两种格式都会先遵守相同的原子产物写入。对相同状态重复 build 时不写文件，并返回 `changed: false`。
 
@@ -91,7 +93,7 @@ JSON 输出报告 `artifact_path`、UTF-8 `bytes`、`changed`、Section/Page/来
 不需要 MCP Server。调用方 Agent 应直接执行 CLI；持久 Wiki 使用以下顺序：
 
 ```text
-index -> wiki structure -> wiki evidence (Context) -> caller generates prose -> wiki page -> wiki build
+index -> wiki classify -> wiki init -> wiki evidence (Context) -> caller generates prose -> wiki page -> wiki validate -> wiki build
 ```
 
 在可恢复阶段之间运行 `wiki status`。通用 `context` 适用于临时回答；Wiki 页面
@@ -118,7 +120,7 @@ repo-dive index /workspace/project --format json
     "files": 8,
     "index_schema_version": 4,
     "indexed_files": 8,
-    "manifest_schema_version": "1.0",
+    "manifest_schema_version": "2.0",
     "rebuilt_files": 8,
     "relationships": 11,
     "repository_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

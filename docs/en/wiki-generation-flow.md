@@ -1,5 +1,11 @@
 Below is the complete current `repo-dive` flow, from installing the Skill, building the index, planning the structure, retrieving Evidence page by page, and having the Agent generate the body, through to building the final `wiki.md`.
 
+> **Compatibility reference:** examples using `wiki structure` and
+> `structure.json` below document the deprecated manual workflow. New state
+> uses `wiki classify` followed by
+> `wiki init <repository> --locale en|zh-CN|ja`; see
+> [Wiki Workflow](wiki-workflow.md) for the governed Schema 2.0 contract.
+
 ## Overview
 
 ```text
