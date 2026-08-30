@@ -205,3 +205,26 @@ Planned the deterministic Knowledge Map task tree, upgraded relationship parsing
 ### Status
 
 [OK] **Completed**
+
+
+## Session 8: Deterministic Knowledge Map domain
+<!-- trellis-session: v=2 fp=deterministic-knowledge-map-schema1 -->
+
+**Date**: 2026-08-30
+**Task**: Deterministic Knowledge Map
+**Branch**: `feat/deterministic-knowledge-map`
+
+### Summary
+
+Implemented strict Knowledge Map Schema 1.0 models, the shared bounded writer lock and CAS transaction, validated index snapshots, conservative resolution, lifted graph analysis, topology, static flows, reading tour, deterministic lifecycle, and bounded views. Two independent review passes fixed strictness, identity, lock-release, resolution, topology, scope, lifecycle, and projection defects. The exact staged Python 3.12 snapshot passed `make check`, both no-gitignore Ruff gates, and all 542 tests.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `54c7200` | feat: add deterministic knowledge map domain |
+| `7b044ec` | chore(task): archive 08-30-deterministic-knowledge-map |
+
+### Status
+
+[OK] **Completed**
