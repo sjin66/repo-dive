@@ -251,3 +251,26 @@ Implemented deterministic cluster, flow, and tour Evidence planning; bounded com
 ### Status
 
 [OK] **Completed**
+
+
+## Session 10: Public Knowledge Map workflow
+<!-- trellis-session: v=2 fp=public-knowledge-map-workflow -->
+
+**Date**: 2026-08-31
+**Task**: Map CLI, documentation, and evaluation
+**Branch**: `feat/map-cli-docs-evaluation`
+
+### Summary
+
+Exposed the six-command `repo-dive map` family, strict bounded build and enrichment inputs, JSON process/error contracts, deterministic and semantic workflows, executable evaluation dimensions, and matched English/Chinese architecture, CLI, and workflow documentation. Independent review completed the public process error matrix, replay byte-preservation checks, path-diagnostic sanitization, strict-input coverage, and evaluation fixtures. The exact staged Python 3.12 snapshot passed `make check`, both no-gitignore Ruff gates, 458 unit tests, all 678 tests, and every root/Map help smoke test.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `540016b` | feat: expose knowledge map workflow |
+| `31dfb87` | chore(task): archive 08-30-map-cli-docs-evaluation |
+
+### Status
+
+[OK] **Completed**
