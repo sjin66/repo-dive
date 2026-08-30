@@ -156,3 +156,28 @@ Audited the remaining Wiki governance and bootstrap tasks against current code, 
 ### Status
 
 [OK] **Completed**
+
+
+## Session 6: Trellis repository asset cleanup
+<!-- trellis-session: v=2 fp=6747b9e4b768d38f -->
+
+**Date**: 2026-08-30
+**Task**: Trellis repository asset cleanup
+**Branch**: `main`
+
+### Summary
+
+Committed the repository-owned Trellis core and Wiki governance plans, fixed stale tooling references, documented the clean-checkout tooling contract, and kept Host payloads local-only.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `078b322` | chore: add Trellis project workflow |
+| `494d852` | chore(task): record Wiki governance plans |
+| `a676ccd` | docs: fix Trellis core references |
+| `24529f3` | docs: record repository tooling contract |
+
+### Status
+
+[OK] **Completed**
