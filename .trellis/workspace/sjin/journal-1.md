@@ -181,3 +181,27 @@ Committed the repository-owned Trellis core and Wiki governance plans, fixed sta
 ### Status
 
 [OK] **Completed**
+
+
+## Session 7: Relationship provenance index schema
+<!-- trellis-session: v=2 fp=relationship-provenance-schema5 -->
+
+**Date**: 2026-08-30
+**Task**: Relationship provenance index schema
+**Branch**: `feat/relationship-provenance-index-schema`
+
+### Summary
+
+Planned the deterministic Knowledge Map task tree, upgraded relationship parsing and SQLite persistence to exact per-occurrence Schema 5 facts, preserved unique graph adjacency and structural retrieval behavior, and documented the executable database contract. A fresh Python 3.12 worktree passed `make check` and all 495 tests.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d2535dc` | docs: plan deterministic knowledge map |
+| `2b8d699` | feat: preserve relationship occurrence provenance |
+| `40c2ae0` | chore(task): archive 08-30-relationship-provenance-index-schema |
+
+### Status
+
+[OK] **Completed**
