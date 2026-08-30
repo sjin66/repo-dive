@@ -274,3 +274,26 @@ Exposed the six-command `repo-dive map` family, strict bounded build and enrichm
 ### Status
 
 [OK] **Completed**
+
+
+## Session 11: Knowledge Map integration corrections
+<!-- trellis-session: v=2 fp=knowledge-map-integration-corrections -->
+
+**Date**: 2026-08-31
+**Task**: Knowledge Map integration corrections
+**Branch**: `fix/knowledge-map-integration-corrections`
+
+### Summary
+
+Closed the parent P3/P4 blockers by routing Map parser failures through the JSON envelope, enforcing persisted scope ownership for claim fact and related nodes, replacing simulated process-error coverage with real adapter/service paths, and adding coordinated cross-writer, portable Windows lock, and bounded-work tests. Corrected matched English/Chinese Index Schema 5 and Wiki Schema 2.0 documentation while preserving historical comparison files. Independent review also tightened exact Map command detection so prefix-similar non-Map commands retain their existing contract. The exact allowlisted Python 3.12 clean snapshot passed `make check`, both no-gitignore Ruff gates, 462 unit tests, all 693 tests, and every root/Map help smoke test.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `af6b270` | fix: close knowledge map integration gaps |
+| `352877a` | chore(task): archive 08-31-knowledge-map-integration-corrections |
+
+### Status
+
+[OK] **Completed**
