@@ -9,9 +9,15 @@ import tarfile
 import tomllib
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).parents[2]
 SKILL_ROOT = ROOT / "skills/wiki"
 SKILL_PATH = SKILL_ROOT / "SKILL.md"
+POSIX_ONLY = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX launcher tests require native POSIX process execution",
+)
 MANIFEST_PATHS = (
     ROOT / "plugin.json",
     ROOT / ".claude-plugin/plugin.json",
@@ -190,6 +196,7 @@ def test_bootstrap_launchers_are_portable_skill_resources() -> None:
     assert "--install" in powershell.read_text(encoding="utf-8")
 
 
+@POSIX_ONLY
 def test_posix_launcher_rejects_unsupported_platform_before_network(
     tmp_path: Path,
 ) -> None:
@@ -215,6 +222,7 @@ def test_posix_launcher_rejects_unsupported_platform_before_network(
     assert "network-was-used" not in completed.stderr
 
 
+@POSIX_ONLY
 def test_posix_launcher_rejects_unsafe_release_metadata_before_network(
     tmp_path: Path,
 ) -> None:
@@ -252,6 +260,7 @@ def test_posix_launcher_rejects_unsafe_release_metadata_before_network(
     assert "network-was-used" not in completed.stderr
 
 
+@POSIX_ONLY
 def test_posix_launcher_installs_verified_archive_and_forwards_exit_status(
     tmp_path: Path,
 ) -> None:
@@ -321,6 +330,7 @@ def test_posix_launcher_installs_verified_archive_and_forwards_exit_status(
     assert forwarded.stdout == "forwarded:alpha two words\n"
 
 
+@POSIX_ONLY
 def test_posix_launcher_rejects_archive_traversal_without_publishing(
     tmp_path: Path,
 ) -> None:
