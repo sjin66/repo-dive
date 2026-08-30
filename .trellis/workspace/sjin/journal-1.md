@@ -228,3 +228,26 @@ Implemented strict Knowledge Map Schema 1.0 models, the shared bounded writer lo
 ### Status
 
 [OK] **Completed**
+
+
+## Session 9: Knowledge Map Evidence and enrichment
+<!-- trellis-session: v=2 fp=knowledge-map-evidence-enrichment -->
+
+**Date**: 2026-08-31
+**Task**: Map Evidence and enrichment
+**Branch**: `feat/map-evidence-enrichment`
+
+### Summary
+
+Implemented deterministic cluster, flow, and tour Evidence planning; bounded complete-chunk collection; strict claim-level submission; complete-scope semantic replacement; reset; and freshness/reference validation through the shared Knowledge Map transaction. Independent review fixed mandatory-Evidence preflight ordering and stale uncited snapshot replacement. The exact staged Python 3.12 snapshot passed `make check`, both no-gitignore Ruff gates, and all 554 tests.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f654233` | feat: add knowledge map evidence enrichment |
+| `0869fbf` | chore(task): archive 08-30-map-evidence-enrichment |
+
+### Status
+
+[OK] **Completed**
