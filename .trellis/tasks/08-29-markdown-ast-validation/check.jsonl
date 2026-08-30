@@ -1,0 +1,2 @@
+{"file":".trellis/tasks/08-29-wiki-template-governance/research/markdown-validation-diagnostics.md","reason":"Check rule completeness, deterministic ordering, bounds, and disclosure safety."}
+{"file":".trellis/tasks/08-29-wiki-template-governance/research/python-markdown-parser-comparison.md","reason":"Check parser profile, source locations, package constraint, and security boundary."}

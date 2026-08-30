@@ -1,0 +1,2 @@
+{"file":".trellis/tasks/08-29-wiki-template-governance/research/python-markdown-parser-comparison.md","reason":"Implement against the documented parser API and fixed dependency profile."}
+{"file":".trellis/tasks/08-29-wiki-template-governance/research/markdown-validation-diagnostics.md","reason":"Implement validation scopes, structural rules, and safe diagnostics."}

@@ -1,0 +1,2 @@
+{"file":".trellis/tasks/08-29-wiki-template-governance/research/cli-compatibility-risks.md","reason":"Check exit codes, JSON isolation, deprecated command, docs, and packaging."}
+{"file":".trellis/tasks/08-29-wiki-template-governance/research/markdown-validation-diagnostics.md","reason":"Check validation result/error semantics and safe bounded output."}
