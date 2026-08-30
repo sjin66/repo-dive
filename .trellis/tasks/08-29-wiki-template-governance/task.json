@@ -19,7 +19,11 @@
   "pr_url": null,
   "subtasks": [],
   "children": [
-    "08-29-multilingual-wiki-templates"
+    "08-29-multilingual-wiki-templates",
+    "08-29-repository-classification",
+    "08-29-markdown-ast-validation",
+    "08-29-governed-wiki-state",
+    "08-29-wiki-template-cli-integration"
   ],
   "parent": null,
   "relatedFiles": [],
