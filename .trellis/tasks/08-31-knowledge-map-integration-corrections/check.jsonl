@@ -1,0 +1,7 @@
+{"file":".trellis/spec/backend/knowledge-map-contracts.md","reason":"Verify strict scope closure, real public process paths, shared writer evidence, and release behavior."}
+{"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Verify intended paths and exact staged clean snapshot only."}
+{"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Verify Wiki Schema 2.0 and ownership remain unchanged."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/prd.md","reason":"Re-evaluate blocked KM acceptance criteria after corrections."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/design.md","reason":"Verify every error applicability cell, precedence row, and closed recovery value."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/implement.md","reason":"Verify P3/P4 blockers are resolved before returning to parent."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/planning-convergence-update.md","reason":"Verify docs/superpowers proposals remain comparison-only and untouched."}

@@ -86,6 +86,10 @@ def _command_name(argv: Sequence[str]) -> str:
     return "repo-dive"
 
 
+def _is_map_command(command: str) -> bool:
+    return command == "map" or command.startswith("map ")
+
+
 def _validate_command_name(argv: Sequence[str], commands: Sequence[Command]) -> None:
     command_name = next(
         (item for item in argv if not item.startswith("-")), "repo-dive"
@@ -142,7 +146,9 @@ def main(
     """Run the CLI for an explicit argument sequence."""
     arguments = tuple(sys.argv[1:] if argv is None else argv)
     command_name = _command_name(arguments)
-    json_mode = _requested_json(arguments)
+    # Every Knowledge Map command is JSON-only, including parser failures where an
+    # invalid --format value cannot itself opt in to JSON serialization.
+    json_mode = _is_map_command(command_name) or _requested_json(arguments)
     try:
         _validate_command_name(arguments, commands)
         args = build_parser(commands).parse_args(arguments)
@@ -177,7 +183,7 @@ def main(
 
 def _map_error_details(command: str, error: RepoDiveError) -> RepoDiveError:
     """Complete the closed recovery contract without changing other commands."""
-    if not command.startswith("map"):
+    if not _is_map_command(command):
         return error
     recovery = {
         "invalid_invocation": ("after_recovery", "correct_invocation"),

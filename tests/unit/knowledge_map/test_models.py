@@ -21,6 +21,7 @@ from repo_dive.knowledge_map.models import (
     ScopeEnrichment,
     SemanticClaim,
     canonical_bytes,
+    canonical_sha256,
 )
 
 
@@ -236,3 +237,183 @@ def test_frozen_semantic_projections_validate_claim_owned_references() -> None:
     )
 
     assert KnowledgeMapArtifact.from_document(artifact.to_document()) == artifact
+
+
+@pytest.mark.parametrize("reference_field", ["fact_node_ids", "related_node_ids"])
+def test_artifact_rejects_rehashed_enrichment_nodes_outside_scope(
+    reference_field: str,
+) -> None:
+    repository = FactNode(
+        "repo", "repository", "derived", "repo", None, None, None, None, None, None
+    )
+    module = FactNode(
+        "module", "module", "derived", "app", None, None, None, "python", "repo", None
+    )
+    foreign_module = FactNode(
+        "foreign",
+        "module",
+        "derived",
+        "foreign",
+        None,
+        None,
+        None,
+        "python",
+        "repo",
+        None,
+    )
+    file = FactNode(
+        "file",
+        "file",
+        "derived",
+        "app.py",
+        "app.py",
+        None,
+        None,
+        "python",
+        "module",
+        None,
+    )
+    cluster = Cluster("cluster", ("file",), ("fixture_v1",), 0, 0, 0, 0)
+    contract = ScopeContract.create(
+        scope_id="cluster",
+        scope_kind="cluster",
+        allowed_fact_node_ids=("file", "module", "repo"),
+        required_anchor_fact_node_ids=("file",),
+        allowed_record_kinds=("cluster_label", "concept"),
+        allowed_claim_kinds=(
+            "label",
+            "summary",
+            "responsibility",
+            "association",
+            "concept_description",
+        ),
+    )
+    empty = KnowledgeMapArtifact.create_empty(
+        source=MapSource("fingerprint", "build", 5, "non_git", None, None),
+        budgets=budgets(),
+    )
+    base = KnowledgeMapArtifact.create(
+        artifact_revision=1,
+        source=empty.source,
+        derivation_parameters=empty.derivation_parameters,
+        capacity_limits=empty.capacity_limits,
+        coverage=replace(
+            empty.coverage,
+            total_files=1,
+            indexed_files=1,
+            included_nodes=4,
+            included_clusters=1,
+            languages=(("python", 1),),
+            parser_coverage=(LanguageCoverage("python", 1, 1, 0, 0, (), "full"),),
+        ),
+        nodes=(repository, foreign_module, module, file),
+        clusters=(cluster,),
+        scope_contracts=(contract,),
+    )
+    reference = EvidenceRef(
+        "evidence", "chunk", "hash", "app.py", 1, 1, None, "definition", ("file",)
+    )
+    snapshot = EvidenceSnapshot.create(
+        schema_version="1.0",
+        scope_id="cluster",
+        scope_kind="cluster",
+        scope_contract_hash=contract.contract_hash,
+        deterministic_revision=base.deterministic_revision,
+        repository_fingerprint="fingerprint",
+        index_build_id="build",
+        index_schema_version=5,
+        source_control="non_git",
+        source_commit=None,
+        source_dirty=None,
+        query="cluster",
+        query_plan_hash="sha256:plan",
+        retrieval_parameters=RetrievalParameters(
+            5, "hybrid", 60, (("lexical", 1.0),), 0.8
+        ),
+        token_budget=100,
+        estimated_tokens=10,
+        reserved_tokens=0,
+        token_estimator="fixture_v1",
+        truncated=False,
+        reference_count=1,
+        references=(reference,),
+    )
+    fact_node_ids = ("foreign",) if reference_field == "fact_node_ids" else ("file",)
+    related_node_ids = ("foreign",) if reference_field == "related_node_ids" else ()
+    bad_enrichment = ScopeEnrichment.create(
+        schema_version="1.0",
+        scope_id="cluster",
+        scope_kind="cluster",
+        scope_contract_hash=contract.contract_hash,
+        evidence_snapshot_hash=snapshot.snapshot_hash,
+        records=(
+            EnrichmentRecord(
+                "label",
+                "cluster_label",
+                (
+                    SemanticClaim(
+                        "label",
+                        "Application",
+                        fact_node_ids,
+                        related_node_ids,
+                        ("evidence",),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="wrong-scope node"):
+        KnowledgeMapArtifact.create(
+            artifact_revision=2,
+            source=base.source,
+            derivation_parameters=base.derivation_parameters,
+            capacity_limits=base.capacity_limits,
+            coverage=base.coverage,
+            nodes=base.nodes,
+            clusters=base.clusters,
+            scope_contracts=base.scope_contracts,
+            evidence_snapshots=(snapshot,),
+            enrichments=(bad_enrichment,),
+        )
+
+    valid_enrichment = ScopeEnrichment.create(
+        schema_version="1.0",
+        scope_id="cluster",
+        scope_kind="cluster",
+        scope_contract_hash=contract.contract_hash,
+        evidence_snapshot_hash=snapshot.snapshot_hash,
+        records=(
+            EnrichmentRecord(
+                "label",
+                "cluster_label",
+                (SemanticClaim("label", "Application", ("file",), (), ("evidence",)),),
+            ),
+        ),
+    )
+    valid = KnowledgeMapArtifact.create(
+        artifact_revision=2,
+        source=base.source,
+        derivation_parameters=base.derivation_parameters,
+        capacity_limits=base.capacity_limits,
+        coverage=base.coverage,
+        nodes=base.nodes,
+        clusters=base.clusters,
+        scope_contracts=base.scope_contracts,
+        evidence_snapshots=(snapshot,),
+        enrichments=(valid_enrichment,),
+    )
+    document = valid.to_document()
+    document["enrichments"] = [bad_enrichment.to_document()]
+    document["semantic_revision"] = canonical_sha256(
+        {
+            "enrichments": document["enrichments"],
+            "evidence_snapshots": document["evidence_snapshots"],
+        }
+    )
+    without_content_hash = dict(document)
+    del without_content_hash["content_hash"]
+    document["content_hash"] = canonical_sha256(without_content_hash)
+
+    with pytest.raises(ValueError, match="wrong-scope node"):
+        KnowledgeMapArtifact.from_document(document)

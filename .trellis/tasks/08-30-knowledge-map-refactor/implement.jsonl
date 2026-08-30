@@ -4,6 +4,7 @@
 {"file":".trellis/tasks/08-30-knowledge-map-refactor/research/mvp-boundary-test-map-and-risks.md","reason":"Capability boundary, reusable contracts, test map, and known graph-coverage risks."}
 {"file":".trellis/tasks/08-30-knowledge-map-refactor/research/planning-convergence-update.md","reason":"Canonical naming, lifecycle, lock, budget, claim, task-tree, and comparison decisions."}
 {"file":".trellis/spec/backend/index.md","reason":"Active backend contract index."}
+{"file":".trellis/spec/backend/knowledge-map-contracts.md","reason":"Implemented deterministic, semantic, writer, public command, budget, and validation contracts for final integration review."}
 {"file":".trellis/spec/backend/repository-classification.md","reason":"Deterministic published-index snapshot and bounded signal precedent."}
 {"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Negative ownership boundary preventing Knowledge Map from changing Wiki."}
 {"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Clean-snapshot and repository-owned tooling closure requirements."}

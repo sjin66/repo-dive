@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
-from typing import NoReturn
 
 import pytest
 
+import repo_dive.commands.map as map_commands
+import repo_dive.indexing.service as indexing_service
 from repo_dive.cli import main
-from repo_dive.commands import Command
-from repo_dive.commands.map import MAP_COMMAND
 from repo_dive.errors import InternalOperationError, RepositoryError
 from repo_dive.indexing.service import IndexService
+from repo_dive.knowledge_map.build import KnowledgeMapBuildService
+from repo_dive.knowledge_map.enrichment_service import KnowledgeMapEnrichmentService
+from repo_dive.knowledge_map.evidence_service import KnowledgeMapEvidenceService
 from repo_dive.schema import JsonObject
 
 COMMAND_ARGUMENTS = {
@@ -28,6 +32,59 @@ COMMAND_ARGUMENTS = {
     "reset": ["--scope", "scope:test"],
     "validate": [],
 }
+
+
+def test_invalid_map_format_uses_one_json_error_document_in_subprocess(
+    tmp_path: Path,
+) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "repo_dive",
+            "map",
+            "validate",
+            str(tmp_path),
+            "--format",
+            "xml",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    document = json.loads(completed.stdout)
+    assert completed.stdout.count("\n") == 1
+    assert document["schema_version"] == "1.0"
+    assert document["command"] == "map validate"
+    assert document["error"]["code"] == "invalid_invocation"
+    assert document["error"]["details"] == {
+        "recovery_action": "correct_invocation",
+        "retry_mode": "after_recovery",
+    }
+    assert completed.stderr
+    assert "\x1b[" not in completed.stdout + completed.stderr
+    assert str(tmp_path) not in completed.stdout + completed.stderr
+
+
+def test_non_map_command_prefix_does_not_enable_json_errors(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert main(["maple"]) == 2
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err
+
+    assert main(["maple", "--format", "json"]) == 2
+
+    captured = capsys.readouterr()
+    document = json.loads(captured.out)
+    assert document["command"] == "maple"
+    assert "details" not in document["error"]
+    assert captured.err
+
 
 SHARED_ERROR_ROWS = (
     ("repository_not_found", 3, "after_recovery", "select_repository"),
@@ -188,6 +245,7 @@ def test_shared_error_applicability_matrix_reaches_the_public_process_contract(
     retry_mode: str,
     recovery_action: str,
     capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Pin every checked shared matrix cell at the process serialization boundary."""
     repository = tmp_path / f"{subcommand}-{code}"
@@ -195,8 +253,12 @@ def test_shared_error_applicability_matrix_reaches_the_public_process_contract(
     artifact.parent.mkdir(parents=True)
     artifact.write_bytes(b"last-valid-artifact\n")
     before = artifact.read_bytes()
+    (repository / "budget.json").write_text(
+        json.dumps(_budget_document()), encoding="utf-8"
+    )
+    (repository / "submission.json").write_text("{}", encoding="utf-8")
 
-    def raise_contract_error(_args: object) -> NoReturn:
+    def raise_contract_error(*_args: object, **_kwargs: object) -> None:
         error_type = InternalOperationError if exit_code == 4 else RepositoryError
         details: JsonObject | None = None
         if code.startswith("knowledge_map_"):
@@ -206,12 +268,34 @@ def test_shared_error_applicability_matrix_reaches_the_public_process_contract(
             }
         raise error_type(code, "Safe map diagnostic.", details=details)
 
-    command = Command(
-        name=MAP_COMMAND.name,
-        help=MAP_COMMAND.help,
-        configure=MAP_COMMAND.configure,
-        handler=raise_contract_error,
-    )
+    if code in {
+        "repository_not_found",
+        "repository_unavailable",
+        "repository_not_directory",
+    }:
+        monkeypatch.setattr(map_commands, "resolve_repository", raise_contract_error)
+    elif subcommand == "build":
+        monkeypatch.setattr(KnowledgeMapBuildService, "build", raise_contract_error)
+    elif subcommand == "evidence":
+        monkeypatch.setattr(
+            KnowledgeMapEvidenceService, "collect", raise_contract_error
+        )
+    elif subcommand == "enrich":
+        monkeypatch.setattr(
+            KnowledgeMapEnrichmentService, "enrich", raise_contract_error
+        )
+    elif subcommand == "reset":
+        monkeypatch.setattr(
+            KnowledgeMapEnrichmentService, "reset", raise_contract_error
+        )
+    elif subcommand == "validate":
+        monkeypatch.setattr(
+            KnowledgeMapEnrichmentService, "validate", raise_contract_error
+        )
+    else:
+        monkeypatch.setattr(
+            indexing_service, "load_published_index", raise_contract_error
+        )
     result = main(
         [
             "map",
@@ -221,7 +305,6 @@ def test_shared_error_applicability_matrix_reaches_the_public_process_contract(
             "--format",
             "json",
         ],
-        commands=(command,),
     )
 
     assert result == exit_code
@@ -239,6 +322,32 @@ def test_shared_error_applicability_matrix_reaches_the_public_process_contract(
     assert "\x1b[" not in captured.out + captured.err
     assert str(repository) not in captured.out + captured.err
     assert artifact.read_bytes() == before
+
+
+def _budget_document() -> JsonObject:
+    return {
+        "schema_version": "1.0",
+        "node_budget": 100,
+        "edge_budget": 100,
+        "contributing_relationship_ids_per_edge": 8,
+        "resolution_candidates_per_reference": 4,
+        "cluster_budget": 20,
+        "minimum_cluster_files": 1,
+        "flow_budget": 20,
+        "flow_depth": 5,
+        "nodes_per_flow": 20,
+        "edges_per_flow": 20,
+        "tour_budget": 20,
+        "evidence_snapshots": 20,
+        "evidence_references_per_snapshot": 20,
+        "enrichment_records": 20,
+        "records_per_scope": 10,
+        "claims_per_record": 10,
+        "fact_node_ids_per_claim": 10,
+        "related_node_ids_per_claim": 10,
+        "evidence_ids_per_claim": 10,
+        "enrichment_input_bytes": 10_000,
+    }
 
 
 @pytest.mark.parametrize("subcommand", tuple(COMMAND_ARGUMENTS))
@@ -268,8 +377,101 @@ def test_invalid_format_is_no_write_for_every_map_command(
     )
 
     captured = capsys.readouterr()
-    assert captured.out == ""
-    assert "\x1b[" not in captured.err
+    document = json.loads(captured.out)
+    assert captured.out.count("\n") == 1
+    assert document["schema_version"] == "1.0"
+    assert document["command"] == f"map {subcommand}"
+    assert document["error"]["code"] == "invalid_invocation"
+    assert document["error"]["details"] == {
+        "recovery_action": "correct_invocation",
+        "retry_mode": "after_recovery",
+    }
+    assert captured.err
+    assert "\x1b[" not in captured.out + captured.err
+    assert str(repository) not in captured.out + captured.err
+    assert artifact.read_bytes() == before
+
+
+@pytest.mark.parametrize("subcommand", ["build", "enrich"])
+@pytest.mark.parametrize(
+    ("condition", "code", "retry_mode", "recovery_action"),
+    [
+        (
+            "outside",
+            "path_outside_repository",
+            "after_recovery",
+            "select_repository_input",
+        ),
+        (
+            "missing",
+            "repository_path_not_found",
+            "after_recovery",
+            "select_existing_input",
+        ),
+        (
+            "unavailable",
+            "repository_path_unavailable",
+            "after_cause_clears",
+            "wait_for_input",
+        ),
+    ],
+)
+def test_map_input_path_error_cells_use_real_filesystem_dispatch(
+    tmp_path: Path,
+    subcommand: str,
+    condition: str,
+    code: str,
+    retry_mode: str,
+    recovery_action: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repository = tmp_path / "repo"
+    artifact = repository / ".repo-dive" / "knowledge-map.json"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"last-valid-artifact\n")
+    before = artifact.read_bytes()
+    if condition == "outside":
+        (tmp_path / "outside.json").write_text("{}", encoding="utf-8")
+        input_path = "../outside.json"
+    elif condition == "missing":
+        input_path = "missing.json"
+    else:
+        (repository / "input-dir").mkdir()
+        input_path = "input-dir"
+    operation_arguments = (
+        [
+            "--source-fact-budget",
+            "1",
+            "--artifact-byte-budget",
+            "1",
+            "--budget-file",
+            input_path,
+        ]
+        if subcommand == "build"
+        else ["--input", input_path]
+    )
+
+    result = main(
+        [
+            "map",
+            subcommand,
+            str(repository),
+            *operation_arguments,
+            "--format",
+            "json",
+        ]
+    )
+
+    assert result == 3
+    captured = capsys.readouterr()
+    document = json.loads(captured.out)
+    assert captured.out.count("\n") == 1
+    assert document["command"] == f"map {subcommand}"
+    assert document["error"]["code"] == code
+    assert document["error"]["details"]["retry_mode"] == retry_mode
+    assert document["error"]["details"]["recovery_action"] == recovery_action
+    assert "\x1b[" not in captured.out + captured.err
+    assert str(tmp_path) not in captured.out + captured.err
     assert artifact.read_bytes() == before
 
 

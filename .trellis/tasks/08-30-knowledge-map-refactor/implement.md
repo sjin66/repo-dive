@@ -89,6 +89,12 @@ Also validate the exact staged snapshot under `.trellis/spec/backend/tooling-int
 
 ## Traceability
 
+The `docs/superpowers` Knowledge Graph proposals introduced in commit `d2535dc` are
+historical parent-planning comparison material from before the final scope freeze.
+They remain byte-unchanged and are superseded by this parent PRD/design, active specs,
+executable behavior, and tests; they are not implementation authority or Child 4
+output.
+
 | Requirement | Acceptance | Primary child |
 |---|---|---|
 | KM-R1 | KM-AC1, KM-AC3 | Relationship provenance/index schema |

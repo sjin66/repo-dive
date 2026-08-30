@@ -434,7 +434,7 @@ Example successful result:
     "preserved_page_ids": [],
     "section_count": 1,
     "page_count": 2,
-    "wiki_schema_version": "1.0",
+    "wiki_schema_version": "2.0",
     "metadata_schema_version": "1.0",
     "index_schema_version": 5,
     "index_build_id": "abc123"

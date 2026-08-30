@@ -109,7 +109,7 @@ SQLite 保存 Symbol 以及 `calls`、`contains`、`imports`、`inherits` Relati
 
 Vector 检索是可选项。`--embedding-model` 选择当前 Sentence Transformers 适配器；该适配器从 `vector` Extra 延迟加载，并设置 `local_files_only=True` 和 `trust_remote_code=False`。Provider 名、不可逆的 `local:<sha256>` 模型身份和维度定义向量空间，同时避免持久化私有模型绝对路径。
 
-索引 Schema 4 为每个 Chunk 保存一个固定长度、小端序 float32 BLOB。Row 同时绑定 `chunk_id`、`chunk_hash`、Provider、模型和维度。非有限值、维度不匹配、混合身份和过期 Chunk 哈希都会被拒绝。基于持久化 float32 精度的精确暴力余弦检索是确定性参考实现，同分按 Chunk ID 排序。
+索引 Schema 5 为每个 Chunk 保存一个固定长度、小端序 float32 BLOB。Row 同时绑定 `chunk_id`、`chunk_hash`、Provider、模型和维度。非有限值、维度不匹配、混合身份和过期 Chunk 哈希都会被拒绝。基于持久化 float32 精度的精确暴力余弦检索是确定性参考实现，同分按 Chunk ID 排序。
 
 只有 Provider 身份和 Chunk 内容哈希都一致时才复用 Vector。`strict` Vector 失败会中止发布或检索；`degraded` 会移除 Vector 身份/通道，继续使用关键词加结构证据，并返回安全的 Warning/Error Code。
 
@@ -146,7 +146,7 @@ SQLite Schema 5 由 `PRAGMA user_version = 5` 声明，包含 `files`、`symbols
 
 Wiki 状态使用 `.repo-dive/wiki.json` 和 `.repo-dive/metadata.json` 中的严格 Schema `2.0` JSON。完整文件先序列化再原子替换；损坏、不支持或不完整的状态会被拒绝且不会修复。只有全部页面和 Evidence 校验通过后才替换 `.repo-dive/wiki.md`；字节相同时返回 `changed: false`。
 
-Evidence 新鲜度以页面为单位：索引 Schema 必须仍是 `4`，每个持久化引用的 Chunk ID、内容哈希、路径和首尾都包含的行号都必须匹配当前索引。Index Build ID 用于审计溯源，本身不是全局失效信号。
+Evidence 新鲜度以页面为单位：索引 Schema 必须仍是 `5`，每个持久化引用的 Chunk ID、内容哈希、路径和首尾都包含的行号都必须匹配当前索引。Index Build ID 用于审计溯源，本身不是全局失效信号。
 
 ## Knowledge Map 边界
 

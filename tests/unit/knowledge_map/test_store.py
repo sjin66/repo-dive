@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import sys
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
 
+import repo_dive.knowledge_map.store as map_store
 from repo_dive.errors import InternalOperationError, RepositoryError
 from repo_dive.knowledge_map.models import (
     KnowledgeMapArtifact,
@@ -181,3 +184,40 @@ def test_atomic_publish_failure_preserves_previous_valid_bytes(
 
     assert exc_info.value.code == "knowledge_map_write_failed"
     assert artifact_path.read_bytes() == previous_bytes
+
+
+def test_windows_lock_adapter_locks_and_unlocks_one_byte(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "lock"
+    calls: list[tuple[int, int]] = []
+
+    def locking(_descriptor: int, mode: int, size: int) -> None:
+        calls.append((mode, size))
+
+    adapter = SimpleNamespace(locking=locking, LK_NBLCK=1, LK_UNLCK=2)
+    monkeypatch.setitem(sys.modules, "msvcrt", adapter)
+    monkeypatch.setattr("repo_dive.knowledge_map.store.os.name", "nt")
+
+    with path.open("a+b") as stream:
+        map_store._try_lock(stream)
+        map_store._unlock(stream)
+
+    assert path.read_bytes() == b"\0"
+    assert calls == [(1, 1), (2, 1)]
+
+
+def test_windows_lock_adapter_normalizes_contention(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "lock"
+
+    def locking(_descriptor: int, _mode: int, _size: int) -> None:
+        raise OSError("contended")
+
+    adapter = SimpleNamespace(locking=locking, LK_NBLCK=1, LK_UNLCK=2)
+    monkeypatch.setitem(sys.modules, "msvcrt", adapter)
+    monkeypatch.setattr("repo_dive.knowledge_map.store.os.name", "nt")
+
+    with path.open("a+b") as stream, pytest.raises(BlockingIOError):
+        map_store._try_lock(stream)

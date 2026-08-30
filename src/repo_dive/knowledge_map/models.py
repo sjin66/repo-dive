@@ -1925,10 +1925,10 @@ class KnowledgeMapArtifact:
                         or claim.kind not in permissions[record.kind]
                     ):
                         raise ValueError("enrichment claim is not allowed by its scope")
-                    if (
-                        not set(claim.fact_node_ids)
-                        <= set(contract.allowed_fact_node_ids)
-                        or not set(claim.related_node_ids) <= node_ids
+                    if not set(claim.fact_node_ids) <= set(
+                        contract.allowed_fact_node_ids
+                    ) or not set(claim.related_node_ids) <= set(
+                        contract.allowed_fact_node_ids
                     ):
                         raise ValueError("enrichment has a wrong-scope node reference")
                     if not set(claim.evidence_ids) <= evidence_ids:

@@ -109,7 +109,7 @@ SQLite stores Symbols and `calls`, `contains`, `imports`, and `inherits` Relatio
 
 Vector retrieval is optional. `--embedding-model` selects the implemented Sentence Transformers adapter, which is lazy-loaded from the `vector` extra with `local_files_only=True` and `trust_remote_code=False`. Provider name, an opaque `local:<sha256>` model identity, and dimensions define the vector space without persisting the private absolute model path.
 
-Index Schema 4 stores one fixed-length little-endian float32 BLOB per Chunk. The row also binds `chunk_id`, `chunk_hash`, provider, model, and dimensions. Non-finite values, dimension mismatches, mixed identities, and stale Chunk hashes are rejected. Exact brute-force cosine search at persisted float32 precision is the deterministic reference, with ties ordered by Chunk ID.
+Index Schema 5 stores one fixed-length little-endian float32 BLOB per Chunk. The row also binds `chunk_id`, `chunk_hash`, provider, model, and dimensions. Non-finite values, dimension mismatches, mixed identities, and stale Chunk hashes are rejected. Exact brute-force cosine search at persisted float32 precision is the deterministic reference, with ties ordered by Chunk ID.
 
 Unchanged vectors are reused only when both provider identity and Chunk content hash match. `strict` vector failure aborts publication or search; `degraded` omits the vector identity/channel and continues with lexical plus structural evidence while returning a safe warning/error code.
 
@@ -146,7 +146,7 @@ An index build creates a staging directory, reuses unchanged parse results from 
 
 Wiki state uses strict Schema `2.0` JSON in `.repo-dive/wiki.json` and `.repo-dive/metadata.json`. Complete files are serialized and atomically replaced; malformed, unsupported, or incomplete state is rejected without repair. `.repo-dive/wiki.md` is replaced only after all pages and Evidence are validated, and identical bytes produce `changed: false`.
 
-Evidence freshness is page-local: the index Schema must still be `4`, and every persisted reference must match its current Chunk ID, content hash, path, and inclusive line range. The index build ID is audit provenance, not by itself a global invalidation signal.
+Evidence freshness is page-local: the index Schema must still be `5`, and every persisted reference must match its current Chunk ID, content hash, path, and inclusive line range. The index build ID is audit provenance, not by itself a global invalidation signal.
 
 ## Knowledge Map Boundary
 

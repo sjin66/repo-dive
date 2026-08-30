@@ -1,0 +1,29 @@
+{
+  "id": "knowledge-map-integration-corrections",
+  "name": "knowledge-map-integration-corrections",
+  "title": "Knowledge Map integration corrections",
+  "description": "Resolve parent P3/P4 blockers in artifact scope validation, public process contracts, cumulative concurrency/performance evidence, and documentation parity.",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "sjin",
+  "assignee": "sjin",
+  "createdAt": "2026-08-31",
+  "completedAt": null,
+  "branch": "fix/knowledge-map-integration-corrections",
+  "base_branch": "feat/map-cli-docs-evaluation",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "08-30-knowledge-map-refactor",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "task_role": "correction",
+    "depends_on": "map-cli-docs-evaluation"
+  }
+}

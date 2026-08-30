@@ -362,6 +362,8 @@ repo-dive map validate <repository> [--format json]
 - Every command is non-interactive and JSON-only. Success and failure each write one
   Schema 1.0 envelope document to stdout; diagnostics use stderr; JSON output contains
   no ANSI. The command field is `map build`, `map show`, and so on.
+- Map-only envelope and recovery behavior is selected by the exact `map` command token,
+  not a string prefix; unrelated names such as `maple` retain the non-Map CLI contract.
 - Build budgets are positive and combine two required top-level values with a strict
   UTF-8 JSON budget document of at most 1,000,000 bytes. The budget file is confined
   beneath the selected repository and rejects duplicate keys, non-standard constants,
@@ -415,6 +417,8 @@ mapping for errors that do not provide them.
 
 - Help tests assert the exact six-command set, exact required flags and choices, and
   absence of forbidden aliases.
+- Parser tests assert prefix-similar non-Map names do not gain Map-only JSON or recovery
+  behavior, including when they independently request `--format json`.
 - Every success path asserts one parseable JSON document, command/schema fields,
   stdout/stderr separation, no ANSI, explicit bounds, and stable result projection.
 - Every checked command/error applicability cell has an independent process case that
