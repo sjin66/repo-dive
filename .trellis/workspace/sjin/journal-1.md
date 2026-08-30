@@ -134,3 +134,25 @@ source, tests, and repository scripts.
 ### Status
 
 [OK] **Completed**
+
+
+## Session 5: Audit Wiki governance and merge main
+<!-- trellis-session: v=2 fp=582b36785df32003 -->
+
+**Date**: 2026-08-30
+**Task**: Audit Wiki governance and merge main
+**Branch**: `main`
+
+### Summary
+
+Audited the remaining Wiki governance and bootstrap tasks against current code, archived the completed repository-classification task, restored the parent-child task tree, and fast-forwarded the verified feature branch into main.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fcca5b7` | fix(task): restore Wiki governance task tree |
+
+### Status
+
+[OK] **Completed**
