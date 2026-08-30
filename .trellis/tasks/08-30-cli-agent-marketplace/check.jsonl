@@ -1,0 +1,2 @@
+{"file":".trellis/spec/backend/agent-plugin-contracts.md","reason":"Verify the final Skill, OpenCode adapter, package resources, and installation behavior against the repository contract."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Review version and artifact data flow across Skill metadata, launchers, package builds, release CI, and documentation."}
