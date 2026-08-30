@@ -207,9 +207,12 @@ def test_index_publish_failure_keeps_previous_generation_and_cleans_temporary_da
         encoding="utf-8",
     )
     real_replace = os.replace
+    pointer_replace_attempts = 0
 
     def fail_pointer_replace(source: str | Path, destination: str | Path) -> None:
-        if Path(destination) == pointer:
+        nonlocal pointer_replace_attempts
+        if Path(destination) == pointer and pointer_replace_attempts == 0:
+            pointer_replace_attempts += 1
             raise OSError("sensitive simulated failure")
         real_replace(source, destination)
 
@@ -233,6 +236,7 @@ def test_index_publish_failure_keeps_previous_generation_and_cleans_temporary_da
     )
     assert artifact_digest(repository) == before
     assert not list((repository / ".repo-dive").glob(".index.*.tmp"))
+    assert not list((repository / ".repo-dive").glob(".index.*.previous"))
     assert list((repository / ".repo-dive/index-generations").iterdir()) == [
         original_generation
     ]
