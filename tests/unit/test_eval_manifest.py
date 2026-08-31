@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 REQUIRED_FIELDS = {"id", "category", "mode", "prompt", "expected_behavior"}
-OPTIONAL_FIELDS = {"command", "assertions", "evaluation"}
+OPTIONAL_FIELDS = {"command", "assertions", "evaluation", "evaluation_dimensions"}
 
 
 def _load_cases() -> list[dict[str, Any]]:
@@ -49,3 +49,12 @@ def test_evaluation_cases_follow_the_manifest_contract() -> None:
         if "assertions" in case:
             assert isinstance(case["assertions"], list)
             assert all(isinstance(item, str) and item for item in case["assertions"])
+        if "evaluation_dimensions" in case:
+            assert isinstance(case["evaluation_dimensions"], dict)
+            assert set(case["evaluation_dimensions"]) == {
+                "citation_validity",
+                "referential_integrity",
+                "evidence_freshness",
+                "deterministic_reproducibility",
+                "semantic_usefulness",
+            }

@@ -1,0 +1,5 @@
+{"file":".trellis/spec/backend/index.md","reason":"Backend active-spec index and ownership status."}
+{"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Clean-snapshot and repository-owned tooling verification boundary."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/existing-fact-graph-and-analytics.md","reason":"Current Relationship, graph traversal, parser coverage, and structural-ranking evidence."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/persistence-and-cli-contracts.md","reason":"SQLite/manifest compatibility, generation publication, and recovery evidence."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/planning-convergence-update.md","reason":"Canonical naming, occurrence semantics, task ownership, and superseding planning decisions."}

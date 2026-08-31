@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from repo_dive.parsing.models import ParseResult, create_relationship
 from repo_dive.parsing.pipeline import ParsingPipeline
+from repo_dive.parsing.registry import ParserRegistry
 from repo_dive.scanner.models import (
     FileRecord,
     ReadStatus,
@@ -91,3 +93,45 @@ def test_pipeline_output_is_deterministic() -> None:
     pipeline = ParsingPipeline(max_chunk_lines=2)
 
     assert pipeline.parse(source) == pipeline.parse(source)
+
+
+def test_pipeline_normalizes_relationships_by_occurrence_identity() -> None:
+    first = create_relationship(
+        source_id="symbol:source",
+        target_id="symbol:target",
+        kind="calls",
+        confidence=1.0,
+        provenance="fixture",
+        path="service.py",
+        start_line=3,
+        end_line=3,
+        occurrence_discriminator=(4, 12, 0),
+    )
+    second = create_relationship(
+        source_id="symbol:source",
+        target_id="symbol:target",
+        kind="calls",
+        confidence=1.0,
+        provenance="fixture",
+        path="service.py",
+        start_line=3,
+        end_line=3,
+        occurrence_discriminator=(15, 23, 0),
+    )
+
+    class Parser:
+        def parse(self, file: FileRecord, text: str) -> ParseResult:
+            return ParseResult(relationships=(second, first, first))
+
+    class Registry(ParserRegistry):
+        def __init__(self) -> None:
+            pass
+
+        def parser_for(self, file: FileRecord) -> Parser:
+            return Parser()
+
+    result = ParsingPipeline(registry=Registry()).parse(
+        source_file("service.py", "python", "target(); target()\n")
+    )
+
+    assert result.relationships == (first, second)

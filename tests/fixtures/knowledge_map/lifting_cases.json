@@ -1,0 +1,9 @@
+[
+  {
+    "id": "duplicate-parser-occurrences",
+    "occurrences": 3,
+    "expected_parser_edges": 3,
+    "expected_aggregate_occurrences": 3,
+    "expected_unique_sources": 1
+  }
+]

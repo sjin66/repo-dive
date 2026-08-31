@@ -206,11 +206,15 @@ class _TreeSymbolCollector:
         )
         self._relationships.append(
             create_relationship(
+                path=self._path,
                 source_id=parent.id,
                 target_id=symbol.id,
                 kind="contains",
                 confidence=1.0,
-                source="tree_sitter",
+                provenance="tree_sitter",
+                start_line=start_line,
+                end_line=end_line,
+                occurrence_discriminator=(node.start_byte, node.end_byte, 0),
             )
         )
         return symbol

@@ -14,7 +14,7 @@
 repo-dive <command> [repository] --format json
 ```
 
-当前版本除 `--help` 和 `--version` 外，已经实现 `index`、`search`、`context`、`wiki classify`、`wiki init`、`wiki evidence`、`wiki page`、`wiki validate`、`wiki build` 和 `wiki status`；已弃用的 `wiki structure` 仅为兼容保留。
+当前版本除 `--help` 和 `--version` 外，已经实现 `index`、`search`、`context`、六个 `map` 子命令、`wiki classify`、`wiki init`、`wiki evidence`、`wiki page`、`wiki validate`、`wiki build` 和 `wiki status`；已弃用的 `wiki structure` 仅为兼容保留。
 
 ## RAG 命令边界
 
@@ -23,9 +23,69 @@ repo-dive <command> [repository] --format json
 - `index`：扫描、解析、切分，并建立结构/BM25/可选向量索引。
 - `search`：检索排序后的证据，并保留各通道评分。
 - `context`：去重，并在调用方给定的 Token 预算下打包证据。
+- `map`：构建并检查确定性 Knowledge Map，并可选添加带 Citation 的 Claim。
 - `wiki`：持久化 Agent 生成的页面状态，并汇总 `.repo-dive/wiki.md`。
 
 `index`、`search` 和 `context` 是确定性 RAG 操作。`wiki classify`、`wiki init`、`wiki evidence`、`wiki page`、`wiki validate`、`wiki build` 和 `wiki status` 提供完整、受治理、持久且可恢复的离线 Wiki 工作流。这些命令都不会隐式调用生成模型。
+
+## Knowledge Map 命令
+
+Version 1 的封闭命令集合如下：
+
+```text
+repo-dive map build <repository> --source-fact-budget N --artifact-byte-budget BYTES --budget-file PATH --format json
+repo-dive map show <repository> --view architecture|flows|tour --max-results N --format json
+repo-dive map evidence <repository> --scope SCOPE_ID --token-budget N --format json
+repo-dive map enrich <repository> --input PATH|- --format json
+repo-dive map reset <repository> --scope SCOPE_ID --format json
+repo-dive map validate <repository> --format json
+```
+
+没有 `graph` Alias 或 `map status`。Budget 与 Enrichment 路径必须是仓库相对路径；绝对路径、`..`、Windows Drive 路径和 Symlink Escape 都会被拒绝。`--budget-file` 是上限为 `1,000,000` 输入字节的严格 Schema `1.0` JSON，包含所有 Derivation 与 Semantic Capacity 子限制。Enrichment Input 使用固定 `10,000,000` 字节 Reader Ceiling，并且只通过 `--input -` 接受 stdin。
+
+成功结果会按命令暴露 `artifact_revision`、Content Identity、Change State、有界 Count 与 Scope ID。Evidence 结果还会向调用 Agent 返回完整选中 Source Chunk；持久化 Snapshot 只保存引用。`show` 报告 `included_count`、`omitted_count` 和 `truncated`，不会重新计算事实。
+
+所有 Map Error 使用现有 Schema `1.0` Error Envelope。其 `details` 包含 `retry_mode`（`unchanged`、`after_reload`、`after_recovery` 或 `after_cause_clears`）和稳定 `recovery_action`。调用错误以及畸形 Budget/Enrichment 错误以 `2` 退出；Repository、Stale State、Lock、Conflict 与 Capacity 错误以 `3` 退出；安全的 Internal/Write Failure 以 `4` 退出。Writer 失败会保留之前的 Artifact。Validation 只确认 Citation Validity、Referential Integrity、Ownership 与 Evidence Freshness，不确认 Semantic Entailment 或 Truth。
+
+稳定 Error 与 Recovery 值如下：
+
+| Code | Exit | `retry_mode` | `recovery_action` |
+|---|---:|---|---|
+| `invalid_invocation` | 2 | `after_recovery` | `correct_invocation` |
+| `knowledge_map_enrichment_invalid` | 2 | `after_recovery` | `correct_submission` |
+| `repository_not_found` | 3 | `after_recovery` | `select_repository` |
+| `repository_unavailable` | 3 | `after_cause_clears` | `wait_for_repository` |
+| `repository_not_directory` | 3 | `after_recovery` | `select_repository` |
+| `path_outside_repository` | 3 | `after_recovery` | `select_repository_input` |
+| `repository_path_not_found` | 3 | `after_recovery` | `select_existing_input` |
+| `repository_path_unavailable` | 3 | `after_cause_clears` | `wait_for_input` |
+| `index_not_found` | 3 | `after_recovery` | `index_repository` |
+| `index_stale` | 3 | `after_recovery` | `rebuild_index` |
+| `knowledge_map_not_found` | 3 | `after_recovery` | `build_map` |
+| `knowledge_map_stale` | 3 | `after_recovery` | `rebuild_map` |
+| `knowledge_map_invalid` | 3 | `after_recovery` | `preserve_and_rebuild_map` |
+| `knowledge_map_locked` | 3 | `unchanged` | `wait_for_writer` |
+| `knowledge_map_revision_conflict` | 3 | `after_reload` | `reload_artifact` |
+| `knowledge_map_index_changed` | 3 | `unchanged` | `rerun_current_index` |
+| `knowledge_map_source_budget_exceeded` | 3 | `after_recovery` | `raise_source_budget_or_reduce_scope` |
+| `knowledge_map_budget_exceeded` | 3 | `after_recovery` | `raise_named_budget` |
+| `knowledge_map_artifact_budget_exceeded` | 3 | `after_recovery` | `raise_artifact_budget_or_lower_sublimits` |
+| `knowledge_map_capacity_conflict` | 3 | `after_recovery` | `reset_or_restore_capacity` |
+| `knowledge_map_scope_not_found` | 3 | `after_recovery` | `select_current_scope` |
+| `knowledge_map_evidence_not_found` | 3 | `after_recovery` | `collect_evidence` |
+| `knowledge_map_evidence_stale` | 3 | `after_recovery` | `rebuild_reset_recollect` |
+| `knowledge_map_evidence_budget_insufficient` | 3 | `after_recovery` | `raise_token_budget` |
+| `knowledge_map_evidence_capacity_exceeded` | 3 | `after_recovery` | `reset_scope_or_raise_capacity` |
+| `knowledge_map_evidence_unavailable` | 3 | `after_recovery` | `make_source_indexable_or_select_scope` |
+| `knowledge_map_evidence_conflict` | 3 | `after_recovery` | `reset_scope_and_recollect` |
+| `knowledge_map_enrichment_reference_invalid` | 3 | `after_recovery` | `regenerate_current_scope_submission` |
+| `knowledge_map_enrichment_budget_exceeded` | 3 | `after_recovery` | `reduce_enrichment_or_raise_capacity` |
+| `knowledge_map_validation_failed` | 3 | `after_recovery` | `rebuild_or_reset_scope` |
+| `knowledge_map_derivation_failed` | 4 | `after_cause_clears` | `inspect_safe_diagnostic` |
+| `knowledge_map_write_failed` | 4 | `after_cause_clears` | `inspect_write_environment` |
+| `internal_operation_failed` | 4 | `after_cause_clears` | `inspect_safe_diagnostic` |
+
+Knowledge Map 与受治理 Wiki 工作流彼此独立。它不会增加 Wiki Topic、修改 Wiki Schema `2.0`，也不会让 Wiki 消费 `.repo-dive/knowledge-map.json`。
 
 `context` 命令要求正整数 Token 预算，并接受有上限的检索候选数量：
 
@@ -118,7 +178,7 @@ repo-dive index /workspace/project --format json
     "chunks": 24,
     "deleted_files": 0,
     "files": 8,
-    "index_schema_version": 4,
+    "index_schema_version": 5,
     "indexed_files": 8,
     "manifest_schema_version": "2.0",
     "rebuilt_files": 8,

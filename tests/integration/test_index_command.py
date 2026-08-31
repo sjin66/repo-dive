@@ -41,7 +41,7 @@ def test_index_command_reports_counts_versions_and_idempotent_reuse(
     assert first["result"]["relationships"] >= 0
     assert first["result"]["rebuilt_files"] == 3
     assert first["result"]["reused_files"] == 0
-    assert first["result"]["index_schema_version"] == 4
+    assert first["result"]["index_schema_version"] == 5
     assert first["result"]["manifest_schema_version"] == "2.0"
 
     assert main(["index", str(repository), "--format=json"]) == 0
@@ -93,4 +93,4 @@ def test_index_command_supports_markdown_summary(
     assert captured.err == ""
     assert captured.out.startswith("# Repository index\n")
     assert "- Rebuilt files: 3" in captured.out
-    assert "- Index Schema: 4" in captured.out
+    assert "- Index Schema: 5" in captured.out

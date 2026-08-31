@@ -14,7 +14,7 @@ from repo_dive.indexing.vectors import EmbeddingIdentity
 from repo_dive.schema import JsonObject, JsonValue, serialize_json_document
 
 INDEX_MANIFEST_VERSION = "2.0"
-PARSER_VERSION = "1"
+PARSER_VERSION = "2"
 
 ManifestStatus = Literal["read", "skipped"]
 ManifestScanMode = Literal["git", "filesystem"]

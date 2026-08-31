@@ -15,7 +15,8 @@ This directory contains guidelines for backend development. Fill in each file wi
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Database Guidelines](./database-guidelines.md) | ORM patterns, queries, migrations | To fill |
+| [Database Guidelines](./database-guidelines.md) | SQLite relationship occurrence and adjacency contracts | Active |
+| [Knowledge Map Contracts](./knowledge-map-contracts.md) | Deterministic Schema 1.0, budgets, lifecycle, and shared writer protocol | Active |
 | [Error Handling](./error-handling.md) | Error types, handling strategies | To fill |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
 | [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | To fill |

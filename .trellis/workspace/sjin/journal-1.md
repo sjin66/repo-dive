@@ -134,3 +134,166 @@ source, tests, and repository scripts.
 ### Status
 
 [OK] **Completed**
+
+
+## Session 5: Audit Wiki governance and merge main
+<!-- trellis-session: v=2 fp=582b36785df32003 -->
+
+**Date**: 2026-08-30
+**Task**: Audit Wiki governance and merge main
+**Branch**: `main`
+
+### Summary
+
+Audited the remaining Wiki governance and bootstrap tasks against current code, archived the completed repository-classification task, restored the parent-child task tree, and fast-forwarded the verified feature branch into main.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fcca5b7` | fix(task): restore Wiki governance task tree |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 6: Trellis repository asset cleanup
+<!-- trellis-session: v=2 fp=6747b9e4b768d38f -->
+
+**Date**: 2026-08-30
+**Task**: Trellis repository asset cleanup
+**Branch**: `main`
+
+### Summary
+
+Committed the repository-owned Trellis core and Wiki governance plans, fixed stale tooling references, documented the clean-checkout tooling contract, and kept Host payloads local-only.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `078b322` | chore: add Trellis project workflow |
+| `494d852` | chore(task): record Wiki governance plans |
+| `a676ccd` | docs: fix Trellis core references |
+| `24529f3` | docs: record repository tooling contract |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 7: Relationship provenance index schema
+<!-- trellis-session: v=2 fp=relationship-provenance-schema5 -->
+
+**Date**: 2026-08-30
+**Task**: Relationship provenance index schema
+**Branch**: `feat/relationship-provenance-index-schema`
+
+### Summary
+
+Planned the deterministic Knowledge Map task tree, upgraded relationship parsing and SQLite persistence to exact per-occurrence Schema 5 facts, preserved unique graph adjacency and structural retrieval behavior, and documented the executable database contract. A fresh Python 3.12 worktree passed `make check` and all 495 tests.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d2535dc` | docs: plan deterministic knowledge map |
+| `2b8d699` | feat: preserve relationship occurrence provenance |
+| `40c2ae0` | chore(task): archive 08-30-relationship-provenance-index-schema |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 8: Deterministic Knowledge Map domain
+<!-- trellis-session: v=2 fp=deterministic-knowledge-map-schema1 -->
+
+**Date**: 2026-08-30
+**Task**: Deterministic Knowledge Map
+**Branch**: `feat/deterministic-knowledge-map`
+
+### Summary
+
+Implemented strict Knowledge Map Schema 1.0 models, the shared bounded writer lock and CAS transaction, validated index snapshots, conservative resolution, lifted graph analysis, topology, static flows, reading tour, deterministic lifecycle, and bounded views. Two independent review passes fixed strictness, identity, lock-release, resolution, topology, scope, lifecycle, and projection defects. The exact staged Python 3.12 snapshot passed `make check`, both no-gitignore Ruff gates, and all 542 tests.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `54c7200` | feat: add deterministic knowledge map domain |
+| `7b044ec` | chore(task): archive 08-30-deterministic-knowledge-map |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 9: Knowledge Map Evidence and enrichment
+<!-- trellis-session: v=2 fp=knowledge-map-evidence-enrichment -->
+
+**Date**: 2026-08-31
+**Task**: Map Evidence and enrichment
+**Branch**: `feat/map-evidence-enrichment`
+
+### Summary
+
+Implemented deterministic cluster, flow, and tour Evidence planning; bounded complete-chunk collection; strict claim-level submission; complete-scope semantic replacement; reset; and freshness/reference validation through the shared Knowledge Map transaction. Independent review fixed mandatory-Evidence preflight ordering and stale uncited snapshot replacement. The exact staged Python 3.12 snapshot passed `make check`, both no-gitignore Ruff gates, and all 554 tests.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f654233` | feat: add knowledge map evidence enrichment |
+| `0869fbf` | chore(task): archive 08-30-map-evidence-enrichment |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 10: Public Knowledge Map workflow
+<!-- trellis-session: v=2 fp=public-knowledge-map-workflow -->
+
+**Date**: 2026-08-31
+**Task**: Map CLI, documentation, and evaluation
+**Branch**: `feat/map-cli-docs-evaluation`
+
+### Summary
+
+Exposed the six-command `repo-dive map` family, strict bounded build and enrichment inputs, JSON process/error contracts, deterministic and semantic workflows, executable evaluation dimensions, and matched English/Chinese architecture, CLI, and workflow documentation. Independent review completed the public process error matrix, replay byte-preservation checks, path-diagnostic sanitization, strict-input coverage, and evaluation fixtures. The exact staged Python 3.12 snapshot passed `make check`, both no-gitignore Ruff gates, 458 unit tests, all 678 tests, and every root/Map help smoke test.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `540016b` | feat: expose knowledge map workflow |
+| `31dfb87` | chore(task): archive 08-30-map-cli-docs-evaluation |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 11: Knowledge Map integration corrections
+<!-- trellis-session: v=2 fp=knowledge-map-integration-corrections -->
+
+**Date**: 2026-08-31
+**Task**: Knowledge Map integration corrections
+**Branch**: `fix/knowledge-map-integration-corrections`
+
+### Summary
+
+Closed the parent P3/P4 blockers by routing Map parser failures through the JSON envelope, enforcing persisted scope ownership for claim fact and related nodes, replacing simulated process-error coverage with real adapter/service paths, and adding coordinated cross-writer, portable Windows lock, and bounded-work tests. Corrected matched English/Chinese Index Schema 5 and Wiki Schema 2.0 documentation while preserving historical comparison files. Independent review also tightened exact Map command detection so prefix-similar non-Map commands retain their existing contract. The exact allowlisted Python 3.12 clean snapshot passed `make check`, both no-gitignore Ruff gates, 462 unit tests, all 693 tests, and every root/Map help smoke test.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `af6b270` | fix: close knowledge map integration gaps |
+| `352877a` | chore(task): archive 08-31-knowledge-map-integration-corrections |
+
+### Status
+
+[OK] **Completed**

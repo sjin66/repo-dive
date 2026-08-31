@@ -138,7 +138,7 @@ def test_wiki_structure_creates_versioned_state_and_is_byte_idempotent(
     assert wiki_document["sections"][0]["pages"][0]["body"] is None
     assert metadata_document["schema_version"] == "1.0"
     assert metadata_document["wiki_schema_version"] == "1.0"
-    assert metadata_document["index_schema_version"] == 4
+    assert metadata_document["index_schema_version"] == 5
     assert metadata_document["index_build_id"]
     assert metadata_document["repository"] == str(repository.resolve())
 

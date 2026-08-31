@@ -133,35 +133,66 @@ def test_relationship_expansion_is_bounded_filtered_and_explainable(
             target_id=middle.id,
             kind="calls",
             confidence=0.9,
-            source="fixture:40",
+            provenance="fixture:40",
+            path="src/graph.py",
+            start_line=40,
+            end_line=40,
+            occurrence_discriminator=(0, 8, 0),
+        ),
+        create_relationship(
+            source_id=root.id,
+            target_id=middle.id,
+            kind="calls",
+            confidence=0.8,
+            provenance="fixture:duplicate",
+            path="src/graph.py",
+            start_line=41,
+            end_line=41,
+            occurrence_discriminator=(0, 8, 0),
         ),
         create_relationship(
             source_id=middle.id,
             target_id=root.id,
             kind="calls",
             confidence=0.95,
-            source="fixture:50",
+            provenance="fixture:50",
+            path="src/graph.py",
+            start_line=50,
+            end_line=50,
+            occurrence_discriminator=(0, 8, 0),
         ),
         create_relationship(
             source_id=middle.id,
             target_id=leaf.id,
             kind="inherits",
             confidence=0.8,
-            source="fixture:51",
+            provenance="fixture:51",
+            path="src/graph.py",
+            start_line=51,
+            end_line=51,
+            occurrence_discriminator=(0, 8, 0),
         ),
         create_relationship(
             source_id=caller.id,
             target_id=root.id,
             kind="calls",
             confidence=0.85,
-            source="fixture:70",
+            provenance="fixture:70",
+            path="src/graph.py",
+            start_line=70,
+            end_line=70,
+            occurrence_discriminator=(0, 8, 0),
         ),
         create_relationship(
             source_id=root.id,
             target_id=low.id,
             kind="calls",
             confidence=0.4,
-            source="fixture:41",
+            provenance="fixture:41",
+            path="src/graph.py",
+            start_line=41,
+            end_line=41,
+            occurrence_discriminator=(0, 8, 0),
         ),
     )
 
@@ -203,6 +234,34 @@ def test_relationship_expansion_is_bounded_filtered_and_explainable(
         )
 
     hit_by_symbol_id = {hit.chunk.symbol_id: hit for hit in hits}
+    assert [hit.chunk.symbol_id for hit in hits] == [
+        root.id,
+        middle.id,
+        caller.id,
+        leaf.id,
+    ]
+    assert [hit.structural_score for hit in hits] == [
+        1.0,
+        0.45,
+        0.425,
+        0.24000000000000002,
+    ]
+    assert [hit.reasons for hit in hits] == [
+        ("symbol_match:qualified_name_exact:pkg.Root",),
+        (
+            "relationship_path:pkg.Root "
+            "-calls[confidence=0.900,source=fixture:40]-> pkg.Middle",
+        ),
+        (
+            "relationship_path:pkg.Root "
+            "<-calls[confidence=0.850,source=fixture:70]- pkg.Caller",
+        ),
+        (
+            "relationship_path:pkg.Root "
+            "-calls[confidence=0.900,source=fixture:40]-> pkg.Middle "
+            "-inherits[confidence=0.800,source=fixture:51]-> pkg.Leaf",
+        ),
+    ]
     assert set(hit_by_symbol_id) == {root.id, middle.id, leaf.id, caller.id}
     assert len(hits) == len({hit.chunk.id for hit in hits})
     assert (
@@ -262,14 +321,22 @@ def test_low_confidence_edges_do_not_consume_the_node_budget(tmp_path: Path) -> 
             target_id=low.id,
             kind="calls",
             confidence=0.4,
-            source="fixture:low",
+            provenance="fixture:low",
+            path="src/graph.py",
+            start_line=41,
+            end_line=41,
+            occurrence_discriminator=(0, 8, 0),
         ),
         create_relationship(
             source_id=root.id,
             target_id=high.id,
             kind="calls",
             confidence=0.9,
-            source="fixture:high",
+            provenance="fixture:high",
+            path="src/graph.py",
+            start_line=42,
+            end_line=42,
+            occurrence_discriminator=(0, 8, 0),
         ),
     )
 

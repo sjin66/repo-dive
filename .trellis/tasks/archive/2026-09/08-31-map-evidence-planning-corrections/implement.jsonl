@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/knowledge-map-contracts.md", "reason": "Evidence planning, freshness, capacity, public command, and error contracts"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Typed bounded stable SQLite read conventions"}
+{"file": ".trellis/tasks/08-31-map-evidence-planning-corrections/research/map-evidence-planning-defects.md", "reason": "Measured query behavior, compatibility options, and required tests"}

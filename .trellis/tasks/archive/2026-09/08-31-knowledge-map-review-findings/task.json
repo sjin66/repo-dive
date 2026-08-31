@@ -1,0 +1,30 @@
+{
+  "id": "knowledge-map-review-findings",
+  "name": "knowledge-map-review-findings",
+  "title": "Correct Knowledge Map review findings",
+  "description": "Fix edge-budget closure and prioritization, Flow omission accounting, and Evidence scalability and anchor-availability defects.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "sjin",
+  "assignee": "sjin",
+  "createdAt": "2026-08-31",
+  "completedAt": "2026-09-01",
+  "branch": "fix/knowledge-map-integration-corrections",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "08-31-map-edge-budget-closure",
+    "08-31-map-flow-omission-accounting",
+    "08-31-map-evidence-planning-corrections"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

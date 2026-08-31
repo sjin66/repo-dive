@@ -122,7 +122,7 @@ class SymbolGraph:
         node_by_id = {symbol.id: symbol for symbol in roots}
         frontier = tuple(symbol.id for symbol in roots)
         edges: list[GraphEdge] = []
-        edge_keys: set[tuple[str, str, str, str]] = set()
+        edge_keys: set[tuple[str, str, str]] = set()
         truncated = len(unique_root_ids) > max_nodes
 
         for _ in range(depth):
@@ -194,7 +194,7 @@ class SymbolGraph:
                         target=target,
                         kind=relationship.kind,
                         confidence=relationship.confidence,
-                        provenance=relationship.source,
+                        provenance=relationship.provenance,
                     )
                 )
 
@@ -227,12 +227,11 @@ def _validate_limits(
 
 def _relationship_key(
     relationship: Relationship,
-) -> tuple[str, str, str, str]:
+) -> tuple[str, str, str]:
     return (
         relationship.source_id,
         relationship.target_id,
         relationship.kind,
-        relationship.source,
     )
 
 

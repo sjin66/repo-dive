@@ -1,0 +1,10 @@
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/existing-fact-graph-and-analytics.md","reason":"Verify fact provenance, deterministic graph behavior, language coverage, and evaluation requirements."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/persistence-and-cli-contracts.md","reason":"Verify schema/version events, read-only index use, atomic writes, CLI I/O, budgets, and recovery."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/agent-enrichment-and-wiki-integration.md","reason":"Verify strict enrichment validation, Evidence ownership/freshness, and that Wiki remains unchanged."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/mvp-boundary-test-map-and-risks.md","reason":"Verify complete acceptance coverage, scaling limits, cross-file resolution risk, and missing test classes."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/planning-convergence-update.md","reason":"Verify all child work follows the final canonical decisions and rejected alternatives."}
+{"file":".trellis/spec/backend/index.md","reason":"Verify active backend contract references."}
+{"file":".trellis/spec/backend/knowledge-map-contracts.md","reason":"Verify all four children jointly satisfy deterministic, semantic, shared writer, command, error, and release contracts."}
+{"file":".trellis/spec/backend/repository-classification.md","reason":"Verify deterministic snapshot/signal compliance."}
+{"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Verify Wiki ownership and Schema 2.0 remain unchanged."}
+{"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Verify exact staged closure and clean-snapshot release checks."}

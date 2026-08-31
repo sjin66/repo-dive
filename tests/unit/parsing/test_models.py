@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
+from typing import cast
 
 import pytest
 
@@ -75,14 +76,46 @@ def test_symbol_and_relationship_identity_are_stable() -> None:
         target_id="symbol:target",
         kind="calls",
         confidence=0.75,
-        source="python_ast",
+        provenance="python_ast",
+        path="src/service.py",
+        start_line=6,
+        end_line=6,
+        occurrence_discriminator=(4, 9, 0),
+    )
+    same_relationship = create_relationship(
+        source_id=symbol.id,
+        target_id="symbol:target",
+        kind="calls",
+        confidence=0.75,
+        provenance="python_ast",
+        path="src/service.py",
+        start_line=6,
+        end_line=6,
+        occurrence_discriminator=(4, 9, 0),
+    )
+    repeated_relationship = create_relationship(
+        source_id=symbol.id,
+        target_id="symbol:target",
+        kind="calls",
+        confidence=0.75,
+        provenance="python_ast",
+        path="src/service.py",
+        start_line=6,
+        end_line=6,
+        occurrence_discriminator=(12, 17, 0),
     )
 
     assert symbol == same_symbol
     assert symbol.id.startswith("symbol:")
     assert relationship.source_id == symbol.id
+    assert relationship == same_relationship
+    assert relationship.id.startswith("relationship:")
+    assert relationship.id != repeated_relationship.id
     assert relationship.confidence == 0.75
+    assert relationship.provenance == "python_ast"
     assert relationship.source == "python_ast"
+    assert relationship.path == "src/service.py"
+    assert (relationship.start_line, relationship.end_line) == (6, 6)
 
 
 @pytest.mark.parametrize(
@@ -106,7 +139,73 @@ def test_relationship_rejects_invalid_confidence() -> None:
             target_id="target",
             kind="calls",
             confidence=1.1,
-            source="test",
+            provenance="test",
+            path="src/main.py",
+            start_line=1,
+            end_line=1,
+            occurrence_discriminator=(0, 1, 0),
+        )
+
+
+@pytest.mark.parametrize(
+    ("path", "start_line", "end_line", "discriminator"),
+    [
+        ("/src/main.py", 1, 1, (0, 1, 0)),
+        ("src\\main.py", 1, 1, (0, 1, 0)),
+        ("src/main.py", 0, 1, (0, 1, 0)),
+        ("src/main.py", 2, 1, (0, 1, 0)),
+        ("src/main.py", 1, 1, (-1, 1, 0)),
+        ("src/main.py", 1, 1, (0, 1, -1)),
+        ("src/main.py", 1, 1, (0, 1)),
+        ("src/main.py", 1, 1, [0, 1, 0]),
+    ],
+)
+def test_relationship_rejects_invalid_occurrence_evidence(
+    path: str,
+    start_line: int,
+    end_line: int,
+    discriminator: object,
+) -> None:
+    with pytest.raises(ValueError):
+        create_relationship(
+            source_id="source",
+            target_id="target",
+            kind="calls",
+            confidence=1.0,
+            provenance="test",
+            path=path,
+            start_line=start_line,
+            end_line=end_line,
+            occurrence_discriminator=cast(tuple[int, int, int], discriminator),
+        )
+
+
+@pytest.mark.parametrize(
+    ("source_id", "target_id", "kind", "provenance"),
+    [
+        ("", "target", "calls", "test"),
+        ("source", "", "calls", "test"),
+        ("source", "target", "", "test"),
+        ("source", "target", "calls", ""),
+    ],
+)
+def test_relationship_rejects_empty_identity_fields(
+    source_id: str,
+    target_id: str,
+    kind: str,
+    provenance: str,
+) -> None:
+    with pytest.raises(ValueError):
+        create_relationship(
+            source_id=source_id,
+            target_id=target_id,
+            kind=kind,
+            confidence=1.0,
+            provenance=provenance,
+            path="src/main.py",
+            start_line=1,
+            end_line=1,
+            occurrence_discriminator=(0, 1, 0),
         )
 
 

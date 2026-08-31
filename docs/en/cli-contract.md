@@ -14,7 +14,7 @@ Functional commands support:
 repo-dive <command> [repository] --format json
 ```
 
-The current build implements `index`, `search`, `context`, `wiki classify`, `wiki init`, `wiki evidence`, `wiki page`, `wiki validate`, `wiki build`, and `wiki status`; deprecated `wiki structure` remains for compatibility.
+The current build implements `index`, `search`, `context`, the six `map` subcommands, `wiki classify`, `wiki init`, `wiki evidence`, `wiki page`, `wiki validate`, `wiki build`, and `wiki status`; deprecated `wiki structure` remains for compatibility.
 
 ## RAG Command Boundary
 
@@ -23,9 +23,69 @@ Command families expose each RAG stage independently:
 - `index`: scan, parse, chunk, and build structural/BM25/optional-vector indexes.
 - `search`: retrieve ranked evidence and preserve per-channel scores.
 - `context`: deduplicate and package evidence under a caller-supplied token budget.
+- `map`: build and inspect a deterministic Knowledge Map, with optional cited claims.
 - `wiki`: persist agent-generated page state and assemble `.repo-dive/wiki.md`.
 
 `index`, `search`, and `context` are deterministic RAG operations. `wiki classify`, `wiki init`, `wiki evidence`, `wiki page`, `wiki validate`, `wiki build`, and `wiki status` provide the complete governed, persistent, resumable offline Wiki workflow. None implicitly calls a generative model.
+
+## Knowledge Map Commands
+
+The closed Version 1 command set is:
+
+```text
+repo-dive map build <repository> --source-fact-budget N --artifact-byte-budget BYTES --budget-file PATH --format json
+repo-dive map show <repository> --view architecture|flows|tour --max-results N --format json
+repo-dive map evidence <repository> --scope SCOPE_ID --token-budget N --format json
+repo-dive map enrich <repository> --input PATH|- --format json
+repo-dive map reset <repository> --scope SCOPE_ID --format json
+repo-dive map validate <repository> --format json
+```
+
+There is no `graph` alias or `map status`. Budget and enrichment paths are repository-relative; absolute paths, `..`, Windows-drive paths, and symlink escapes are rejected. `--budget-file` is strict Schema `1.0` JSON capped at `1,000,000` input bytes and contains every derivation and semantic-capacity sublimit. Enrichment input uses a fixed `10,000,000` byte reader ceiling and accepts stdin only as `--input -`.
+
+Success results expose `artifact_revision`, content identities, change state, bounded counts, and scope IDs as applicable. Evidence results also return complete selected source Chunks to the calling Agent. Persisted snapshots contain only references. `show` reports `included_count`, `omitted_count`, and `truncated`; it never recomputes facts.
+
+All map errors use the existing Schema `1.0` error envelope. Their `details` contain `retry_mode` (`unchanged`, `after_reload`, `after_recovery`, or `after_cause_clears`) and a stable `recovery_action`. Invocation and malformed budget/enrichment errors exit `2`; repository, stale-state, lock, conflict, and capacity errors exit `3`; safe internal/write failures exit `4`. Failed writers preserve the prior artifact. Validation establishes citation validity, referential integrity, ownership, and Evidence freshness, not semantic entailment or truth.
+
+The stable error and recovery values are:
+
+| Code | Exit | `retry_mode` | `recovery_action` |
+|---|---:|---|---|
+| `invalid_invocation` | 2 | `after_recovery` | `correct_invocation` |
+| `knowledge_map_enrichment_invalid` | 2 | `after_recovery` | `correct_submission` |
+| `repository_not_found` | 3 | `after_recovery` | `select_repository` |
+| `repository_unavailable` | 3 | `after_cause_clears` | `wait_for_repository` |
+| `repository_not_directory` | 3 | `after_recovery` | `select_repository` |
+| `path_outside_repository` | 3 | `after_recovery` | `select_repository_input` |
+| `repository_path_not_found` | 3 | `after_recovery` | `select_existing_input` |
+| `repository_path_unavailable` | 3 | `after_cause_clears` | `wait_for_input` |
+| `index_not_found` | 3 | `after_recovery` | `index_repository` |
+| `index_stale` | 3 | `after_recovery` | `rebuild_index` |
+| `knowledge_map_not_found` | 3 | `after_recovery` | `build_map` |
+| `knowledge_map_stale` | 3 | `after_recovery` | `rebuild_map` |
+| `knowledge_map_invalid` | 3 | `after_recovery` | `preserve_and_rebuild_map` |
+| `knowledge_map_locked` | 3 | `unchanged` | `wait_for_writer` |
+| `knowledge_map_revision_conflict` | 3 | `after_reload` | `reload_artifact` |
+| `knowledge_map_index_changed` | 3 | `unchanged` | `rerun_current_index` |
+| `knowledge_map_source_budget_exceeded` | 3 | `after_recovery` | `raise_source_budget_or_reduce_scope` |
+| `knowledge_map_budget_exceeded` | 3 | `after_recovery` | `raise_named_budget` |
+| `knowledge_map_artifact_budget_exceeded` | 3 | `after_recovery` | `raise_artifact_budget_or_lower_sublimits` |
+| `knowledge_map_capacity_conflict` | 3 | `after_recovery` | `reset_or_restore_capacity` |
+| `knowledge_map_scope_not_found` | 3 | `after_recovery` | `select_current_scope` |
+| `knowledge_map_evidence_not_found` | 3 | `after_recovery` | `collect_evidence` |
+| `knowledge_map_evidence_stale` | 3 | `after_recovery` | `rebuild_reset_recollect` |
+| `knowledge_map_evidence_budget_insufficient` | 3 | `after_recovery` | `raise_token_budget` |
+| `knowledge_map_evidence_capacity_exceeded` | 3 | `after_recovery` | `reset_scope_or_raise_capacity` |
+| `knowledge_map_evidence_unavailable` | 3 | `after_recovery` | `make_source_indexable_or_select_scope` |
+| `knowledge_map_evidence_conflict` | 3 | `after_recovery` | `reset_scope_and_recollect` |
+| `knowledge_map_enrichment_reference_invalid` | 3 | `after_recovery` | `regenerate_current_scope_submission` |
+| `knowledge_map_enrichment_budget_exceeded` | 3 | `after_recovery` | `reduce_enrichment_or_raise_capacity` |
+| `knowledge_map_validation_failed` | 3 | `after_recovery` | `rebuild_or_reset_scope` |
+| `knowledge_map_derivation_failed` | 4 | `after_cause_clears` | `inspect_safe_diagnostic` |
+| `knowledge_map_write_failed` | 4 | `after_cause_clears` | `inspect_write_environment` |
+| `internal_operation_failed` | 4 | `after_cause_clears` | `inspect_safe_diagnostic` |
+
+Knowledge Map is independent of the governed Wiki workflow. It does not add Wiki topics, alter Wiki Schema `2.0`, or make Wiki consume `.repo-dive/knowledge-map.json`.
 
 The context command requires a positive token budget and accepts a bounded retrieval-candidate count:
 
@@ -120,7 +180,7 @@ repo-dive index /workspace/project --format json
     "chunks": 24,
     "deleted_files": 0,
     "files": 8,
-    "index_schema_version": 4,
+    "index_schema_version": 5,
     "indexed_files": 8,
     "manifest_schema_version": "2.0",
     "rebuilt_files": 8,

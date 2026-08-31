@@ -34,13 +34,14 @@ These are implemented package boundaries, not a future plan:
 ```text
 src/repo_dive/
 ├── cli.py                 process boundary and error/result serialization
-├── commands/              index, search, context, and wiki adapters
+├── commands/              index, search, context, map, and wiki adapters
 ├── scanner/               deterministic candidate discovery and file reads
 ├── parsing/               Chunk, Symbol, Relationship extraction
 ├── indexing/              SQLite store, BM25, graph, vectors, generations
 ├── providers/             optional local embedding provider selection
 ├── retrieval/             lexical, structural, vector, and weighted fusion
 ├── context/               token estimation and complete-Evidence packing
+├── knowledge_map/         deterministic maps, views, Evidence, and enrichment
 ├── wiki/                  state, freshness, page submission, assembly
 ├── storage/               repository path validation and atomic writes
 ├── evaluation/            offline retrieval and context evaluation runner
@@ -52,12 +53,13 @@ The concrete dependency direction is:
 
 ```text
 cli -> commands
-commands -> indexing / retrieval / context / wiki
+commands -> indexing / retrieval / context / knowledge_map / wiki
 scanner -> storage
 parsing -> scanner
 indexing -> scanner / parsing / providers / storage
 retrieval -> indexing / parsing / providers
 context -> retrieval / parsing
+knowledge_map -> indexing / retrieval / context / storage
 wiki -> indexing / retrieval / context / storage
 evaluation -> indexing / retrieval / context
 ```
@@ -107,7 +109,7 @@ SQLite stores Symbols and `calls`, `contains`, `imports`, and `inherits` Relatio
 
 Vector retrieval is optional. `--embedding-model` selects the implemented Sentence Transformers adapter, which is lazy-loaded from the `vector` extra with `local_files_only=True` and `trust_remote_code=False`. Provider name, an opaque `local:<sha256>` model identity, and dimensions define the vector space without persisting the private absolute model path.
 
-Index Schema 4 stores one fixed-length little-endian float32 BLOB per Chunk. The row also binds `chunk_id`, `chunk_hash`, provider, model, and dimensions. Non-finite values, dimension mismatches, mixed identities, and stale Chunk hashes are rejected. Exact brute-force cosine search at persisted float32 precision is the deterministic reference, with ties ordered by Chunk ID.
+Index Schema 5 stores one fixed-length little-endian float32 BLOB per Chunk. The row also binds `chunk_id`, `chunk_hash`, provider, model, and dimensions. Non-finite values, dimension mismatches, mixed identities, and stale Chunk hashes are rejected. Exact brute-force cosine search at persisted float32 precision is the deterministic reference, with ties ordered by Chunk ID.
 
 Unchanged vectors are reused only when both provider identity and Chunk content hash match. `strict` vector failure aborts publication or search; `degraded` omits the vector identity/channel and continues with lexical plus structural evidence while returning a safe warning/error code.
 
@@ -134,17 +136,25 @@ The active index is a symlink to an immutable generation:
         └── metadata.json
 ```
 
-The physical database path is `.repo-dive/index-generations/<build-id>/index.sqlite3`; consumers use the stable pointer path `.repo-dive/index/index.sqlite3`. `manifest.json` records Schema `1.0`, build ID, repository fingerprint, scan mode, build parameters, file-to-Chunk membership, counts, and optional embedding identity. The generation-local `metadata.json` is the public pointer summary for that index generation and is distinct from the Wiki metadata file at `.repo-dive/metadata.json`.
+The physical database path is `.repo-dive/index-generations/<build-id>/index.sqlite3`; consumers use the stable pointer path `.repo-dive/index/index.sqlite3`. `manifest.json` records Schema `2.0`, build ID, repository fingerprint, scan mode, build parameters, file-to-Chunk membership, counts, and optional embedding identity. The generation-local `metadata.json` is the public pointer summary for that index generation and is distinct from the Wiki metadata file at `.repo-dive/metadata.json`.
 
-SQLite Schema 4 is declared by `PRAGMA user_version = 4` and contains `files`, `symbols`, `chunks`, `relationships`, `terms`, `postings`, `stats`, and `vectors`. Foreign keys and integrity checks must pass before publication.
+SQLite Schema 5 is declared by `PRAGMA user_version = 5` and contains `files`, `symbols`, `chunks`, `relationships`, `terms`, `postings`, `stats`, and `vectors`. Relationship rows preserve exact syntax-occurrence provenance while graph traversal groups them into unique endpoint-and-kind adjacencies. Foreign keys and integrity checks must pass before publication.
 
 An index build creates a staging directory, reuses unchanged parse results from a compatible previous generation, writes and validates the complete new database and metadata, moves staging to `index-generations/<build-id>`, then atomically replaces the `.repo-dive/index -> index-generations/<build-id>` symlink. A failed build or pointer replacement preserves the previous generation and removes temporary data. Read-only commands rescan with the persisted build parameters and return `index_stale` when the repository fingerprint differs.
 
 ## Wiki Persistence and Recovery Boundary
 
-Wiki state uses strict Schema `1.0` JSON in `.repo-dive/wiki.json` and `.repo-dive/metadata.json`. Complete files are serialized and atomically replaced; malformed, unsupported, or incomplete state is rejected without repair. `.repo-dive/wiki.md` is replaced only after all pages and Evidence are validated, and identical bytes produce `changed: false`.
+Wiki state uses strict Schema `2.0` JSON in `.repo-dive/wiki.json` and `.repo-dive/metadata.json`. Complete files are serialized and atomically replaced; malformed, unsupported, or incomplete state is rejected without repair. `.repo-dive/wiki.md` is replaced only after all pages and Evidence are validated, and identical bytes produce `changed: false`.
 
-Evidence freshness is page-local: the index Schema must still be `4`, and every persisted reference must match its current Chunk ID, content hash, path, and inclusive line range. The index build ID is audit provenance, not by itself a global invalidation signal.
+Evidence freshness is page-local: the index Schema must still be `5`, and every persisted reference must match its current Chunk ID, content hash, path, and inclusive line range. The index build ID is audit provenance, not by itself a global invalidation signal.
+
+## Knowledge Map Boundary
+
+The optional Knowledge Map is a strict Schema `1.0` document at `.repo-dive/knowledge-map.json`. It derives repository, module, file, and symbol facts plus architecture, static-flow, and reading-tour projections from one current published index. Source Chunks remain Evidence references rather than fact nodes. A deterministic build is useful with empty semantic sections and never calls a model.
+
+All writers use `.repo-dive/knowledge-map.lock`, a bounded OS advisory lock, followed by under-lock index revalidation, exact-intent equivalence, revision/hash compare-and-swap, complete candidate validation, byte-capacity enforcement, and atomic replacement. `artifact_revision` advances only on byte-changing writes. Deterministic changes clear semantic state; compliant capacity-only changes preserve it. `map show` and `map validate` are read-only.
+
+Optional scope Evidence and claim enrichment use the same writer. Every claim owns fact-node and Evidence references. Validation checks schema, ownership, referential integrity, and Evidence freshness; `semantic_entailment_checked` is always `false`, so citation presence is not a truth or entailment score. Knowledge Map does not alter or feed Wiki Schema `2.0`, templates, commands, or artifacts.
 
 ## Error and Security Boundaries
 

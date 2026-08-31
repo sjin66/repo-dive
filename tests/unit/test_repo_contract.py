@@ -37,7 +37,7 @@ ARCHITECTURE_LITERALS = (
     "evaluation/",
     ".repo-dive/index-generations/<build-id>/index.sqlite3",
     ".repo-dive/index -> index-generations/<build-id>",
-    "PRAGMA user_version = 4",
+    "PRAGMA user_version = 5",
     "weighted_rrf",
     "strict",
     "degraded",
@@ -273,6 +273,37 @@ def test_architecture_requires_runtime_package_and_index_contracts(
         "docs/en/architecture.md is missing required technical literal: "
         ".repo-dive/index -> index-generations/<build-id>"
     ]
+
+
+def test_bilingual_architecture_schema_versions_match_runtime_contracts() -> None:
+    from repo_dive.indexing.manifest import INDEX_MANIFEST_VERSION
+    from repo_dive.indexing.store import INDEX_SCHEMA_VERSION
+    from repo_dive.knowledge_map.models import KNOWLEDGE_MAP_SCHEMA_VERSION
+    from repo_dive.wiki.models import WIKI_SCHEMA_VERSION
+
+    root = Path(__file__).parents[2]
+    expected_by_locale = {
+        "en": (
+            f"`manifest.json` records Schema `{INDEX_MANIFEST_VERSION}`",
+            f"SQLite Schema {INDEX_SCHEMA_VERSION} is declared",
+            f"Wiki state uses strict Schema `{WIKI_SCHEMA_VERSION}`",
+            f"Knowledge Map is a strict Schema `{KNOWLEDGE_MAP_SCHEMA_VERSION}`",
+        ),
+        "zh-CN": (
+            f"`manifest.json` 记录 Schema `{INDEX_MANIFEST_VERSION}`",
+            f"SQLite Schema {INDEX_SCHEMA_VERSION} 由",
+            "Wiki 状态使用 `.repo-dive/wiki.json` 和 `.repo-dive/metadata.json` "
+            f"中的严格 Schema `{WIKI_SCHEMA_VERSION}`",
+            "Knowledge Map 是 `.repo-dive/knowledge-map.json` 中的严格 "
+            f"Schema `{KNOWLEDGE_MAP_SCHEMA_VERSION}`",
+        ),
+    }
+
+    for locale, required_literals in expected_by_locale.items():
+        document = (root / "docs" / locale / "architecture.md").read_text(
+            encoding="utf-8"
+        )
+        assert all(literal in document for literal in required_literals)
 
 
 def test_wiki_workflow_requires_page_recovery_contract(tmp_path: Path) -> None:

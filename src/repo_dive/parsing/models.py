@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import Protocol
 
 from repo_dive.scanner.models import FileRecord
@@ -37,13 +38,23 @@ class Symbol:
 
 @dataclass(frozen=True, slots=True)
 class Relationship:
-    """A typed, sourced edge between two symbol identities."""
+    """One exact, typed syntax occurrence between two symbol identities."""
 
+    id: str
     source_id: str
     target_id: str
     kind: str
     confidence: float
-    source: str
+    provenance: str
+    path: str
+    start_line: int
+    end_line: int
+    occurrence_discriminator: tuple[int, int, int]
+
+    @property
+    def source(self) -> str:
+        """Preserve the existing retrieval provenance field contract."""
+        return self.provenance
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,23 +151,68 @@ def create_relationship(
     target_id: str,
     kind: str,
     confidence: float,
-    source: str,
+    provenance: str,
+    path: str,
+    start_line: int,
+    end_line: int,
+    occurrence_discriminator: tuple[int, int, int],
 ) -> Relationship:
-    """Create a relationship with a bounded confidence score."""
+    """Create a stable relationship occurrence with exact source Evidence."""
+    if not source_id or not target_id or not kind or not provenance:
+        raise ValueError("relationship identity fields must not be empty")
     if not 0.0 <= confidence <= 1.0:
         raise ValueError("relationship confidence must be between 0 and 1")
+    _validate_posix_path(path)
+    _validate_line_range(start_line, end_line)
+    if (
+        type(occurrence_discriminator) is not tuple
+        or len(occurrence_discriminator) != 3
+        or any(type(component) is not int for component in occurrence_discriminator)
+        or any(component < 0 for component in occurrence_discriminator)
+    ):
+        raise ValueError("relationship occurrence discriminator must be non-negative")
+    discriminator = tuple(str(component) for component in occurrence_discriminator)
+    relationship_id = _stable_id(
+        "relationship",
+        source_id,
+        target_id,
+        kind,
+        repr(confidence),
+        provenance,
+        path,
+        str(start_line),
+        str(end_line),
+        *discriminator,
+    )
     return Relationship(
+        id=relationship_id,
         source_id=source_id,
         target_id=target_id,
         kind=kind,
         confidence=confidence,
-        source=source,
+        provenance=provenance,
+        path=path,
+        start_line=start_line,
+        end_line=end_line,
+        occurrence_discriminator=occurrence_discriminator,
     )
 
 
 def _validate_line_range(start_line: int, end_line: int) -> None:
     if start_line < 1 or end_line < start_line:
         raise ValueError("line range must be one-based, inclusive, and ordered")
+
+
+def _validate_posix_path(path: str) -> None:
+    candidate = PurePosixPath(path)
+    if (
+        not path
+        or "\\" in path
+        or candidate.is_absolute()
+        or str(candidate) != path
+        or ".." in candidate.parts
+    ):
+        raise ValueError("path must be a repository-relative POSIX path")
 
 
 def _sha256(value: str) -> str:

@@ -1,0 +1,7 @@
+{"file":".trellis/spec/backend/knowledge-map-contracts.md","reason":"Frozen artifact, scope, writer, public command, error, and test contracts being enforced."}
+{"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Allowlisted staging and exact clean-snapshot verification requirements."}
+{"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Negative Wiki ownership boundary and current Wiki Schema 2.0 contract."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/prd.md","reason":"Parent KM-AC1 through KM-AC12 and unchanged product scope."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/design.md","reason":"Normative command/error applicability matrix, precedence, budgets, and recovery enums."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/implement.md","reason":"P3/P4 integration and return-to-child correction workflow."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/planning-convergence-update.md","reason":"Canonical naming, rejected alternatives, and comparison-material status."}

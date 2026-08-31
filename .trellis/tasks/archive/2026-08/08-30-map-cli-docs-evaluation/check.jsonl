@@ -1,0 +1,10 @@
+{"file":".trellis/spec/backend/index.md","reason":"Verify active backend spec references and ownership."}
+{"file":".trellis/spec/backend/knowledge-map-contracts.md","reason":"Verify public commands preserve frozen deterministic, semantic, budget, validation, and shared writer behavior."}
+{"file":".trellis/spec/backend/repository-classification.md","reason":"Verify classification/snapshot fixture behavior stays deterministic and bounded."}
+{"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Verify Wiki Schema 2.0, init, templates, and artifacts remain unchanged."}
+{"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Verify exact clean staged snapshot, repository-owned closure, and shared Make targets."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/existing-fact-graph-and-analytics.md","reason":"Check public behavior against actual parser/graph/retrieval capabilities."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/persistence-and-cli-contracts.md","reason":"Check every CLI/error/atomicity/budget/recovery contract."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/agent-enrichment-and-wiki-integration.md","reason":"Check claim citations, freshness, semantic limits, and Wiki independence."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/mvp-boundary-test-map-and-risks.md","reason":"Check test/evaluation/performance/security coverage and residual risks."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/research/planning-convergence-update.md","reason":"Check canonical naming, commands, error matrix, metrics, and final integration traceability."}

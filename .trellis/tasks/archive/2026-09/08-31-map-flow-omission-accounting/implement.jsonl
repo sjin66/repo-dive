@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/knowledge-map-contracts.md", "reason": "Flow bounds, deterministic coverage, and truncation contracts"}
+{"file": ".trellis/tasks/08-31-map-flow-omission-accounting/research/flow-omission-accounting.md", "reason": "Verified reproduction and exact count semantics"}

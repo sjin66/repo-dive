@@ -97,7 +97,26 @@ def test_python_ast_extracts_contains_import_call_and_inheritance_edges() -> Non
     ) in edges
     assert ("src.sample.helper", "src.sample.helper.inner", "calls") in edges
     assert all(edge.source == "python_ast" for edge in result.relationships)
+    assert all(edge.provenance == "python_ast" for edge in result.relationships)
+    assert all(edge.path == "src/sample.py" for edge in result.relationships)
     assert all(0.0 < edge.confidence <= 1.0 for edge in result.relationships)
+
+    contains_service = next(
+        edge
+        for edge in result.relationships
+        if edge.kind == "contains"
+        and symbols[edge.target_id].qualified_name == "src.sample.Service"
+    )
+    inheritance = next(edge for edge in result.relationships if edge.kind == "inherits")
+    helper_call = next(
+        edge
+        for edge in result.relationships
+        if edge.kind == "calls"
+        and symbols[edge.target_id].qualified_name == "src.sample.helper"
+    )
+    assert (contains_service.start_line, contains_service.end_line) == (10, 20)
+    assert (inheritance.start_line, inheritance.end_line) == (10, 10)
+    assert (helper_call.start_line, helper_call.end_line) == (15, 15)
 
 
 def test_python_ast_syntax_error_falls_back_with_diagnostic() -> None:
@@ -121,6 +140,37 @@ def test_python_ast_output_is_deterministic() -> None:
     record = python_record("src/sample.py", text)
 
     assert parser.parse(record, text) == parser.parse(record, text)
+
+
+def test_python_ast_preserves_same_line_calls_and_import_alias_occurrences() -> None:
+    text = (
+        "import alpha, alpha\n"
+        "def target():\n"
+        "    pass\n"
+        "def run():\n"
+        "    target(); target()\n"
+    )
+    parser = PythonAstParser()
+    record = python_record("src/repeated.py", text)
+
+    first = parser.parse(record, text)
+    second = parser.parse(record, text)
+    symbols = {symbol.id: symbol for symbol in first.symbols}
+    calls = tuple(edge for edge in first.relationships if edge.kind == "calls")
+    imports = tuple(edge for edge in first.relationships if edge.kind == "imports")
+
+    assert first.relationships == second.relationships
+    assert len(calls) == 2
+    assert len({edge.id for edge in calls}) == 2
+    assert len({edge.occurrence_discriminator for edge in calls}) == 2
+    assert {
+        (symbols[edge.source_id].qualified_name, symbols[edge.target_id].qualified_name)
+        for edge in calls
+    } == {("src.repeated.run", "src.repeated.target")}
+    assert {(edge.start_line, edge.end_line) for edge in calls} == {(5, 5)}
+    assert len(imports) == 2
+    assert len({edge.id for edge in imports}) == 2
+    assert {(edge.start_line, edge.end_line) for edge in imports} == {(1, 1)}
 
 
 def test_dotted_import_without_alias_preserves_bound_package_name() -> None:

@@ -105,13 +105,20 @@ def _normalize_symbols(symbols: tuple[Symbol, ...]) -> tuple[Symbol, ...]:
 def _normalize_relationships(
     relationships: tuple[Relationship, ...],
 ) -> tuple[Relationship, ...]:
-    unique = {
-        (item.source_id, item.target_id, item.kind, item.source): item
-        for item in relationships
-    }
+    unique = {item.id: item for item in relationships}
     return tuple(
         sorted(
             unique.values(),
-            key=lambda item: (item.source_id, item.kind, item.target_id, item.source),
+            key=lambda item: (
+                item.path,
+                item.start_line,
+                item.end_line,
+                item.occurrence_discriminator,
+                item.source_id,
+                item.target_id,
+                item.kind,
+                item.provenance,
+                item.id,
+            ),
         )
     )

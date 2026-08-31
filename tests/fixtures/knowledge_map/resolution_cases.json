@@ -1,0 +1,86 @@
+[
+  {
+    "id": "exact-qualified",
+    "source_path": "app.py",
+    "reference_kind": "reference",
+    "reference_name": "run",
+    "reference_qualified_name": "pkg.run",
+    "candidates": [{"path": "pkg.py", "qualified_name": "pkg.run"}],
+    "candidate_budget": 8,
+    "expected_status": "resolved",
+    "expected_candidate_count": 1,
+    "expected_truncated": false
+  },
+  {
+    "id": "relative-qualified",
+    "source_path": "pkg/app.py",
+    "reference_kind": "reference",
+    "reference_name": "run",
+    "reference_qualified_name": ".helpers.run",
+    "candidates": [{"path": "pkg/helpers.py", "qualified_name": "pkg.helpers.run"}],
+    "candidate_budget": 8,
+    "expected_status": "resolved",
+    "expected_candidate_count": 1,
+    "expected_truncated": false
+  },
+  {
+    "id": "alias-import-exact",
+    "source_path": "app.py",
+    "reference_kind": "import",
+    "reference_name": "run",
+    "reference_qualified_name": "pkg.run",
+    "candidates": [{"path": "pkg.py", "qualified_name": "pkg.run"}],
+    "candidate_budget": 8,
+    "expected_status": "resolved",
+    "expected_candidate_count": 1,
+    "expected_truncated": false
+  },
+  {
+    "id": "unique-package-short-name",
+    "source_path": "pkg/app.py",
+    "reference_kind": "reference",
+    "reference_name": "run",
+    "reference_qualified_name": "run",
+    "candidates": [{"path": "pkg/helpers.py", "qualified_name": "helpers.run"}],
+    "candidate_budget": 8,
+    "expected_status": "resolved",
+    "expected_candidate_count": 1,
+    "expected_truncated": false
+  },
+  {
+    "id": "ambiguous-short-name",
+    "source_path": "app.py",
+    "reference_kind": "reference",
+    "reference_name": "run",
+    "reference_qualified_name": "run",
+    "candidates": [{"path": "candidate0.py", "qualified_name": "candidate0.run"}, {"path": "candidate1.py", "qualified_name": "candidate1.run"}, {"path": "candidate2.py", "qualified_name": "candidate2.run"}],
+    "candidate_budget": 2,
+    "expected_status": "ambiguous",
+    "expected_candidate_count": 2,
+    "expected_truncated": true
+  },
+  {
+    "id": "unresolved-name",
+    "source_path": "app.py",
+    "reference_kind": "reference",
+    "reference_name": "missing",
+    "reference_qualified_name": "missing",
+    "candidates": [],
+    "candidate_budget": 8,
+    "expected_status": "unresolved",
+    "expected_candidate_count": 0,
+    "expected_truncated": false
+  },
+  {
+    "id": "unsupported-non-python",
+    "source_path": "app.js",
+    "reference_kind": "reference",
+    "reference_name": "run",
+    "reference_qualified_name": "run",
+    "candidates": [],
+    "candidate_budget": 8,
+    "expected_status": "unsupported",
+    "expected_candidate_count": 0,
+    "expected_truncated": false
+  }
+]
