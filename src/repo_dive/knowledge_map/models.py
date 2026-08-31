@@ -950,12 +950,12 @@ class StaticFlow:
         for name in (
             "step_node_ids",
             "edge_ids",
-            "transition_kinds",
-            "transition_semantics",
             "representative_relationship_ids",
             "suppressed_utility_node_ids",
         ):
             value[name] = _strings(value[name], name)
+        for name in ("transition_kinds", "transition_semantics"):
+            value[name] = _string_sequence(value[name], name)
         return cls(**value)
 
 
@@ -2084,10 +2084,17 @@ def _field_names(model: type[Any]) -> set[str]:
 
 
 def _strings(value: object, name: str) -> tuple[str, ...]:
+    result = _string_sequence(value, name)
+    _ordered_unique(result, name)
+    return result
+
+
+def _string_sequence(value: object, name: str) -> tuple[str, ...]:
     if type(value) is not list or any(type(item) is not str for item in value):
         raise ValueError(f"{name} must be an array of strings")
     result = tuple(cast(list[str], value))
-    _ordered_unique(result, name)
+    if any(not item for item in result):
+        raise ValueError(f"{name} must contain non-empty strings")
     return result
 
 

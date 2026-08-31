@@ -61,6 +61,27 @@ def test_flow_analysis_reports_no_roots() -> None:
     assert analysis.no_roots is True
 
 
+def test_flow_round_trip_allows_repeated_transition_kinds() -> None:
+    flow = StaticFlow(
+        "flow",
+        "main",
+        ("main", "service", "store"),
+        ("edge-main-service", "edge-service-store"),
+        ("calls", "calls"),
+        "terminal",
+        1.0,
+        False,
+        False,
+        transition_semantics=("runtime_call", "runtime_call"),
+        representative_relationship_ids=(
+            "relationship-main-service",
+            "relationship-service-store",
+        ),
+    )
+
+    assert StaticFlow.from_document(flow.to_document()) == flow
+
+
 def test_branch_order_truncation_and_utility_suppression_are_explicit() -> None:
     nodes = (
         _node("main", "main", (-1, "main")),
