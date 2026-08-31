@@ -71,6 +71,30 @@ def test_module_self_loop_is_persisted_as_cycle_group() -> None:
     assert topology.cycle_groups[0].edge_ids == ("edge:module:module",)
 
 
+def test_cluster_cycle_groups_follow_persisted_cycle_group_order() -> None:
+    nodes = (
+        _node("repo", "repository", "repo", None, None),
+        _node("a1", "module", "a1", None, "repo"),
+        _node("a2", "module", "a2", None, "repo"),
+        _node("z1", "module", "z1", None, "repo"),
+        _node("z2", "module", "z2", None, "repo"),
+        _node("file-z", "file", "a.py", "a.py", "z1"),
+        _node("file-a", "file", "z.py", "z.py", "a1"),
+    )
+    edges = (
+        _edge("a1", "a2"),
+        _edge("a2", "a1"),
+        _edge("z1", "z2"),
+        _edge("z2", "z1"),
+    )
+
+    topology = derive_topology(nodes, edges, cluster_budget=10, minimum_cluster_files=1)
+
+    assert topology.clusters[0].scc_ids == tuple(
+        group.id for group in topology.cycle_groups
+    )
+
+
 def _node(
     node_id: str,
     kind: str,

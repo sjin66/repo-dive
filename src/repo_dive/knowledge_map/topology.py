@@ -68,6 +68,7 @@ def derive_topology(
     scc_by_module = {
         member: group.id for group in cycle_groups for member in group.member_module_ids
     }
+    scc_order = {group.id: index for index, group in enumerate(cycle_groups)}
     clusters: list[Cluster] = []
     for key, members in sorted(groups.items())[:cluster_budget]:
         member_ids = tuple(member.id for member in members)
@@ -86,10 +87,13 @@ def derive_topology(
                 internal_occurrences=internal_occurrences,
                 external_occurrences=external_occurrences,
                 scc_ids=tuple(
-                    dict.fromkeys(
-                        scc_by_module[module_id]
-                        for module_id in (member.parent_id for member in members)
-                        if module_id in scc_by_module
+                    sorted(
+                        dict.fromkeys(
+                            scc_by_module[module_id]
+                            for module_id in (member.parent_id for member in members)
+                            if module_id in scc_by_module
+                        ),
+                        key=scc_order.__getitem__,
                     )
                 ),
             )
