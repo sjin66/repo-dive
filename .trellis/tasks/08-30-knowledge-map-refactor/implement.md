@@ -21,11 +21,11 @@ Child 4 starts only after both domain children complete, preserving strict 1 -> 
 
 **Acceptance criteria:**
 
-- [ ] All children use only Knowledge Map / `repo-dive map` / `repo_dive.knowledge_map` / `.repo-dive/knowledge-map.json`.
-- [ ] Budget object, artifact identity/revision, lock transaction, claim schema, command table, and error matrix match the parent design exactly.
-- [ ] Every budget field has the approved derivation/capacity classification and every shared error applicability cell has an independent process test.
-- [ ] Scope contracts and Evidence/enrichment projections are frozen before Child 3; idempotence order, canonical input usage, and error enum/precedence tests match the parent.
-- [ ] No child introduces Wiki topics, `map status`, `repo-dive graph`, source-chunk nodes, a second lock protocol, or semantic completion gates.
+- [x] All children use only Knowledge Map / `repo-dive map` / `repo_dive.knowledge_map` / `.repo-dive/knowledge-map.json`.
+- [x] Budget object, artifact identity/revision, lock transaction, claim schema, command table, and error matrix match the parent design exactly.
+- [x] Every budget field has the approved derivation/capacity classification and every shared error applicability cell has an independent process test.
+- [x] Scope contracts and Evidence/enrichment projections are frozen before Child 3; idempotence order, canonical input usage, and error enum/precedence tests match the parent.
+- [x] No child introduces Wiki topics, `map status`, `repo-dive graph`, source-chunk nodes, a second lock protocol, or semantic completion gates.
 
 **Verification:** Read every child PRD/design top to bottom and run `task.py validate` for all five tasks.
 
@@ -33,18 +33,18 @@ Child 4 starts only after both domain children complete, preserving strict 1 -> 
 
 **Acceptance criteria:**
 
-- [ ] Child 1 exports occurrence facts without map dependencies.
-- [ ] Child 2 consumes Child 1 and owns the only map write transaction API.
-- [ ] Child 3 consumes the frozen Child 2 models/store and does not edit lock ownership.
-- [ ] Child 4 consumes domain services and keeps CLI thin.
+- [x] Child 1 exports occurrence facts without map dependencies.
+- [x] Child 2 consumes Child 1 and owns the only map write transaction API.
+- [x] Child 3 consumes the frozen Child 2 models/store and does not edit lock ownership.
+- [x] Child 4 consumes domain services and keeps CLI thin.
 
 **Verification:** Compare child likely-file ownership and explicit dependency sections; any overlap in store/model ownership returns to planning.
 
 ### Checkpoint P-A
 
-- [ ] Parent and all children remain `planning`.
-- [ ] Every child has `prd.md`, `design.md`, `implement.md`, and valid implement/check manifests.
-- [ ] No product or published documentation file changed during planning.
+- [x] Parent and all children remain `planning`.
+- [x] Every child has `prd.md`, `design.md`, `implement.md`, and valid implement/check manifests.
+- [x] No product or published documentation file changed during planning.
 
 ### P3: Cross-Child Acceptance Review After Implementation
 
@@ -52,11 +52,11 @@ This task occurs only after all children independently pass their completion gat
 
 **Acceptance criteria:**
 
-- [ ] KM-AC1 through KM-AC12 have an owning child result and concrete verification evidence.
-- [ ] Relationship occurrence semantics survive through aggregation, flows, views, Evidence, and CLI output.
-- [ ] Build/evidence/enrich/reset all use the same lock/revision transaction and preserve last valid bytes.
-- [ ] Deterministic-only and enriched workflows both pass end to end.
-- [ ] Existing index/retrieval/context/Wiki behavior remains compatible.
+- [x] KM-AC1 through KM-AC12 have an owning child result and concrete verification evidence.
+- [x] Relationship occurrence semantics survive through aggregation, flows, views, Evidence, and CLI output.
+- [x] Build/evidence/enrich/reset all use the same lock/revision transaction and preserve last valid bytes.
+- [x] Deterministic-only and enriched workflows both pass end to end.
+- [x] Existing index/retrieval/context/Wiki behavior remains compatible.
 
 **Verification:**
 
@@ -74,18 +74,18 @@ Also validate the exact staged snapshot under `.trellis/spec/backend/tooling-int
 
 **Acceptance criteria:**
 
-- [ ] Executable help, command adapters, error codes, artifact schema, evaluations, and English/Chinese docs agree.
-- [ ] Evaluation reports citation validity, referential integrity, freshness, reproducibility, and semantic usefulness separately.
-- [ ] Wiki ownership remains unchanged and no independent comparison proposal was modified or presented as implementation authority.
+- [x] Executable help, command adapters, error codes, artifact schema, evaluations, and English/Chinese docs agree.
+- [x] Evaluation reports citation validity, referential integrity, freshness, reproducibility, and semantic usefulness separately.
+- [x] Wiki ownership remains unchanged and no independent comparison proposal was modified or presented as implementation authority.
 
 **Verification:** repository contract checks plus manual field/heading parity review.
 
 ### Checkpoint P-B: Parent Completion
 
-- [ ] All four children are completed and archived according to Trellis workflow.
-- [ ] Full clean-environment validation is green.
-- [ ] A separate full-scope code review reports no unresolved correctness, concurrency, provenance, budget, security, or compatibility finding.
-- [ ] Parent can be archived without direct product-code commits of its own.
+- [x] All four implementation children and both correction children are completed and archived according to Trellis workflow.
+- [x] Full clean-environment validation is green.
+- [x] A separate full-scope code review reports no unresolved correctness, concurrency, provenance, budget, security, or compatibility finding.
+- [x] Parent can be archived without direct product-code commits of its own.
 
 ## Traceability
 
@@ -112,3 +112,19 @@ output.
 ## Rollback
 
 If a child exposes a parent-contract defect, return that child and the parent to planning before implementation continues. Do not patch around a bad contract in a downstream child. Relationship Schema rollback is independent; deterministic package rollback retains the upgraded fact index; semantic rollback retains deterministic maps; CLI rollback removes public registration without deleting artifacts.
+
+## Final Review Evidence
+
+- Independent parent review at `7ba18dd` reported PASS for KM-AC1 through KM-AC12,
+  P3, P4, and Checkpoint P-B with no unresolved finding.
+- Exact clean detached Python 3.12 snapshot: `make setup`, `make check`, both
+  no-gitignore Ruff commands, `git diff --check`, and root/Map/six-subcommand help
+  checks passed; `make test-unit` reported `465 passed`; `make test-all` reported
+  `702 passed`.
+- All seven parent/child/correction Trellis manifests validated. The four implementation
+  children and both correction children are archived with completed status.
+- Final worktree scope was exactly untracked `.codegraph/`; no Wiki product file,
+  Host integration, or `docs/superpowers` comparison file changed.
+- Residual risks are limited to portable Windows lock branches not being exercised on
+  native Windows in this review and intentionally sparse non-Python static-flow facts,
+  both already covered by tests or explicit coverage reporting.
