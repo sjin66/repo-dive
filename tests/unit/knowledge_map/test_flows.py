@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from repo_dive.knowledge_map.flows import (
     derive_scope_contracts,
     derive_static_flows,
@@ -102,6 +104,67 @@ def test_branch_order_truncation_and_utility_suppression_are_explicit() -> None:
     assert utility_analysis.flows[0].step_node_ids == ("main",)
     assert utility_analysis.flows[0].suppressed_utility_node_ids == ("identity",)
     assert utility_analysis.truncation_reasons == ("utility_suppressed",)
+
+
+@pytest.mark.parametrize(
+    ("root_count", "expected_omitted", "expected_reasons"),
+    (
+        (4, 3, ("flow_budget",)),
+        (5, 4, ("candidate_budget", "flow_budget")),
+        (6, 5, ("candidate_budget", "flow_budget")),
+    ),
+)
+def test_candidate_budget_counts_unstarted_roots_once(
+    root_count: int,
+    expected_omitted: int,
+    expected_reasons: tuple[str, ...],
+) -> None:
+    nodes = tuple(
+        _node(f"root-{index}", f"pkg{index}.main", (index, f"root-{index}"))
+        for index in range(root_count)
+    )
+
+    analysis = derive_static_flows(
+        nodes,
+        (),
+        flow_budget=1,
+        flow_depth=3,
+        nodes_per_flow=1,
+        edges_per_flow=1,
+    )
+
+    assert tuple(flow.root_node_id for flow in analysis.flows) == ("root-0",)
+    assert analysis.included_count == 1
+    assert analysis.omitted_count == expected_omitted
+    assert analysis.truncation_reasons == expected_reasons
+
+
+def test_candidate_budget_counts_branched_frontier_and_unstarted_roots_once() -> None:
+    roots = tuple(
+        _node(f"root-{index}", f"pkg{index}.main", (index, f"root-{index}"))
+        for index in range(3)
+    )
+    leaves = tuple(
+        _node(f"leaf-{index}", f"leaf{index}", (10 + index, f"leaf-{index}"))
+        for index in range(8)
+    )
+    edges = tuple(_edge("root-0", leaf.id) for leaf in leaves)
+
+    analysis = derive_static_flows(
+        (*roots, *leaves),
+        edges,
+        flow_budget=1,
+        flow_depth=3,
+        nodes_per_flow=2,
+        edges_per_flow=1,
+    )
+
+    assert tuple(flow.step_node_ids for flow in analysis.flows) == (
+        ("root-0", "leaf-0"),
+    )
+    assert analysis.included_count == 1
+    assert analysis.omitted_count == 9
+    assert analysis.truncation_reasons == ("candidate_budget", "flow_budget")
 
 
 def test_scope_contracts_close_ancestors_anchors_permissions_and_hashes() -> None:

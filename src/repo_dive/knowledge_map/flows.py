@@ -87,6 +87,7 @@ def derive_static_flows(
     truncation_reasons: set[str] = set()
     work_budget = flow_budget * max(nodes_per_flow, 1) * 4
     work = 0
+    work_exhausted = False
     for root_index, root in enumerate(roots):
         root_kind = (
             "project_script"
@@ -102,6 +103,7 @@ def derive_static_flows(
             if work >= work_budget:
                 suppressed += len(queue) + len(roots) - root_index - 1
                 truncation_reasons.add("candidate_budget")
+                work_exhausted = True
                 queue.clear()
                 break
             work += 1
@@ -221,6 +223,8 @@ def derive_static_flows(
                         truncated,
                     )
                 )
+        if work_exhausted:
+            break
     # Exact-sequence dedupe and no-prefix emission are deterministic.
     unique = {(flow.step_node_ids, flow.transition_kinds): flow for flow in candidates}
     paths = tuple(unique)

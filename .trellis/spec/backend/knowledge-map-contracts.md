@@ -92,6 +92,9 @@ evidence_snapshots, enrichments
   global `edge_budget` slots select parser `calls`, parser `imports`, aggregate derived
   edges, then remaining parser edges, by stable ID within each tier. The retained set
   is serialized in `(origin, id)` order.
+- Flow candidate work is global across roots. On first exhaustion, count each pending
+  queue item and each unstarted root once as omitted, then stop root traversal; do not
+  estimate terminal descendants that were never traversed.
 - Importance signals are labeled raw values with a persisted lexicographic rank.
   Clusters, SCC cycle groups, layers, flows, tour, and scope contracts are persisted
   deterministic projections, not recomputed presentation guesses.
@@ -151,6 +154,8 @@ evidence_snapshots, enrichments
 - Fixture tests cover exact/relative/alias/unique/ambiguous/unresolved resolution,
   endpoint-closed lifting, aggregate metrics, package clustering, max-connectivity
   merging, SCCs, layers, flow/tour ties, cycles, suppression, and truncation.
+- Flow budget fixtures cover exact-work, first-over-budget, multiple unstarted roots,
+  and a branched pending frontier, with exact included/omitted counts and reasons.
 - Lifecycle tests assert deterministic no-op, index/derivation invalidation, every
   semantic-capacity usage dimension, artifact capacity, concurrent semantic
   preservation, and no-write failure paths.

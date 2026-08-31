@@ -66,6 +66,34 @@ def test_build_reports_per_language_parser_and_relationship_coverage(
     )
 
 
+def test_build_propagates_candidate_budget_flow_coverage(tmp_path: Path) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    for index in range(6):
+        (repository / f"app{index}.py").write_text(
+            "def main():\n    pass\n", encoding="utf-8"
+        )
+    IndexService().build(repository)
+
+    artifact = (
+        KnowledgeMapBuildService()
+        .build(
+            repository,
+            budgets=replace(
+                _budgets(), flow_budget=1, nodes_per_flow=1, edges_per_flow=1
+            ),
+        )
+        .artifact
+    )
+
+    assert artifact.coverage.included_flows == 1
+    assert artifact.coverage.omitted_flows == 5
+    assert artifact.coverage.omission_reasons == (
+        "candidate_budget",
+        "flow_budget",
+    )
+
+
 def test_build_recovers_from_invalid_artifact_bytes(tmp_path: Path) -> None:
     repository = tmp_path / "repo"
     repository.mkdir()
