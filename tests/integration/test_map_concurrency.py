@@ -28,6 +28,9 @@ class _ChangedResult(Protocol):
     @property
     def changed(self) -> bool: ...
 
+    @property
+    def artifact(self) -> KnowledgeMapArtifact: ...
+
 
 _ResultT = TypeVar("_ResultT", bound=_ChangedResult)
 
@@ -154,6 +157,7 @@ def test_build_and_reset_share_cas_with_equivalence_before_conflict(
     assert len(successes) == len(conflicts) == 1
     assert successes[0].changed is True
     assert conflicts[0].code == "knowledge_map_revision_conflict"
+    assert persisted == successes[0].artifact
     assert persisted.artifact_revision == initial.artifact_revision + 1
     if persisted.capacity_limits.artifact_byte_budget == 200_000:
         assert persisted.evidence_snapshots == initial.evidence_snapshots
@@ -212,6 +216,82 @@ def test_build_and_evidence_share_one_cas_without_losing_the_winner(
     else:
         assert persisted.capacity_limits.artifact_byte_budget == 100_000
         assert [item.scope_id for item in persisted.evidence_snapshots] == [scope_id]
+
+
+def test_enrichment_and_build_share_one_cas_without_losing_the_winner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    (repository / "app.py").write_text("def main():\n    return 0\n", encoding="utf-8")
+    IndexService().build(repository)
+    built = KnowledgeMapBuildService().build(repository, budgets=_budgets()).artifact
+    scope = built.scope_contracts[0]
+    evidence = KnowledgeMapEvidenceService().collect(
+        repository, scope_id=scope.scope_id, token_budget=10_000
+    )
+    payload = json.dumps(
+        {
+            "schema_version": "1.0",
+            "scope_id": scope.scope_id,
+            "expected_artifact_revision": evidence.artifact.artifact_revision,
+            "records": [
+                {
+                    "id": f"{scope.allowed_record_kinds[0]}:contested",
+                    "kind": scope.allowed_record_kinds[0],
+                    "claims": [
+                        {
+                            "kind": "summary",
+                            "text": "A complete contested enrichment.",
+                            "fact_node_ids": [scope.allowed_fact_node_ids[0]],
+                            "related_node_ids": [],
+                            "evidence_ids": [
+                                evidence.snapshot.references[0].evidence_id
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    ).encode()
+    initial = MapStore(repository).read_artifact()
+
+    rendezvous = Barrier(2)
+    original = MapStore.write_transaction
+
+    def coordinated_write_transaction(
+        self: MapStore, *args: object, **kwargs: object
+    ) -> object:
+        rendezvous.wait()
+        return original(self, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(MapStore, "write_transaction", coordinated_write_transaction)
+    service = KnowledgeMapEnrichmentService()
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        enrich_future = executor.submit(service.enrich, repository, payload=payload)
+        build_future = executor.submit(
+            KnowledgeMapBuildService().build,
+            repository,
+            budgets=replace(_budgets(), artifact_byte_budget=200_000),
+        )
+        outcomes = (_outcome(enrich_future), _outcome(build_future))
+
+    persisted = MapStore(repository).read_artifact()
+    successes = [item for item in outcomes if not isinstance(item, RepositoryError)]
+    conflicts = [item for item in outcomes if isinstance(item, RepositoryError)]
+    assert len(successes) == len(conflicts) == 1
+    assert successes[0].changed is True
+    assert conflicts[0].code == "knowledge_map_revision_conflict"
+    assert persisted == successes[0].artifact
+    assert persisted.artifact_revision == initial.artifact_revision + 1
+    assert persisted.deterministic_revision == initial.deterministic_revision
+    assert persisted.evidence_snapshots == initial.evidence_snapshots
+    if persisted.enrichments:
+        assert persisted.capacity_limits.artifact_byte_budget == 100_000
+        assert len(persisted.enrichments) == 1
+        assert persisted.enrichments[0].scope_id == scope.scope_id
+    else:
+        assert persisted.capacity_limits.artifact_byte_budget == 200_000
 
 
 def _outcome(future: Future[_ResultT]) -> _ResultT | RepositoryError:

@@ -102,6 +102,7 @@ evidence_snapshots, enrichments
 |---|---|
 | Unknown/missing field, duplicate JSON key, non-standard constant | Reject as `knowledge_map_invalid` or domain validation failure |
 | Unsupported schema/algorithm, hash/revision drift, dangling or misordered reference | Reject without rewriting artifact bytes |
+| Persisted Evidence references no longer match the current index | `knowledge_map_evidence_stale`; preserve artifact bytes |
 | Missing artifact | `knowledge_map_not_found` |
 | Source facts exceed required budget | `knowledge_map_source_budget_exceeded`; no artifact write |
 | Required node/edge closure cannot fit | `knowledge_map_budget_exceeded`; no artifact write |
@@ -109,7 +110,7 @@ evidence_snapshots, enrichments
 | Published index changes under lock | `knowledge_map_index_changed`; preserve previous bytes |
 | Exact current intent already exists | Return `changed=False` before CAS conflict handling |
 | Non-equivalent current CAS identity differs | `knowledge_map_revision_conflict` |
-| Candidate is not the next positive revision | `knowledge_map_validation_failed` |
+| Writer candidate is not the next positive revision | `knowledge_map_validation_failed`; this is not a read-time `map validate` classification |
 | Current semantic usage exceeds requested capacity | `knowledge_map_capacity_conflict`; no silent truncation |
 | Serialized candidate exceeds artifact bytes | `knowledge_map_artifact_budget_exceeded` |
 | Atomic replacement fails | `knowledge_map_write_failed`; previous bytes remain valid |
@@ -294,6 +295,10 @@ KnowledgeMapEnrichmentService.validate(
   revision changes, freshness, and no entailment claim.
 - Shared writer tests cover real process contention, lock timeout/release, index races,
   artifact-byte overflow, atomic replacement failure, and prior-byte preservation.
+- Public validation tests distinguish strict artifact decode failures
+  (`knowledge_map_invalid`) from current-index Evidence freshness failures
+  (`knowledge_map_evidence_stale`). Candidate revision failures remain covered at
+  `MapWriteTransaction.commit()` rather than synthesized through `map validate`.
 
 ### 7. Wrong vs Correct
 

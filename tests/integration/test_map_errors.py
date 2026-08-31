@@ -1,36 +1,55 @@
 from __future__ import annotations
 
+import inspect
 import json
 import subprocess
 import sys
+import time
+from dataclasses import fields, replace
 from pathlib import Path
+from typing import BinaryIO
 
 import pytest
 
 import repo_dive.commands.map as map_commands
 import repo_dive.indexing.service as indexing_service
+import repo_dive.knowledge_map.build as map_build
+import repo_dive.knowledge_map.enrichment_service as map_enrichment
+import repo_dive.knowledge_map.evidence_service as map_evidence
+import repo_dive.knowledge_map.store as map_store
 from repo_dive.cli import main
 from repo_dive.errors import InternalOperationError, RepositoryError
-from repo_dive.indexing.service import IndexService
+from repo_dive.indexing.service import (
+    IndexService,
+    PublishedIndex,
+    load_published_index,
+)
 from repo_dive.knowledge_map.build import KnowledgeMapBuildService
 from repo_dive.knowledge_map.enrichment_service import KnowledgeMapEnrichmentService
 from repo_dive.knowledge_map.evidence_service import KnowledgeMapEvidenceService
+from repo_dive.knowledge_map.models import (
+    EvidenceSnapshot,
+    KnowledgeMapArtifact,
+    MapBuildBudgets,
+    canonical_bytes,
+)
+from repo_dive.knowledge_map.store import MapStore
 from repo_dive.schema import JsonObject
 
 COMMAND_ARGUMENTS = {
-    "build": [
+    "build": (
         "--source-fact-budget",
-        "1",
+        "1000",
         "--artifact-byte-budget",
-        "1",
+        "2000000",
         "--budget-file",
         "budget.json",
-    ],
-    "show": ["--view", "architecture", "--max-results", "1"],
-    "evidence": ["--scope", "scope:test", "--token-budget", "1"],
-    "enrich": ["--input", "submission.json"],
-    "reset": ["--scope", "scope:test"],
-    "validate": [],
+    ),
+    "show": ("--view", "architecture", "--max-results", "1"),
+    "evidence": ("--scope", "scope:test", "--token-budget", "1"),
+    "enrich": ("--input", ".repo-dive/submission.json"),
+    "reset": ("--scope", "scope:test"),
+    "validate": (),
 }
 
 
@@ -188,12 +207,6 @@ SHARED_ERROR_ROWS = (
         "after_recovery",
         "reduce_enrichment_or_raise_capacity",
     ),
-    (
-        "knowledge_map_validation_failed",
-        3,
-        "after_recovery",
-        "rebuild_or_reset_scope",
-    ),
 )
 
 ERROR_COMMANDS = {
@@ -220,17 +233,111 @@ ERROR_COMMANDS = {
     "knowledge_map_evidence_capacity_exceeded": ("evidence",),
     "knowledge_map_evidence_conflict": ("evidence",),
     "knowledge_map_evidence_not_found": ("enrich",),
-    "knowledge_map_evidence_stale": ("evidence", "enrich"),
+    "knowledge_map_evidence_stale": ("evidence", "enrich", "validate"),
     "knowledge_map_enrichment_reference_invalid": ("enrich",),
     "knowledge_map_enrichment_budget_exceeded": ("enrich",),
-    "knowledge_map_validation_failed": ("validate",),
 }
+
+# This is intentionally independent of ERROR_COMMANDS and SHARED_ERROR_ROWS. A change
+# to case generation cannot silently redefine the reviewed public applicability set.
+FROZEN_EXPECTED_ERROR_CELLS = frozenset(
+    {
+        *((command, "invalid_invocation") for command in COMMAND_ARGUMENTS),
+        *(
+            (command, code)
+            for command in ("build", "enrich")
+            for code in (
+                "path_outside_repository",
+                "repository_path_not_found",
+                "repository_path_unavailable",
+            )
+        ),
+        ("enrich", "knowledge_map_enrichment_invalid"),
+        *(
+            (command, code)
+            for command in COMMAND_ARGUMENTS
+            for code in (
+                "repository_not_found",
+                "repository_unavailable",
+                "repository_not_directory",
+                "index_not_found",
+                "index_stale",
+                "internal_operation_failed",
+            )
+        ),
+        *(
+            (command, code)
+            for command in ("build", "evidence", "enrich", "reset")
+            for code in (
+                "knowledge_map_locked",
+                "knowledge_map_revision_conflict",
+                "knowledge_map_index_changed",
+                "knowledge_map_write_failed",
+            )
+        ),
+        *(
+            (command, code)
+            for command in ("evidence", "enrich", "reset", "validate", "show")
+            for code in (
+                "knowledge_map_not_found",
+                "knowledge_map_stale",
+                "knowledge_map_invalid",
+            )
+        ),
+        *(
+            ("build", code)
+            for code in (
+                "knowledge_map_source_budget_exceeded",
+                "knowledge_map_budget_exceeded",
+                "knowledge_map_artifact_budget_exceeded",
+                "knowledge_map_capacity_conflict",
+                "knowledge_map_derivation_failed",
+            )
+        ),
+        ("evidence", "knowledge_map_scope_not_found"),
+        ("reset", "knowledge_map_scope_not_found"),
+        ("evidence", "knowledge_map_evidence_budget_insufficient"),
+        ("evidence", "knowledge_map_evidence_capacity_exceeded"),
+        ("evidence", "knowledge_map_evidence_conflict"),
+        ("enrich", "knowledge_map_evidence_not_found"),
+        ("evidence", "knowledge_map_evidence_stale"),
+        ("enrich", "knowledge_map_evidence_stale"),
+        ("validate", "knowledge_map_evidence_stale"),
+        ("enrich", "knowledge_map_enrichment_reference_invalid"),
+        ("enrich", "knowledge_map_enrichment_budget_exceeded"),
+    }
+)
+
+SEPARATE_PROCESS_ERROR_CELLS = frozenset(
+    {
+        *((command, "invalid_invocation") for command in COMMAND_ARGUMENTS),
+        *(
+            (command, code)
+            for command in ("build", "enrich")
+            for code in (
+                "path_outside_repository",
+                "repository_path_not_found",
+                "repository_path_unavailable",
+            )
+        ),
+        ("enrich", "knowledge_map_enrichment_invalid"),
+    }
+)
 
 SHARED_PROCESS_CASES = tuple(
     (command, code, exit_code, retry_mode, recovery_action)
     for code, exit_code, retry_mode, recovery_action in SHARED_ERROR_ROWS
     for command in ERROR_COMMANDS[code]
 )
+
+
+def test_generated_error_cells_match_the_frozen_reviewed_contract() -> None:
+    generated = {
+        (command, code)
+        for command, code, _exit, _retry, _recovery in SHARED_PROCESS_CASES
+    }
+    assert generated | SEPARATE_PROCESS_ERROR_CELLS == FROZEN_EXPECTED_ERROR_CELLS
+    assert generated.isdisjoint(SEPARATE_PROCESS_ERROR_CELLS)
 
 
 @pytest.mark.parametrize(
@@ -247,16 +354,57 @@ def test_shared_error_applicability_matrix_reaches_the_public_process_contract(
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Pin every checked shared matrix cell at the process serialization boundary."""
+    """Pin every checked cell while retaining the real public service entry path."""
     repository = tmp_path / f"{subcommand}-{code}"
     artifact = repository / ".repo-dive" / "knowledge-map.json"
-    artifact.parent.mkdir(parents=True)
-    artifact.write_bytes(b"last-valid-artifact\n")
-    before = artifact.read_bytes()
-    (repository / "budget.json").write_text(
-        json.dumps(_budget_document()), encoding="utf-8"
+    repository.mkdir(parents=True)
+    (repository / "app.py").write_text(
+        "def helper():\n    return 1\n\ndef main():\n    return helper()\n",
+        encoding="utf-8",
     )
-    (repository / "submission.json").write_text("{}", encoding="utf-8")
+    budget_document = _budget_document()
+    if code == "knowledge_map_budget_exceeded":
+        budget_document["node_budget"] = 1
+    elif code in {
+        "knowledge_map_capacity_conflict",
+        "knowledge_map_evidence_capacity_exceeded",
+    }:
+        budget_document["evidence_references_per_snapshot"] = 1
+    (repository / "budget.json").write_text(
+        json.dumps(budget_document), encoding="utf-8"
+    )
+    (repository / ".repo-dive").mkdir()
+    (repository / ".repo-dive/submission.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "scope_id": "scope:test",
+                "expected_artifact_revision": 1,
+                "records": [
+                    {
+                        "id": "concept:process",
+                        "kind": "concept",
+                        "claims": [
+                            {
+                                "kind": "summary",
+                                "text": "Safe process fixture.",
+                                "fact_node_ids": ["node:test"],
+                                "related_node_ids": [],
+                                "evidence_ids": ["evidence:test"],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    before: bytes | None = None
+    command_arguments = list(COMMAND_ARGUMENTS[subcommand])
+    if code == "knowledge_map_source_budget_exceeded":
+        command_arguments[1] = "1"
+    elif code == "knowledge_map_artifact_budget_exceeded":
+        command_arguments[3] = "1"
 
     def raise_contract_error(*_args: object, **_kwargs: object) -> None:
         error_type = InternalOperationError if exit_code == 4 else RepositoryError
@@ -268,40 +416,235 @@ def test_shared_error_applicability_matrix_reaches_the_public_process_contract(
             }
         raise error_type(code, "Safe map diagnostic.", details=details)
 
-    if code in {
-        "repository_not_found",
-        "repository_unavailable",
-        "repository_not_directory",
-    }:
+    if code == "repository_not_found":
+        (repository / "app.py").unlink()
+        (repository / "budget.json").unlink()
+        (repository / ".repo-dive/submission.json").unlink()
+        (repository / ".repo-dive").rmdir()
+        repository.rmdir()
+    elif code == "repository_not_directory":
+        (repository / "app.py").unlink()
+        (repository / "budget.json").unlink()
+        (repository / ".repo-dive/submission.json").unlink()
+        (repository / ".repo-dive").rmdir()
+        repository.rmdir()
+        repository.write_text("not a directory", encoding="utf-8")
+    elif code == "repository_unavailable":
         monkeypatch.setattr(map_commands, "resolve_repository", raise_contract_error)
-    elif subcommand == "build":
-        monkeypatch.setattr(KnowledgeMapBuildService, "build", raise_contract_error)
-    elif subcommand == "evidence":
-        monkeypatch.setattr(
-            KnowledgeMapEvidenceService, "collect", raise_contract_error
-        )
-    elif subcommand == "enrich":
-        monkeypatch.setattr(
-            KnowledgeMapEnrichmentService, "enrich", raise_contract_error
-        )
-    elif subcommand == "reset":
-        monkeypatch.setattr(
-            KnowledgeMapEnrichmentService, "reset", raise_contract_error
-        )
-    elif subcommand == "validate":
-        monkeypatch.setattr(
-            KnowledgeMapEnrichmentService, "validate", raise_contract_error
-        )
     else:
-        monkeypatch.setattr(
-            indexing_service, "load_published_index", raise_contract_error
-        )
+        if code != "index_not_found":
+            IndexService().build(repository)
+        if code != "index_not_found":
+            setup_budgets = _map_budgets()
+            if code == "knowledge_map_evidence_capacity_exceeded":
+                setup_budgets = replace(
+                    setup_budgets, evidence_references_per_snapshot=1
+                )
+            built = (
+                KnowledgeMapBuildService()
+                .build(repository, budgets=setup_budgets)
+                .artifact
+            )
+            if code not in {"knowledge_map_not_found", "knowledge_map_invalid"}:
+                scope = built.scope_contracts[0]
+                collected = None
+                if code not in {
+                    "knowledge_map_evidence_capacity_exceeded",
+                    "knowledge_map_evidence_not_found",
+                }:
+                    collected = KnowledgeMapEvidenceService().collect(
+                        repository, scope_id=scope.scope_id, token_budget=10_000
+                    )
+                reference_id = (
+                    collected.snapshot.references[0].evidence_id
+                    if collected is not None
+                    else "evidence:missing"
+                )
+                fact_node_id = scope.allowed_fact_node_ids[0]
+                if code == "knowledge_map_enrichment_reference_invalid":
+                    fact_node_id = "node:not-in-scope"
+                claim = {
+                    "kind": "summary",
+                    "text": "Safe process fixture.",
+                    "fact_node_ids": [fact_node_id],
+                    "related_node_ids": [],
+                    "evidence_ids": [reference_id],
+                }
+                claims = [claim]
+                if code == "knowledge_map_enrichment_budget_exceeded":
+                    claims = [
+                        {**claim, "text": f"Bounded process fixture {index}."}
+                        for index in range(11)
+                    ]
+                submission = {
+                    "schema_version": "1.0",
+                    "scope_id": scope.scope_id,
+                    "expected_artifact_revision": (
+                        collected.artifact.artifact_revision
+                        if collected is not None
+                        else built.artifact_revision
+                    ),
+                    "records": [
+                        {
+                            "id": f"{scope.allowed_record_kinds[0]}:process",
+                            "kind": scope.allowed_record_kinds[0],
+                            "claims": claims,
+                        }
+                    ],
+                }
+                (repository / ".repo-dive/submission.json").write_text(
+                    json.dumps(submission), encoding="utf-8"
+                )
+                if subcommand == "evidence":
+                    command_arguments = [
+                        "--scope",
+                        scope.scope_id,
+                        "--token-budget",
+                        "10000",
+                    ]
+                elif subcommand == "reset":
+                    command_arguments = ["--scope", scope.scope_id]
+                if code == "knowledge_map_evidence_conflict":
+                    assert collected is not None
+                    KnowledgeMapEnrichmentService().enrich(
+                        repository,
+                        payload=json.dumps(submission).encode("utf-8"),
+                    )
+                    command_arguments[-1] = "9000"
+            if code == "knowledge_map_not_found":
+                artifact.unlink()
+            elif code == "knowledge_map_invalid":
+                artifact.write_bytes(b"{invalid\n")
+            elif code in {"index_stale", "knowledge_map_stale"}:
+                (repository / "app.py").write_text("changed = True\n", encoding="utf-8")
+                if code == "knowledge_map_stale":
+                    IndexService().build(repository)
+
+        if code == "knowledge_map_evidence_stale":
+            assert collected is not None
+            stale = _replace_snapshot_content_hash(
+                collected.artifact,
+                collected.snapshot,
+                "sha256:stale",
+            )
+            store = MapStore(repository)
+            with store.write_transaction(store.read_snapshot()) as transaction:
+                transaction.commit(stale)
+
+        if code == "knowledge_map_scope_not_found":
+            command_arguments = (
+                ["--scope", "scope:missing", "--token-budget", "10000"]
+                if subcommand == "evidence"
+                else ["--scope", "scope:missing"]
+            )
+        elif code == "knowledge_map_evidence_budget_insufficient":
+            command_arguments[-1] = "1"
+
+        if code not in {
+            "index_not_found",
+            "index_stale",
+            "knowledge_map_not_found",
+            "knowledge_map_stale",
+            "knowledge_map_invalid",
+            "knowledge_map_scope_not_found",
+            "knowledge_map_evidence_budget_insufficient",
+            "knowledge_map_evidence_capacity_exceeded",
+            "knowledge_map_evidence_conflict",
+            "knowledge_map_evidence_not_found",
+            "knowledge_map_evidence_stale",
+            "knowledge_map_enrichment_reference_invalid",
+            "knowledge_map_enrichment_budget_exceeded",
+            "knowledge_map_source_budget_exceeded",
+            "knowledge_map_budget_exceeded",
+            "knowledge_map_artifact_budget_exceeded",
+            "knowledge_map_capacity_conflict",
+        }:
+            if code == "knowledge_map_locked":
+                monkeypatch.setattr(
+                    map_store,
+                    "_try_lock",
+                    lambda _stream: (_ for _ in ()).throw(BlockingIOError()),
+                )
+                times = iter((0.0, 3.0))
+                monkeypatch.setattr(time, "monotonic", lambda: next(times))
+            elif code == "knowledge_map_revision_conflict":
+                if subcommand == "build":
+                    command_arguments[3] = "1999999"
+                elif subcommand == "evidence":
+                    command_arguments[-1] = "9000"
+                concurrent = _next_artifact(MapStore(repository).read_artifact())
+                before = canonical_bytes(concurrent.to_document()) + b"\n"
+                original_try_lock = map_store._try_lock
+                replaced = False
+
+                def replace_after_lock(stream: BinaryIO) -> None:
+                    nonlocal replaced
+                    original_try_lock(stream)
+                    if not replaced:
+                        artifact.write_bytes(
+                            canonical_bytes(concurrent.to_document()) + b"\n"
+                        )
+                        replaced = True
+
+                monkeypatch.setattr(map_store, "_try_lock", replace_after_lock)
+            elif code == "knowledge_map_index_changed":
+                published = load_published_index(repository)
+                changed = replace(
+                    published,
+                    manifest=replace(published.manifest, build_id="changed-build"),
+                )
+                calls = 0
+
+                def load_with_race(_repository: object) -> PublishedIndex:
+                    nonlocal calls
+                    calls += 1
+                    return published if calls == 1 else changed
+
+                module = {
+                    "build": map_build,
+                    "evidence": map_evidence,
+                    "enrich": map_enrichment,
+                    "reset": map_enrichment,
+                }[subcommand]
+                monkeypatch.setattr(module, "load_published_index", load_with_race)
+            elif code == "knowledge_map_write_failed":
+                if subcommand == "build":
+                    command_arguments[3] = "1999999"
+                elif subcommand == "evidence":
+                    command_arguments[-1] = "9000"
+
+                def fail_atomic_write(*_args: object, **_kwargs: object) -> None:
+                    raise InternalOperationError("atomic_write_failed", "failed")
+
+                monkeypatch.setattr(map_store, "atomic_write_bytes", fail_atomic_write)
+            elif code == "knowledge_map_derivation_failed":
+                monkeypatch.setattr(
+                    map_build,
+                    "snapshot_from_published_index",
+                    lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                        RuntimeError("derivation fixture")
+                    ),
+                )
+            elif code == "internal_operation_failed":
+                module = {
+                    "build": map_build,
+                    "evidence": map_evidence,
+                    "enrich": map_enrichment,
+                    "reset": map_enrichment,
+                    "validate": map_enrichment,
+                    "show": indexing_service,
+                }[subcommand]
+                monkeypatch.setattr(
+                    module, "load_published_index", raise_contract_error
+                )
+    if artifact.exists() and before is None:
+        before = artifact.read_bytes()
     result = main(
         [
             "map",
             subcommand,
             str(repository),
-            *COMMAND_ARGUMENTS[subcommand],
+            *command_arguments,
             "--format",
             "json",
         ],
@@ -314,14 +657,107 @@ def test_shared_error_applicability_matrix_reaches_the_public_process_contract(
     assert document["schema_version"] == "1.0"
     assert document["command"] == f"map {subcommand}"
     assert document["error"]["code"] == code
-    assert document["error"]["details"] == {
-        "recovery_action": recovery_action,
-        "retry_mode": retry_mode,
-    }
-    assert captured.err == "Safe map diagnostic.\n"
+    assert document["error"]["details"]["recovery_action"] == recovery_action
+    assert document["error"]["details"]["retry_mode"] == retry_mode
+    assert captured.err
     assert "\x1b[" not in captured.out + captured.err
     assert str(repository) not in captured.out + captured.err
-    assert artifact.read_bytes() == before
+    if before is not None:
+        assert artifact.read_bytes() == before
+    else:
+        assert not artifact.exists()
+
+
+def test_error_matrix_does_not_replace_public_map_entry_methods() -> None:
+    source = inspect.getsource(
+        test_shared_error_applicability_matrix_reaches_the_public_process_contract
+    )
+    forbidden = (
+        'MAP_COMMAND, "handler"',
+        'KnowledgeMapBuildService, "build"',
+        'KnowledgeMapEvidenceService, "collect"',
+        'KnowledgeMapEnrichmentService, "enrich"',
+        'KnowledgeMapEnrichmentService, "reset"',
+        'KnowledgeMapEnrichmentService, "validate"',
+    )
+    assert not any(value in source for value in forbidden)
+
+
+def test_under_lock_index_change_precedes_simultaneous_cas_conflict(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    (repository / "app.py").write_text("def main():\n    return 0\n", encoding="utf-8")
+    (repository / "budget.json").write_text(
+        json.dumps(_budget_document()), encoding="utf-8"
+    )
+    IndexService().build(repository)
+    initial = (
+        KnowledgeMapBuildService().build(repository, budgets=_map_budgets()).artifact
+    )
+    artifact_path = repository / ".repo-dive" / "knowledge-map.json"
+    concurrent = _next_artifact(initial)
+    concurrent_bytes = canonical_bytes(concurrent.to_document()) + b"\n"
+
+    published = load_published_index(repository)
+    changed = replace(
+        published,
+        manifest=replace(published.manifest, build_id="changed-under-lock"),
+    )
+    load_calls = 0
+
+    def load_with_index_race(_repository: object) -> PublishedIndex:
+        nonlocal load_calls
+        load_calls += 1
+        return published if load_calls == 1 else changed
+
+    original_try_lock = map_store._try_lock
+    replaced = False
+
+    def replace_artifact_after_lock(stream: BinaryIO) -> None:
+        nonlocal replaced
+        original_try_lock(stream)
+        if not replaced:
+            artifact_path.write_bytes(concurrent_bytes)
+            replaced = True
+
+    monkeypatch.setattr(map_build, "load_published_index", load_with_index_race)
+    monkeypatch.setattr(map_store, "_try_lock", replace_artifact_after_lock)
+
+    result = main(
+        [
+            "map",
+            "build",
+            str(repository),
+            "--source-fact-budget",
+            "1000",
+            "--artifact-byte-budget",
+            "1999999",
+            "--budget-file",
+            "budget.json",
+            "--format",
+            "json",
+        ]
+    )
+
+    assert result == 3
+    captured = capsys.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"] == {
+        "code": "knowledge_map_index_changed",
+        "details": {
+            "recovery_action": "rerun_current_index",
+            "retry_mode": "unchanged",
+        },
+        "message": "Published index changed while building the Knowledge Map.",
+    }
+    assert captured.err
+    assert "\x1b[" not in captured.out + captured.err
+    assert str(repository) not in captured.out + captured.err
+    assert artifact_path.read_bytes() == concurrent_bytes
 
 
 def _budget_document() -> JsonObject:
@@ -348,6 +784,68 @@ def _budget_document() -> JsonObject:
         "evidence_ids_per_claim": 10,
         "enrichment_input_bytes": 10_000,
     }
+
+
+def _map_budgets() -> MapBuildBudgets:
+    return MapBuildBudgets.from_budget_document(
+        _budget_document(),
+        source_fact_budget=1_000,
+        artifact_byte_budget=2_000_000,
+    )
+
+
+def _replace_snapshot_content_hash(
+    artifact: KnowledgeMapArtifact,
+    snapshot: EvidenceSnapshot,
+    content_hash: str,
+) -> KnowledgeMapArtifact:
+    reference = replace(snapshot.references[0], content_hash=content_hash)
+    snapshot_values = {
+        item.name: getattr(snapshot, item.name)
+        for item in fields(snapshot)
+        if item.name not in {"references", "snapshot_hash"}
+    }
+    stale_snapshot = EvidenceSnapshot.create(
+        **snapshot_values,
+        references=(reference, *snapshot.references[1:]),
+    )
+    return KnowledgeMapArtifact.create(
+        artifact_revision=artifact.artifact_revision + 1,
+        source=artifact.source,
+        derivation_parameters=artifact.derivation_parameters,
+        capacity_limits=artifact.capacity_limits,
+        coverage=artifact.coverage,
+        nodes=artifact.nodes,
+        edges=artifact.edges,
+        cycle_groups=artifact.cycle_groups,
+        clusters=artifact.clusters,
+        layers=artifact.layers,
+        flows=artifact.flows,
+        tour=artifact.tour,
+        scope_contracts=artifact.scope_contracts,
+        evidence_snapshots=(stale_snapshot,),
+        enrichments=artifact.enrichments,
+    )
+
+
+def _next_artifact(artifact: KnowledgeMapArtifact) -> KnowledgeMapArtifact:
+    return KnowledgeMapArtifact.create(
+        artifact_revision=artifact.artifact_revision + 1,
+        source=artifact.source,
+        derivation_parameters=artifact.derivation_parameters,
+        capacity_limits=artifact.capacity_limits,
+        coverage=artifact.coverage,
+        nodes=artifact.nodes,
+        edges=artifact.edges,
+        cycle_groups=artifact.cycle_groups,
+        clusters=artifact.clusters,
+        layers=artifact.layers,
+        flows=artifact.flows,
+        tour=artifact.tour,
+        scope_contracts=artifact.scope_contracts,
+        evidence_snapshots=artifact.evidence_snapshots,
+        enrichments=artifact.enrichments,
+    )
 
 
 @pytest.mark.parametrize("subcommand", tuple(COMMAND_ARGUMENTS))
@@ -466,12 +964,56 @@ def test_map_input_path_error_cells_use_real_filesystem_dispatch(
     captured = capsys.readouterr()
     document = json.loads(captured.out)
     assert captured.out.count("\n") == 1
+    assert document["schema_version"] == "1.0"
     assert document["command"] == f"map {subcommand}"
     assert document["error"]["code"] == code
     assert document["error"]["details"]["retry_mode"] == retry_mode
     assert document["error"]["details"]["recovery_action"] == recovery_action
+    assert captured.err
     assert "\x1b[" not in captured.out + captured.err
     assert str(tmp_path) not in captured.out + captured.err
+    assert artifact.read_bytes() == before
+
+
+def test_malformed_enrichment_cell_uses_real_decoder_and_preserves_bytes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repository = tmp_path / "repo"
+    artifact = repository / ".repo-dive" / "knowledge-map.json"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"last-valid-artifact\n")
+    before = artifact.read_bytes()
+    (repository / "bad.json").write_bytes(b'{"schema_version":"1.0",}')
+
+    result = main(
+        [
+            "map",
+            "enrich",
+            str(repository),
+            "--input",
+            "bad.json",
+            "--format",
+            "json",
+        ]
+    )
+
+    assert result == 2
+    captured = capsys.readouterr()
+    document = json.loads(captured.out)
+    assert captured.out.count("\n") == 1
+    assert document["schema_version"] == "1.0"
+    assert document["command"] == "map enrich"
+    assert document["error"] == {
+        "code": "knowledge_map_enrichment_invalid",
+        "details": {
+            "recovery_action": "correct_submission",
+            "retry_mode": "after_recovery",
+        },
+        "message": "Knowledge Map enrichment input is invalid.",
+    }
+    assert captured.err
+    assert "\x1b[" not in captured.out + captured.err
+    assert str(repository) not in captured.out + captured.err
     assert artifact.read_bytes() == before
 
 

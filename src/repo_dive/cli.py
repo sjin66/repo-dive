@@ -210,6 +210,7 @@ def _map_error_details(command: str, error: RepoDiveError) -> RepoDiveError:
         "repository_unavailable",
         "repository_not_directory",
         "path_outside_repository",
+        "index_not_found",
     }:
         # Repository selectors can be absolute host paths. They are useful to the
         # local resolver but are not part of the public Map diagnostic contract.

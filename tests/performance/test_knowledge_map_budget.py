@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -7,9 +8,11 @@ import pytest
 from repo_dive.errors import RepositoryError
 from repo_dive.indexing.service import IndexService, load_published_index
 from repo_dive.knowledge_map.build import KnowledgeMapBuildService
+from repo_dive.knowledge_map.enrichment_service import KnowledgeMapEnrichmentService
 from repo_dive.knowledge_map.evidence_service import KnowledgeMapEvidenceService
 from repo_dive.knowledge_map.models import MapBuildBudgets
 from repo_dive.knowledge_map.snapshot import snapshot_from_published_index
+from repo_dive.knowledge_map.store import MAP_ARTIFACT_PATH, MapStore
 
 
 def test_source_fact_budget_rejects_large_inventory_before_derivation(
@@ -67,6 +70,93 @@ def test_map_outputs_and_repeated_evidence_remain_within_persisted_bounds(
     assert replay.changed is False
     assert artifact_path.read_bytes() == first_bytes
     assert len(first_bytes) <= budgets.artifact_byte_budget
+
+
+def test_enrichment_growth_replay_and_first_capacity_failure_are_bounded(
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    (repository / "app.py").write_text(
+        "def helper():\n    return 1\n\ndef main():\n    return helper()\n",
+        encoding="utf-8",
+    )
+    IndexService().build(repository)
+    budgets = _budgets()
+    built = KnowledgeMapBuildService().build(repository, budgets=budgets).artifact
+    scope = built.scope_contracts[0]
+    evidence = KnowledgeMapEvidenceService().collect(
+        repository, scope_id=scope.scope_id, token_budget=10_000
+    )
+    artifact_path = repository / MAP_ARTIFACT_PATH
+
+    def payload(record_count: int, *, extra_text_bytes: int = 0) -> bytes:
+        return json.dumps(
+            {
+                "schema_version": "1.0",
+                "scope_id": scope.scope_id,
+                "expected_artifact_revision": evidence.artifact.artifact_revision,
+                "records": [
+                    {
+                        "id": f"{scope.allowed_record_kinds[0]}:bounded-{index}",
+                        "kind": scope.allowed_record_kinds[0],
+                        "claims": [
+                            {
+                                "kind": "summary",
+                                "text": (
+                                    f"Bounded semantic claim {index}."
+                                    + ("x" * extra_text_bytes)
+                                ),
+                                "fact_node_ids": [scope.allowed_fact_node_ids[0]],
+                                "related_node_ids": [],
+                                "evidence_ids": [
+                                    evidence.snapshot.references[0].evidence_id
+                                ],
+                            }
+                        ],
+                    }
+                    for index in range(record_count)
+                ],
+            },
+            separators=(",", ":"),
+        ).encode()
+
+    service = KnowledgeMapEnrichmentService()
+    accepted = service.enrich(repository, payload=payload(budgets.records_per_scope))
+    accepted_bytes = artifact_path.read_bytes()
+    persisted = MapStore(repository).read_artifact()
+    assert accepted.changed is True
+    assert len(persisted.enrichments) == 1
+    assert len(persisted.enrichments[0].records) == budgets.records_per_scope
+    assert len(persisted.enrichments[0].records) <= budgets.enrichment_records
+    assert (
+        persisted.enrichments[0].canonical_input_bytes <= budgets.enrichment_input_bytes
+    )
+    assert len(accepted_bytes) <= budgets.artifact_byte_budget
+
+    replay = service.enrich(repository, payload=payload(budgets.records_per_scope))
+    assert replay.changed is False
+    assert artifact_path.read_bytes() == accepted_bytes
+
+    with pytest.raises(RepositoryError) as exc_info:
+        service.enrich(repository, payload=payload(budgets.records_per_scope + 1))
+    assert exc_info.value.code == "knowledge_map_enrichment_budget_exceeded"
+    assert exc_info.value.details is not None
+    assert exc_info.value.details["field"] == "records_per_scope"
+    assert artifact_path.read_bytes() == accepted_bytes
+
+    with pytest.raises(RepositoryError) as exc_info:
+        service.enrich(
+            repository,
+            payload=payload(
+                budgets.records_per_scope,
+                extra_text_bytes=budgets.enrichment_input_bytes,
+            ),
+        )
+    assert exc_info.value.code == "knowledge_map_enrichment_budget_exceeded"
+    assert exc_info.value.details is not None
+    assert exc_info.value.details["field"] == "raw_input_bytes"
+    assert artifact_path.read_bytes() == accepted_bytes
 
 
 def _budgets() -> MapBuildBudgets:

@@ -136,7 +136,7 @@ The active index is a symlink to an immutable generation:
         └── metadata.json
 ```
 
-The physical database path is `.repo-dive/index-generations/<build-id>/index.sqlite3`; consumers use the stable pointer path `.repo-dive/index/index.sqlite3`. `manifest.json` records Schema `1.0`, build ID, repository fingerprint, scan mode, build parameters, file-to-Chunk membership, counts, and optional embedding identity. The generation-local `metadata.json` is the public pointer summary for that index generation and is distinct from the Wiki metadata file at `.repo-dive/metadata.json`.
+The physical database path is `.repo-dive/index-generations/<build-id>/index.sqlite3`; consumers use the stable pointer path `.repo-dive/index/index.sqlite3`. `manifest.json` records Schema `2.0`, build ID, repository fingerprint, scan mode, build parameters, file-to-Chunk membership, counts, and optional embedding identity. The generation-local `metadata.json` is the public pointer summary for that index generation and is distinct from the Wiki metadata file at `.repo-dive/metadata.json`.
 
 SQLite Schema 5 is declared by `PRAGMA user_version = 5` and contains `files`, `symbols`, `chunks`, `relationships`, `terms`, `postings`, `stats`, and `vectors`. Relationship rows preserve exact syntax-occurrence provenance while graph traversal groups them into unique endpoint-and-kind adjacencies. Foreign keys and integrity checks must pass before publication.
 

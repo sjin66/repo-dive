@@ -1,0 +1,7 @@
+{"file":".trellis/spec/backend/knowledge-map-contracts.md","reason":"Verify real process applicability, coordinated enrichment writer, semantic bounds, and public parity."}
+{"file":".trellis/spec/backend/tooling-integration-contracts.md","reason":"Verify exact staged allowlist, clean worktree, Make gates, and no-gitignore Ruff."}
+{"file":".trellis/spec/backend/wiki-template-contracts.md","reason":"Verify Wiki code and ownership remain unchanged while documentation retains Schema 2.0."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/prd.md","reason":"Re-evaluate the five blocked parent acceptance criteria after correction."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/design.md","reason":"Audit every process cell, precedence row, shared transaction, and capacity effect."}
+{"file":".trellis/tasks/08-30-knowledge-map-refactor/implement.md","reason":"Verify parent P3/P4 can resume without direct parent product edits."}
+{"file":".trellis/tasks/archive/2026-08/08-31-knowledge-map-integration-corrections/design.md","reason":"Ensure this follow-up closes rather than repeats the prior correction's stated test strategy."}

@@ -136,7 +136,7 @@ Vector 检索是可选项。`--embedding-model` 选择当前 Sentence Transforme
         └── metadata.json
 ```
 
-物理数据库路径是 `.repo-dive/index-generations/<build-id>/index.sqlite3`；消费者使用稳定指针路径 `.repo-dive/index/index.sqlite3`。`manifest.json` 记录 Schema `1.0`、Build ID、仓库指纹、扫描模式、构建参数、File-to-Chunk Membership、数量以及可选 Embedding 身份。代际内的 `metadata.json` 是该索引代际的公开指针摘要，与 `.repo-dive/metadata.json` 的 Wiki Metadata 不同。
+物理数据库路径是 `.repo-dive/index-generations/<build-id>/index.sqlite3`；消费者使用稳定指针路径 `.repo-dive/index/index.sqlite3`。`manifest.json` 记录 Schema `2.0`、Build ID、仓库指纹、扫描模式、构建参数、File-to-Chunk Membership、数量以及可选 Embedding 身份。代际内的 `metadata.json` 是该索引代际的公开指针摘要，与 `.repo-dive/metadata.json` 的 Wiki Metadata 不同。
 
 SQLite Schema 5 由 `PRAGMA user_version = 5` 声明，包含 `files`、`symbols`、`chunks`、`relationships`、`terms`、`postings`、`stats` 和 `vectors`。关系记录保留精确的语法出现位置与来源，而图遍历会按端点和关系类型聚合为唯一邻接边。发布前必须通过外键和完整性检查。
 

@@ -417,7 +417,7 @@ All failure rows write nothing and preserve the prior artifact unless stated as 
 | validate | Map absent | `knowledge_map_not_found` | 3 | `after_recovery` | `build_map` |
 | validate | Map stale | `knowledge_map_stale` | 3 | `after_recovery` | `rebuild_map` |
 | validate | Unsupported/malformed artifact | `knowledge_map_invalid` | 3 | `after_recovery` | `preserve_and_rebuild_map` |
-| validate | Reference/order/revision/Evidence invariant fails | `knowledge_map_validation_failed` | 3 | `after_recovery` | `rebuild_or_reset_scope` |
+| validate | Persisted Evidence snapshot/index is stale | `knowledge_map_evidence_stale` | 3 | `after_recovery` | `rebuild_reset_recollect` |
 | show | Unknown view or missing/invalid `max-results` | `invalid_invocation` | 2 | `after_recovery` | `correct_invocation` |
 | show | Map absent | `knowledge_map_not_found` | 3 | `after_recovery` | `build_map` |
 | show | Map stale | `knowledge_map_stale` | 3 | `after_recovery` | `rebuild_map` |
