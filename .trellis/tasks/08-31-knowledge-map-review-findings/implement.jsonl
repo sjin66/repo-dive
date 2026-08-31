@@ -1,6 +1,0 @@
-{"file": ".trellis/spec/backend/knowledge-map-contracts.md", "reason": "Knowledge Map artifact, budget, Evidence, writer, and public command contracts"}
-{"file": ".trellis/spec/backend/tooling-integration-contracts.md", "reason": "Exact clean-snapshot release and scope isolation gates"}
-{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Typed bounded stable SQLite Chunk read contract"}
-{"file": ".trellis/tasks/08-31-map-edge-budget-closure/research/edge-budget-closure-and-flow-priority.md", "reason": "Verified edge closure and Flow-priority defects"}
-{"file": ".trellis/tasks/08-31-map-flow-omission-accounting/research/flow-omission-accounting.md", "reason": "Verified Flow omission defect and count semantics"}
-{"file": ".trellis/tasks/08-31-map-evidence-planning-corrections/research/map-evidence-planning-defects.md", "reason": "Verified Evidence scaling and unavailable-Anchor defects"}
