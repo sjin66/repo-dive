@@ -13,7 +13,7 @@ from repo_dive.schema import JsonObject
 
 KNOWLEDGE_MAP_SCHEMA_VERSION = "1.0"
 KNOWLEDGE_MAP_ALGORITHM_ID = "builtin-knowledge-map"
-KNOWLEDGE_MAP_ALGORITHM_VERSION = "1"
+KNOWLEDGE_MAP_ALGORITHM_VERSION = "2"
 
 NodeKind = Literal["repository", "module", "file", "symbol"]
 Origin = Literal["parser", "derived"]

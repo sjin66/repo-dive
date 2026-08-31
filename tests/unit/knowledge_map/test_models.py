@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from repo_dive.knowledge_map.models import (
+    KNOWLEDGE_MAP_ALGORITHM_VERSION,
     CapacityLimits,
     Cluster,
     DerivationParameters,
@@ -66,6 +67,19 @@ def test_empty_artifact_round_trips_canonically() -> None:
     )
     assert decoded.evidence_snapshots == ()
     assert decoded.enrichments == ()
+
+
+def test_algorithm_version_two_rejects_version_one_artifacts() -> None:
+    artifact = KnowledgeMapArtifact.create_empty(
+        source=MapSource("fingerprint", "build", 5, "non_git", None, None),
+        budgets=budgets(),
+    )
+    document = artifact.to_document()
+    document["algorithm_version"] = "1"
+
+    assert KNOWLEDGE_MAP_ALGORITHM_VERSION == "2"
+    with pytest.raises(ValueError, match="algorithm identity is unsupported"):
+        KnowledgeMapArtifact.from_document(document)
 
 
 def test_decoder_rejects_unknown_fields_and_hash_drift() -> None:

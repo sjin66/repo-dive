@@ -96,6 +96,106 @@ def test_map_build_show_validate_json_workflow(
     assert artifact.read_bytes() == before
 
 
+def test_map_build_reports_insufficient_resolution_edge_closure_as_budget_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    (repository / "helper.py").write_text(
+        "def run():\n    return 1\n", encoding="utf-8"
+    )
+    (repository / "app.py").write_text(
+        "from helper import run\n\ndef main():\n    return run()\n", encoding="utf-8"
+    )
+    budget_document = _budget_document()
+    budget_document["edge_budget"] = 1
+    (repository / "budgets.json").write_text(
+        json.dumps(budget_document), encoding="utf-8"
+    )
+    IndexService().build(repository)
+
+    result = main(
+        [
+            "map",
+            "build",
+            str(repository),
+            "--source-fact-budget",
+            "1000",
+            "--artifact-byte-budget",
+            "2000000",
+            "--budget-file",
+            "budgets.json",
+            "--format",
+            "json",
+        ]
+    )
+
+    assert result == 3
+    captured = capsys.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"] == {
+        "code": "knowledge_map_budget_exceeded",
+        "details": {
+            "budget_name": "edge_budget",
+            "provided": 1,
+            "required": 2,
+            "recovery_action": "raise_named_budget",
+            "retry_mode": "after_recovery",
+        },
+        "message": "Required Knowledge Map resolution edges exceed the edge budget.",
+    }
+    assert captured.err
+    assert "\x1b[" not in captured.out + captured.err
+    assert str(repository) not in captured.out + captured.err
+    assert not (repository / MAP_ARTIFACT_PATH).exists()
+
+
+def test_algorithm_one_artifact_is_rejected_until_explicit_map_rebuild(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    (repository / "app.py").write_text("def main():\n    return 1\n", encoding="utf-8")
+    (repository / "budgets.json").write_text(
+        json.dumps(_budget_document()), encoding="utf-8"
+    )
+    IndexService().build(repository)
+    build_arguments = [
+        "map",
+        "build",
+        str(repository),
+        "--source-fact-budget",
+        "1000",
+        "--artifact-byte-budget",
+        "2000000",
+        "--budget-file",
+        "budgets.json",
+        "--format",
+        "json",
+    ]
+    assert main(build_arguments) == 0
+    capsys.readouterr()
+    artifact_path = repository / MAP_ARTIFACT_PATH
+    version_one = json.loads(artifact_path.read_bytes())
+    version_one["algorithm_version"] = "1"
+    artifact_path.write_text(json.dumps(version_one), encoding="utf-8")
+    invalid_bytes = artifact_path.read_bytes()
+
+    assert main(["map", "validate", str(repository), "--format", "json"]) == 3
+    invalid = json.loads(capsys.readouterr().out)
+    assert invalid["error"]["code"] == "knowledge_map_invalid"
+    assert invalid["error"]["details"] == {
+        "recovery_action": "preserve_and_rebuild_map",
+        "retry_mode": "after_recovery",
+    }
+    assert artifact_path.read_bytes() == invalid_bytes
+
+    assert main(build_arguments) == 0
+    rebuilt = json.loads(capsys.readouterr().out)
+    assert rebuilt["result"]["changed"] is True
+    assert json.loads(artifact_path.read_bytes())["algorithm_version"] == "2"
+
+
 def test_map_errors_include_closed_recovery_details(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

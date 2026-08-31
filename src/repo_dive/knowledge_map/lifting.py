@@ -170,13 +170,34 @@ def lift_snapshot(
         and item.reference_symbol_id in selected_ids
         and item.resolved_symbol_id in selected_ids
     )
-    ordered_edges = tuple(
-        sorted(
-            (*aggregates, *resolution_edges, *parser_edges),
-            key=lambda item: (item.origin, item.id),
+    candidate_edge_count = len(aggregates) + len(resolution_edges) + len(parser_edges)
+    if len(resolution_edges) > parameters.edge_budget:
+        raise RepositoryError(
+            "knowledge_map_budget_exceeded",
+            "Required Knowledge Map resolution edges exceed the edge budget.",
+            details={
+                "budget_name": "edge_budget",
+                "provided": parameters.edge_budget,
+                "required": len(resolution_edges),
+                "recovery_action": "raise_named_budget",
+                "retry_mode": "after_recovery",
+            },
         )
+    remaining_capacity = parameters.edge_budget - len(resolution_edges)
+    optional_tiers = (
+        tuple(edge for edge in parser_edges if edge.kind == "calls"),
+        tuple(edge for edge in parser_edges if edge.kind == "imports"),
+        aggregates,
+        tuple(edge for edge in parser_edges if edge.kind not in {"calls", "imports"}),
     )
-    included_edges = ordered_edges[: parameters.edge_budget]
+    selected_edges = list(sorted(resolution_edges, key=lambda item: item.id))
+    for tier in optional_tiers:
+        ordered_tier = sorted(tier, key=lambda item: item.id)
+        selected_edges.extend(ordered_tier[:remaining_capacity])
+        remaining_capacity -= min(len(ordered_tier), remaining_capacity)
+    included_edges = tuple(
+        sorted(selected_edges, key=lambda item: (item.origin, item.id))
+    )
     unresolved = sum(
         item.status in {"unresolved", "unsupported"} for item in resolution.resolutions
     )
@@ -185,7 +206,7 @@ def lift_snapshot(
         nodes=nodes,
         edges=included_edges,
         omitted_symbols=len(snapshot.symbols) - len(selected_symbols),
-        omitted_edges=len(ordered_edges) - len(included_edges),
+        omitted_edges=candidate_edge_count - len(included_edges),
         unresolved_references=unresolved,
         ambiguous_references=ambiguous,
         omitted_resolution_candidates=sum(
