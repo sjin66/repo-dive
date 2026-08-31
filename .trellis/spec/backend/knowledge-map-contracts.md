@@ -71,6 +71,9 @@ evidence_snapshots, enrichments
 - IDs and producer order are deterministic. Every parent, endpoint, member, edge,
   candidate, scope, anchor, Evidence, and enrichment reference must close over the
   same artifact.
+- The supported deterministic algorithm identity is version `2`. Version `1`
+  artifacts fail closed as invalid and require an explicit `map build`; there is no
+  compatibility decoder or in-place migration.
 - `content_hash` hashes canonical content without itself.
   `deterministic_revision` binds source/index identity, algorithm identity,
   derivation parameters, deterministic sections, and scope contracts.
@@ -85,6 +88,10 @@ evidence_snapshots, enrichments
   publishing a biased partial inventory.
 - Aggregate dependencies preserve occurrence totals separately from unique-neighbor
   counts and bounded contributor IDs. Resolution ambiguity remains explicit.
+- Edge selection first preflights every mandatory `resolves_to` trace. Remaining
+  global `edge_budget` slots select parser `calls`, parser `imports`, aggregate derived
+  edges, then remaining parser edges, by stable ID within each tier. The retained set
+  is serialized in `(origin, id)` order.
 - Importance signals are labeled raw values with a persisted lexicographic rank.
   Clusters, SCC cycle groups, layers, flows, tour, and scope contracts are persisted
   deterministic projections, not recomputed presentation guesses.
@@ -235,6 +242,10 @@ KnowledgeMapEnrichmentService.validate(
 - Before recollection, any existing snapshot is freshness-validated even when it is
   uncited. Equivalent recollection preserves bytes; a changed uncited snapshot may be
   replaced; a changed cited snapshot requires reset.
+- A required Anchor with no complete indexed Chunk preserves its deterministic scope
+  and fails as `knowledge_map_evidence_unavailable`, with recovery action
+  `make_source_indexable_or_select_scope`. It follows map/source/scope and existing-
+  snapshot freshness validation, and precedes capacity/token preflight and search.
 - Enrichment input is exactly one strict UTF-8 JSON object with fields
   `schema_version`, `scope_id`, `expected_artifact_revision`, and `records`.
   Records contain only `id`, `kind`, and `claims`; every claim independently owns
@@ -260,6 +271,7 @@ KnowledgeMapEnrichmentService.validate(
 | Mandatory tokens do not fit | `knowledge_map_evidence_budget_insufficient`; report numeric required/provided values; no search or write |
 | Snapshot/reference capacity cannot fit mandatory state | `knowledge_map_evidence_capacity_exceeded`; no partial snapshot |
 | Existing snapshot contains stale Chunk identity/hash/location | Reject as stale repository Evidence before replacement; preserve bytes |
+| Required Anchor has no complete indexed Chunk | `knowledge_map_evidence_unavailable`; `after_recovery` / `make_source_indexable_or_select_scope`; no search or write |
 | Changed snapshot is cited by current enrichment | `knowledge_map_evidence_conflict`; recovery is scope reset |
 | Invalid UTF-8/JSON/schema/shape/kind or duplicate key | `knowledge_map_enrichment_invalid` invocation error; preserve bytes |
 | Missing/wrong-scope/stale node, Evidence, or scope reference | Repository error with recovery action; preserve bytes |
@@ -393,6 +405,7 @@ repo-dive map validate <repository> [--format json]
 | Malformed enrichment UTF-8/JSON/schema/claim | Exit `2`; `knowledge_map_enrichment_invalid`; never generic `invalid_invocation` |
 | Missing/confined input or repository state | Exit `3`; preserve map bytes; return the domain recovery action |
 | Missing/stale/invalid map or Evidence/reference | Exit `3`; preserve bytes; require rebuild, recollection, reset, or corrected scope as applicable |
+| Required Map Evidence Anchor has no complete indexed Chunk | Exit `3`; `knowledge_map_evidence_unavailable`; `after_recovery` / `make_source_indexable_or_select_scope`; preserve bytes |
 | Source, derivation, semantic, or artifact capacity failure | Exit `3`; report bounded required/provided or named-limit details; never truncate required state |
 | Lock timeout, index change, or revision conflict | Exit `3`; no automatic retry/merge; preserve bytes |
 | Unexpected derivation or atomic write failure | Exit `4`; safe diagnostic only; preserve last valid bytes |

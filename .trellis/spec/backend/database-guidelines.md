@@ -56,6 +56,12 @@ The Schema 5 `relationships` row contains `id`, owner `file_path`, file-local
 `ordinal`, endpoint IDs, `kind`, `confidence`, `provenance`, exact POSIX `path`,
 one-based inclusive lines, zero-based columns, and `occurrence_ordinal`.
 
+The scope-directed complete-Chunk read boundary is:
+
+```python
+IndexStore.get_chunks_by_paths(paths: tuple[str, ...]) -> tuple[Chunk, ...]
+```
+
 ### 3. Contracts
 
 - One syntax occurrence produces one content-addressed relationship ID.
@@ -69,6 +75,11 @@ one-based inclusive lines, zero-based columns, and `occurrence_ordinal`.
   `(source_id, target_id, kind)`. The representative is highest confidence,
   followed by deterministic provenance, location, discriminator, and ID order.
 - Graph traversal budgets count unique adjacencies, not occurrence rows.
+- `get_chunks_by_paths` accepts at most 256 unique normalized repository-relative POSIX
+  paths, rejects invalid, duplicate, or oversized nonempty input before SQL, returns
+  `()` for empty input, and returns complete Chunks in `(file_path, ordinal)` order.
+  Callers batch larger scope-directed reads rather than widening the SQL parameter
+  bound or reconstructing unrelated `ParseResult` values.
 
 ### 4. Validation & Error Matrix
 
@@ -82,6 +93,7 @@ one-based inclusive lines, zero-based columns, and `occurrence_ordinal`.
 | Relationship path differs from owner file | Reject the document before opening the write transaction |
 | Duplicate relationship ID or broken foreign key | `InternalOperationError("index_integrity_error", ...)` |
 | Invalid direction, non-positive limit, or invalid confidence threshold | `ValueError` from the query boundary |
+| Invalid, duplicate, or more than 256 Chunk lookup paths | `ValueError` before SQL; empty input returns `()` |
 | Index schema/parser identity is old | Existing compatibility logic rejects or rebuilds the generation; no migration |
 
 ### 5. Good/Base/Bad Cases
@@ -106,6 +118,8 @@ one-based inclusive lines, zero-based columns, and `occurrence_ordinal`.
   explanation output when duplicate occurrences exist.
 - Integration tests assert old schema/parser identities rebuild and failed
   rebuilds do not publish a partial generation.
+- Store tests assert complete-Chunk path batches are bounded, path-confined, stably
+  ordered, empty-input safe, and equivalent across fixed-size batches.
 
 ### 7. Wrong vs Correct
 
