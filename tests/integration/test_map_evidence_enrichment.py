@@ -167,6 +167,58 @@ def test_required_evidence_budget_failure_preserves_artifact(
     assert (repository / MAP_ARTIFACT_PATH).read_bytes() == before
 
 
+@pytest.mark.parametrize("source_state", ["empty", "skipped"])
+def test_unavailable_required_anchor_precedes_budget_and_retrieval_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    source_state: str,
+) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    source = repository / "unavailable.py"
+    source.write_text("" if source_state == "empty" else "content\n", encoding="utf-8")
+    if source_state == "skipped":
+        IndexService().build(repository, max_file_size=1)
+    else:
+        IndexService().build(repository)
+    artifact = KnowledgeMapBuildService().build(repository, budgets=_budgets()).artifact
+    node_paths = {item.id: item.path for item in artifact.nodes}
+    scope = next(
+        item
+        for item in artifact.scope_contracts
+        if any(
+            node_paths[anchor_id] == "unavailable.py"
+            for anchor_id in item.required_anchor_fact_node_ids
+        )
+    )
+    anchor_id = next(
+        anchor_id
+        for anchor_id in scope.required_anchor_fact_node_ids
+        if node_paths[anchor_id] == "unavailable.py"
+    )
+    before = (repository / MAP_ARTIFACT_PATH).read_bytes()
+    monkeypatch.setattr(
+        "repo_dive.knowledge_map.evidence_service.search_repository",
+        lambda *_args, **_kwargs: pytest.fail(
+            "supplemental retrieval ran for unavailable mandatory Evidence"
+        ),
+    )
+
+    with pytest.raises(RepositoryError) as exc_info:
+        KnowledgeMapEvidenceService().collect(
+            repository, scope_id=scope.scope_id, token_budget=1
+        )
+
+    assert exc_info.value.code == "knowledge_map_evidence_unavailable"
+    assert exc_info.value.details == {
+        "anchor_fact_node_id": anchor_id,
+        "recovery_action": "make_source_indexable_or_select_scope",
+        "retry_mode": "after_recovery",
+        "scope_id": scope.scope_id,
+    }
+    assert (repository / MAP_ARTIFACT_PATH).read_bytes() == before
+
+
 def test_stale_scope_evidence_blocks_recollection_and_preserves_artifact(
     tmp_path: Path,
 ) -> None:
@@ -196,6 +248,99 @@ def test_stale_scope_evidence_blocks_recollection_and_preserves_artifact(
 
     reset = KnowledgeMapEnrichmentService().reset(repository, scope_id=scope_id)
     assert reset.changed is True
+
+
+def test_stale_existing_snapshot_precedes_unavailable_anchor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    (repository / "app.py").write_text("value = 1\n", encoding="utf-8")
+    (repository / "empty").mkdir()
+    (repository / "empty" / "empty.py").write_text("", encoding="utf-8")
+    IndexService().build(repository)
+    artifact = KnowledgeMapBuildService().build(repository, budgets=_budgets()).artifact
+    nodes = {item.id: item for item in artifact.nodes}
+    empty_scope = next(
+        item
+        for item in artifact.scope_contracts
+        if item.required_anchor_fact_node_ids
+        and all(
+            nodes[anchor_id].path == "empty/empty.py"
+            for anchor_id in item.required_anchor_fact_node_ids
+        )
+    )
+    source_scope = next(
+        item
+        for item in artifact.scope_contracts
+        if item.required_anchor_fact_node_ids
+        and all(
+            nodes[anchor_id].path == "app.py"
+            for anchor_id in item.required_anchor_fact_node_ids
+        )
+    )
+    collected = KnowledgeMapEvidenceService().collect(
+        repository, scope_id=source_scope.scope_id, token_budget=10_000
+    )
+    empty_anchor = empty_scope.required_anchor_fact_node_ids[0]
+    stale_reference = replace(
+        collected.snapshot.references[0],
+        content_hash="sha256:stale",
+        anchor_fact_node_ids=(empty_anchor,),
+    )
+    snapshot_values = {
+        item.name: getattr(collected.snapshot, item.name)
+        for item in fields(collected.snapshot)
+        if item.name
+        not in {
+            "scope_id",
+            "scope_kind",
+            "scope_contract_hash",
+            "references",
+            "snapshot_hash",
+        }
+    }
+    stale_snapshot = EvidenceSnapshot.create(
+        **snapshot_values,
+        scope_id=empty_scope.scope_id,
+        scope_kind=empty_scope.scope_kind,
+        scope_contract_hash=empty_scope.contract_hash,
+        references=(stale_reference,),
+    )
+    candidate = KnowledgeMapArtifact.create(
+        artifact_revision=collected.artifact.artifact_revision + 1,
+        source=collected.artifact.source,
+        derivation_parameters=collected.artifact.derivation_parameters,
+        capacity_limits=collected.artifact.capacity_limits,
+        coverage=collected.artifact.coverage,
+        nodes=collected.artifact.nodes,
+        edges=collected.artifact.edges,
+        cycle_groups=collected.artifact.cycle_groups,
+        clusters=collected.artifact.clusters,
+        layers=collected.artifact.layers,
+        flows=collected.artifact.flows,
+        tour=collected.artifact.tour,
+        scope_contracts=collected.artifact.scope_contracts,
+        evidence_snapshots=(stale_snapshot,),
+        enrichments=(),
+    )
+    store = MapStore(repository)
+    with store.write_transaction(store.read_snapshot()) as transaction:
+        transaction.commit(candidate)
+    before = (repository / MAP_ARTIFACT_PATH).read_bytes()
+    monkeypatch.setattr(
+        "repo_dive.knowledge_map.evidence_service.search_repository",
+        lambda *_args, **_kwargs: pytest.fail("supplemental retrieval ran"),
+    )
+
+    with pytest.raises(RepositoryError) as exc_info:
+        KnowledgeMapEvidenceService().collect(
+            repository, scope_id=empty_scope.scope_id, token_budget=1
+        )
+
+    assert exc_info.value.code == "knowledge_map_evidence_stale"
+    assert (repository / MAP_ARTIFACT_PATH).read_bytes() == before
 
 
 def test_wrong_scope_claim_reference_preserves_evidence_snapshot(

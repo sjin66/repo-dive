@@ -61,6 +61,8 @@ repo-dive map validate <repository> --format json
 
 Each claim independently owns non-empty `fact_node_ids` and `evidence_ids`; `related_node_ids` may be empty. The submission's `expected_artifact_revision` protects corrections from overwriting concurrent work. Identical scope content is a no-write replay even if an unrelated scope advanced the artifact revision.
 
+Empty or skipped files remain visible in deterministic cluster and tour scopes. If a required scope Anchor has no complete indexed Chunk, Evidence collection exits `3` with `knowledge_map_evidence_unavailable` and recovery action `make_source_indexable_or_select_scope`; it performs no supplemental retrieval and does not mutate the Map. Make the source indexable and rebuild the index and Map, or select another current scope.
+
 Validation checks schema, current references, scope ownership, and Evidence freshness. It returns `semantic_entailment_checked: false`: citations are not proof that claim text is true or entailed.
 
 ## Reset And Recovery

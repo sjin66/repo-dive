@@ -76,6 +76,7 @@ The stable error and recovery values are:
 | `knowledge_map_evidence_stale` | 3 | `after_recovery` | `rebuild_reset_recollect` |
 | `knowledge_map_evidence_budget_insufficient` | 3 | `after_recovery` | `raise_token_budget` |
 | `knowledge_map_evidence_capacity_exceeded` | 3 | `after_recovery` | `reset_scope_or_raise_capacity` |
+| `knowledge_map_evidence_unavailable` | 3 | `after_recovery` | `make_source_indexable_or_select_scope` |
 | `knowledge_map_evidence_conflict` | 3 | `after_recovery` | `reset_scope_and_recollect` |
 | `knowledge_map_enrichment_reference_invalid` | 3 | `after_recovery` | `regenerate_current_scope_submission` |
 | `knowledge_map_enrichment_budget_exceeded` | 3 | `after_recovery` | `reduce_enrichment_or_raise_capacity` |

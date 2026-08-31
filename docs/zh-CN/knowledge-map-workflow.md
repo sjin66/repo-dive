@@ -61,6 +61,8 @@ repo-dive map validate <repository> --format json
 
 每条 Claim 独立拥有非空 `fact_node_ids` 和 `evidence_ids`；`related_node_ids` 可以为空。Submission 的 `expected_artifact_revision` 防止 Correction 覆盖并发工作。即使不相关 Scope 推进了 Artifact Revision，相同 Scope Content 的重放仍是不写入操作。
 
+空文件或跳过的文件仍保留在确定性的 Cluster 与 Tour Scope 中。如果某个必需 Scope Anchor 没有完整的已索引 Chunk，Evidence 收集会以退出码 `3` 和 `knowledge_map_evidence_unavailable` 失败，并返回恢复操作 `make_source_indexable_or_select_scope`；该操作不会运行补充检索，也不会修改 Map。应让来源可索引并重新构建 Index 与 Map，或选择其他当前 Scope。
+
 Validation 校验 Schema、当前 Reference、Scope Ownership 与 Evidence Freshness。它返回 `semantic_entailment_checked: false`：Citation 不能证明 Claim Text 为真或被 Evidence 蕴含。
 
 ## Reset 与恢复

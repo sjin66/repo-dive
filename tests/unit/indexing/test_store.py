@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -85,6 +86,34 @@ def parse_result() -> ParseResult:
     )
 
 
+def _source_with_chunks(
+    path: str, texts: tuple[str, ...]
+) -> tuple[SourceFile, ParseResult]:
+    text = "".join(texts)
+    source = SourceFile(
+        record=FileRecord(
+            path=path,
+            language="python",
+            size_bytes=len(text.encode("utf-8")),
+            content_hash=f"hash:{path}",
+            encoding="utf-8",
+            status=ReadStatus.READ,
+            skip_reason=None,
+        ),
+        text=text,
+    )
+    chunks = tuple(
+        create_chunk(
+            path=path,
+            start_line=index,
+            end_line=index,
+            text=chunk_text,
+        )
+        for index, chunk_text in enumerate(texts, start=1)
+    )
+    return source, ParseResult(chunks=chunks)
+
+
 def test_initialize_creates_versioned_schema_and_required_tables(
     tmp_path: Path,
 ) -> None:
@@ -127,6 +156,84 @@ def test_store_pages_chunk_ids_in_stable_source_order(tmp_path: Path) -> None:
         page = store.page_chunk_ids("src/service.py", after_ordinal=-1, limit=1)
 
     assert page == ((0, parsed.chunks[0].id),)
+
+
+def test_store_gets_complete_chunks_by_bounded_paths_in_stable_order(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "index.sqlite3"
+    sources = (
+        _source_with_chunks("z.py", ("z-first\n", "z-second\n")),
+        _source_with_chunks("a.py", ("a-first\n", "a-second\n")),
+        _source_with_chunks("outside.py", ("outside\n",)),
+    )
+    with IndexStore.initialize(database) as store:
+        for source, parsed in sources:
+            store.replace_document(source, parsed)
+
+        selected = store.get_chunks_by_paths(("z.py", "a.py"))
+        all_in_batches = (
+            *store.get_chunks_by_paths(("a.py", "outside.py")),
+            *store.get_chunks_by_paths(("z.py",)),
+        )
+
+    assert tuple((item.path, item.text) for item in selected) == (
+        ("a.py", "a-first\n"),
+        ("a.py", "a-second\n"),
+        ("z.py", "z-first\n"),
+        ("z.py", "z-second\n"),
+    )
+    assert tuple(
+        sorted(all_in_batches, key=lambda item: (item.path, item.start_line))
+    ) == tuple(
+        item
+        for _source, parsed in sorted(sources, key=lambda item: item[0].record.path)
+        for item in parsed.chunks
+    )
+
+
+def test_store_chunk_path_lookup_accepts_empty_and_exact_maximum_batch(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "index.sqlite3"
+    with IndexStore.initialize(database) as store:
+        assert store.get_chunks_by_paths(()) == ()
+        assert (
+            store.get_chunks_by_paths(
+                tuple(f"src/file_{index:03d}.py" for index in range(256))
+            )
+            == ()
+        )
+
+
+@pytest.mark.parametrize(
+    "paths",
+    [
+        ("src/app.py", "src/app.py"),
+        tuple(f"src/file_{index:03d}.py" for index in range(257)),
+        ("",),
+        ("/absolute.py",),
+        ("../escape.py",),
+        ("src/../escape.py",),
+        ("src\\windows.py",),
+        ("src//app.py",),
+        ("src/./app.py",),
+        cast(tuple[str, ...], (["src/app.py"],)),
+    ],
+)
+def test_store_chunk_path_lookup_rejects_invalid_input_before_sql(
+    tmp_path: Path,
+    paths: tuple[str, ...],
+) -> None:
+    database = tmp_path / "index.sqlite3"
+    with IndexStore.initialize(database) as store:
+        statements: list[str] = []
+        store._connection.set_trace_callback(statements.append)
+
+        with pytest.raises(ValueError):
+            store.get_chunks_by_paths(paths)
+
+        assert statements == []
 
 
 def test_invalid_relationship_preserves_existing_document(tmp_path: Path) -> None:

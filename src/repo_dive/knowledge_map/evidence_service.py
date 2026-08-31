@@ -11,7 +11,6 @@ from repo_dive.context.packer import (
     RequiredEvidenceBudgetError,
 )
 from repo_dive.errors import RepositoryError
-from repo_dive.indexing.manifest import ManifestFile
 from repo_dive.indexing.service import load_published_index
 from repo_dive.indexing.store import IndexStore
 from repo_dive.knowledge_map.evidence import ScopeEvidencePlan, plan_scope_evidence
@@ -21,6 +20,7 @@ from repo_dive.knowledge_map.models import (
     EvidenceSnapshot,
     KnowledgeMapArtifact,
     RetrievalParameters,
+    ScopeContract,
 )
 from repo_dive.knowledge_map.store import MapStore
 from repo_dive.parsing.models import Chunk, Symbol
@@ -70,7 +70,13 @@ class KnowledgeMapEvidenceService:
             published.manifest.build_id,
             published.manifest.repository_fingerprint,
         )
-        chunks, symbols = _load_facts(published.database, published.manifest.files)
+        contract = _scope_contract(artifact, scope_id)
+        existing = next(
+            (item for item in artifact.evidence_snapshots if item.scope_id == scope_id),
+            None,
+        )
+        if existing is not None:
+            _validate_references(published.database, existing)
         capacity = artifact.capacity_limits.evidence_references_per_snapshot
         parameters = RetrievalParameters(
             max_results=min(MAX_RESULTS, capacity),
@@ -79,6 +85,7 @@ class KnowledgeMapEvidenceService:
             channel_weights=(("lexical", 1.0), ("structural", 1.0)),
             overlap_threshold=DEFAULT_OVERLAP_THRESHOLD,
         )
+        chunks, symbols = _load_scope_facts(published.database, artifact, contract)
         plan = plan_scope_evidence(
             artifact,
             scope_id,
@@ -86,12 +93,6 @@ class KnowledgeMapEvidenceService:
             symbols=symbols,
             retrieval_parameters=parameters,
         )
-        existing = next(
-            (item for item in artifact.evidence_snapshots if item.scope_id == scope_id),
-            None,
-        )
-        if existing is not None:
-            _validate_references(published.database, existing)
         if (
             existing is None
             and len(artifact.evidence_snapshots)
@@ -248,15 +249,79 @@ def validate_evidence_freshness(
     _validate_references(published.database, snapshot)
 
 
-def _load_facts(
-    database: Path, manifest_files: tuple[ManifestFile, ...]
+def _scope_contract(artifact: KnowledgeMapArtifact, scope_id: str) -> ScopeContract:
+    contract = next(
+        (item for item in artifact.scope_contracts if item.scope_id == scope_id), None
+    )
+    if contract is None:
+        raise RepositoryError(
+            "knowledge_map_scope_not_found",
+            "Knowledge Map scope does not exist.",
+            details={
+                "recovery_action": "select_current_scope",
+                "retry_mode": "after_recovery",
+                "scope_id": scope_id,
+            },
+        )
+    return contract
+
+
+def _load_scope_facts(
+    database: Path,
+    artifact: KnowledgeMapArtifact,
+    contract: ScopeContract,
 ) -> tuple[tuple[Chunk, ...], tuple[Symbol, ...]]:
-    symbols: list[Symbol] = []
+    paths = _scope_paths(artifact, contract)
+    chunks: list[Chunk] = []
     with IndexStore.open_readonly(database) as index:
-        chunks = index.get_chunks()
-        for entry in manifest_files:
-            symbols.extend(index.get_parse_result(entry.path).symbols)
-    return chunks, tuple(symbols)
+        for offset in range(0, len(paths), 256):
+            chunks.extend(index.get_chunks_by_paths(paths[offset : offset + 256]))
+        symbol_ids = tuple(
+            dict.fromkeys(
+                item.symbol_id for item in chunks if item.symbol_id is not None
+            )
+        )
+        symbols = tuple(
+            symbol
+            for offset in range(0, len(symbol_ids), 256)
+            for symbol in index.get_symbols_by_id(symbol_ids[offset : offset + 256])
+        )
+    return tuple(chunks), symbols
+
+
+def _scope_paths(
+    artifact: KnowledgeMapArtifact, contract: ScopeContract
+) -> tuple[str, ...]:
+    nodes = {item.id: item for item in artifact.nodes}
+    paths: list[str] = []
+    seen: set[str] = set()
+
+    def append(path: str | None) -> None:
+        if path is not None and path not in seen:
+            seen.add(path)
+            paths.append(path)
+
+    for anchor_id in contract.required_anchor_fact_node_ids:
+        anchor = nodes[anchor_id]
+        if anchor.kind in {"symbol", "file"}:
+            append(anchor.path)
+        elif anchor.kind == "module":
+            for node in sorted(
+                (
+                    item
+                    for item in artifact.nodes
+                    if item.kind == "file" and item.parent_id == anchor.id
+                ),
+                key=lambda item: (item.path, item.id),
+            ):
+                append(node.path)
+        else:
+            for node in sorted(
+                (item for item in artifact.nodes if item.kind == "file"),
+                key=lambda item: (item.path, item.id),
+            ):
+                append(node.path)
+    return tuple(paths)
 
 
 def _direct_hit(chunk: Chunk) -> SearchHit:

@@ -7,7 +7,7 @@ from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from importlib import resources
 from math import isclose
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from types import TracebackType
 from typing import Literal, cast
 
@@ -709,6 +709,21 @@ class IndexStore:
         )
         return tuple(_chunk_from_row(row) for row in rows)
 
+    def get_chunks_by_paths(self, paths: tuple[str, ...]) -> tuple[Chunk, ...]:
+        """Read complete Chunks for a bounded set of repository paths."""
+        self._ensure_open()
+        _validate_chunk_lookup_paths(paths)
+        if not paths:
+            return ()
+        placeholders = ", ".join("?" for _ in paths)
+        rows = self._connection.execute(
+            "SELECT id, file_path, start_line, end_line, text, symbol_id, "
+            f"content_hash FROM chunks WHERE file_path IN ({placeholders}) "
+            "ORDER BY file_path, ordinal",
+            paths,
+        )
+        return tuple(_chunk_from_row(row) for row in rows)
+
     def foreign_key_violations(
         self,
     ) -> tuple[tuple[str, int | None, str, int], ...]:
@@ -903,6 +918,25 @@ def _validate_document_path(file_path: str, parsed: ParseResult) -> None:
                 "mismatch_count": len(mismatched_paths),
             },
         )
+
+
+def _validate_chunk_lookup_paths(paths: tuple[str, ...]) -> None:
+    if any(type(path) is not str for path in paths):
+        raise ValueError("Chunk lookup paths must be strings")
+    if len(paths) > 256 or len(set(paths)) != len(paths):
+        raise ValueError(
+            "Chunk lookup paths must be unique and contain at most 256 items"
+        )
+    for path in paths:
+        candidate = PurePosixPath(path)
+        if (
+            not path
+            or "\\" in path
+            or candidate.is_absolute()
+            or str(candidate) != path
+            or ".." in candidate.parts
+        ):
+            raise ValueError("Chunk lookup path must be repository-relative POSIX")
 
 
 def _bm25_stats(index: BM25Index) -> tuple[tuple[str, str], ...]:

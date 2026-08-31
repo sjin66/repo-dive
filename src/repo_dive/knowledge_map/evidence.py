@@ -85,14 +85,13 @@ def plan_scope_evidence(
         )
         if selected_chunk is None:
             raise RepositoryError(
-                "knowledge_map_evidence_capacity_exceeded",
+                "knowledge_map_evidence_unavailable",
                 "A required Knowledge Map anchor has no complete indexed Chunk.",
                 details={
-                    "anchor_id": anchor_id,
-                    "provided": 0,
-                    "required": 1,
-                    "recovery_action": "reset_scope_or_raise_capacity",
+                    "anchor_fact_node_id": anchor_id,
+                    "recovery_action": "make_source_indexable_or_select_scope",
                     "retry_mode": "after_recovery",
+                    "scope_id": scope_id,
                 },
             )
         prior = positions.get(selected_chunk.id)

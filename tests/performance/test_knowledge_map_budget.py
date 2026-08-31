@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from repo_dive.errors import RepositoryError
 from repo_dive.indexing.service import IndexService, load_published_index
+from repo_dive.indexing.store import IndexStore
 from repo_dive.knowledge_map.build import KnowledgeMapBuildService
 from repo_dive.knowledge_map.enrichment_service import KnowledgeMapEnrichmentService
 from repo_dive.knowledge_map.evidence_service import KnowledgeMapEvidenceService
 from repo_dive.knowledge_map.models import MapBuildBudgets
 from repo_dive.knowledge_map.snapshot import snapshot_from_published_index
 from repo_dive.knowledge_map.store import MAP_ARTIFACT_PATH, MapStore
+from repo_dive.parsing.models import Chunk, Symbol
 
 
 def test_source_fact_budget_rejects_large_inventory_before_derivation(
@@ -70,6 +73,80 @@ def test_map_outputs_and_repeated_evidence_remain_within_persisted_bounds(
     assert replay.changed is False
     assert artifact_path.read_bytes() == first_bytes
     assert len(first_bytes) <= budgets.artifact_byte_budget
+
+
+def test_direct_evidence_planning_reads_only_scope_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    (repository / "target.py").write_text(
+        "def helper():\n    return 1\n\ndef target():\n    return helper()\n",
+        encoding="utf-8",
+    )
+    (repository / "unrelated").mkdir()
+    for index in range(20):
+        (repository / "unrelated" / f"module_{index:02d}.py").write_text(
+            f"def unrelated_{index}():\n    return {index}\n", encoding="utf-8"
+        )
+    IndexService().build(repository)
+    artifact = (
+        KnowledgeMapBuildService()
+        .build(repository, budgets=replace(_budgets(), source_fact_budget=1_000))
+        .artifact
+    )
+    nodes = {item.id: item for item in artifact.nodes}
+    contract = next(
+        item
+        for item in artifact.scope_contracts
+        if item.required_anchor_fact_node_ids
+        and {
+            nodes[node_id].path
+            for node_id in item.required_anchor_fact_node_ids
+            if nodes[node_id].path is not None
+        }
+        == {"target.py"}
+    )
+    path_batches: list[tuple[str, ...]] = []
+    symbol_batches: list[tuple[str, ...]] = []
+    original_chunks = IndexStore.get_chunks_by_paths
+    original_symbols = IndexStore.get_symbols_by_id
+
+    def record_paths(store: IndexStore, paths: tuple[str, ...]) -> tuple[Chunk, ...]:
+        path_batches.append(paths)
+        return original_chunks(store, paths)
+
+    def record_symbols(
+        store: IndexStore, symbol_ids: tuple[str, ...]
+    ) -> tuple[Symbol, ...]:
+        symbol_batches.append(symbol_ids)
+        return original_symbols(store, symbol_ids)
+
+    class SupplementalRetrievalStarted(Exception):
+        pass
+
+    monkeypatch.setattr(IndexStore, "get_chunks_by_paths", record_paths)
+    monkeypatch.setattr(IndexStore, "get_symbols_by_id", record_symbols)
+    monkeypatch.setattr(
+        IndexStore,
+        "get_parse_result",
+        lambda *_args, **_kwargs: pytest.fail(
+            "direct Evidence planning loaded ParseResults and Relationships"
+        ),
+    )
+    monkeypatch.setattr(
+        "repo_dive.knowledge_map.evidence_service.search_repository",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(SupplementalRetrievalStarted()),
+    )
+
+    with pytest.raises(SupplementalRetrievalStarted):
+        KnowledgeMapEvidenceService().collect(
+            repository, scope_id=contract.scope_id, token_budget=10_000
+        )
+
+    assert path_batches == [("target.py",)]
+    assert len(symbol_batches) == 1
 
 
 def test_enrichment_growth_replay_and_first_capacity_failure_are_bounded(

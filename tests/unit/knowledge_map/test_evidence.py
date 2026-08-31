@@ -5,6 +5,7 @@ from typing import cast
 
 import pytest
 
+from repo_dive.errors import RepositoryError
 from repo_dive.knowledge_map.evidence import plan_scope_evidence
 from repo_dive.knowledge_map.models import (
     KnowledgeMapArtifact,
@@ -146,3 +147,50 @@ def test_scope_plan_preserves_anchor_order_and_stable_fallback(
         "symbol:reference",
         "module:pkg",
     )
+
+
+def test_scope_plan_reports_unavailable_anchor_without_capacity_details() -> None:
+    node = SimpleNamespace(
+        id="file:empty",
+        kind="file",
+        name="empty.py",
+        path="empty.py",
+        parent_id="module:root",
+        parser_symbol_id=None,
+    )
+    contract = ScopeContract.create(
+        scope_id="cluster:empty",
+        scope_kind="cluster",
+        allowed_fact_node_ids=(node.id,),
+        required_anchor_fact_node_ids=(node.id,),
+        allowed_record_kinds=("concept",),
+        allowed_claim_kinds=("summary",),
+    )
+    artifact = cast(
+        KnowledgeMapArtifact,
+        SimpleNamespace(scope_contracts=(contract,), nodes=(node,)),
+    )
+    parameters = RetrievalParameters(
+        10,
+        "weighted_rrf",
+        60,
+        (("lexical", 1.0),),
+        0.8,
+    )
+
+    with pytest.raises(RepositoryError) as exc_info:
+        plan_scope_evidence(
+            artifact,
+            contract.scope_id,
+            chunks=(),
+            symbols=(),
+            retrieval_parameters=parameters,
+        )
+
+    assert exc_info.value.code == "knowledge_map_evidence_unavailable"
+    assert exc_info.value.details == {
+        "anchor_fact_node_id": node.id,
+        "recovery_action": "make_source_indexable_or_select_scope",
+        "retry_mode": "after_recovery",
+        "scope_id": contract.scope_id,
+    }

@@ -178,6 +178,12 @@ SHARED_ERROR_ROWS = (
         "reset_scope_or_raise_capacity",
     ),
     (
+        "knowledge_map_evidence_unavailable",
+        3,
+        "after_recovery",
+        "make_source_indexable_or_select_scope",
+    ),
+    (
         "knowledge_map_evidence_conflict",
         3,
         "after_recovery",
@@ -231,6 +237,7 @@ ERROR_COMMANDS = {
     "knowledge_map_scope_not_found": ("evidence", "reset"),
     "knowledge_map_evidence_budget_insufficient": ("evidence",),
     "knowledge_map_evidence_capacity_exceeded": ("evidence",),
+    "knowledge_map_evidence_unavailable": ("evidence",),
     "knowledge_map_evidence_conflict": ("evidence",),
     "knowledge_map_evidence_not_found": ("enrich",),
     "knowledge_map_evidence_stale": ("evidence", "enrich", "validate"),
@@ -298,6 +305,7 @@ FROZEN_EXPECTED_ERROR_CELLS = frozenset(
         ("reset", "knowledge_map_scope_not_found"),
         ("evidence", "knowledge_map_evidence_budget_insufficient"),
         ("evidence", "knowledge_map_evidence_capacity_exceeded"),
+        ("evidence", "knowledge_map_evidence_unavailable"),
         ("evidence", "knowledge_map_evidence_conflict"),
         ("enrich", "knowledge_map_evidence_not_found"),
         ("evidence", "knowledge_map_evidence_stale"),
@@ -340,6 +348,73 @@ def test_generated_error_cells_match_the_frozen_reviewed_contract() -> None:
     assert generated.isdisjoint(SEPARATE_PROCESS_ERROR_CELLS)
 
 
+@pytest.mark.parametrize("source_state", ["empty", "skipped"])
+def test_unavailable_map_evidence_has_safe_exact_process_details(
+    tmp_path: Path,
+    source_state: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    (repository / "private-name.py").write_text(
+        "" if source_state == "empty" else "private source text\n",
+        encoding="utf-8",
+    )
+    if source_state == "skipped":
+        IndexService().build(repository, max_file_size=1)
+    else:
+        IndexService().build(repository)
+    artifact = (
+        KnowledgeMapBuildService().build(repository, budgets=_map_budgets()).artifact
+    )
+    nodes = {item.id: item for item in artifact.nodes}
+    scope = next(
+        item
+        for item in artifact.scope_contracts
+        if any(
+            nodes[anchor_id].path == "private-name.py"
+            for anchor_id in item.required_anchor_fact_node_ids
+        )
+    )
+    anchor_id = next(
+        anchor_id
+        for anchor_id in scope.required_anchor_fact_node_ids
+        if nodes[anchor_id].path == "private-name.py"
+    )
+    artifact_path = repository / ".repo-dive" / "knowledge-map.json"
+    before = artifact_path.read_bytes()
+
+    assert (
+        main(
+            [
+                "map",
+                "evidence",
+                str(repository),
+                "--scope",
+                scope.scope_id,
+                "--token-budget",
+                "1",
+                "--format",
+                "json",
+            ]
+        )
+        == 3
+    )
+
+    captured = capsys.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"]["code"] == "knowledge_map_evidence_unavailable"
+    assert document["error"]["details"] == {
+        "anchor_fact_node_id": anchor_id,
+        "recovery_action": "make_source_indexable_or_select_scope",
+        "retry_mode": "after_recovery",
+        "scope_id": scope.scope_id,
+    }
+    assert "private-name.py" not in captured.out + captured.err
+    assert "private source text" not in captured.out + captured.err
+    assert artifact_path.read_bytes() == before
+
+
 @pytest.mark.parametrize(
     ("subcommand", "code", "exit_code", "retry_mode", "recovery_action"),
     SHARED_PROCESS_CASES,
@@ -359,7 +434,11 @@ def test_shared_error_applicability_matrix_reaches_the_public_process_contract(
     artifact = repository / ".repo-dive" / "knowledge-map.json"
     repository.mkdir(parents=True)
     (repository / "app.py").write_text(
-        "def helper():\n    return 1\n\ndef main():\n    return helper()\n",
+        (
+            ""
+            if code == "knowledge_map_evidence_unavailable"
+            else "def helper():\n    return 1\n\ndef main():\n    return helper()\n"
+        ),
         encoding="utf-8",
     )
     budget_document = _budget_document()
@@ -450,6 +529,7 @@ def test_shared_error_applicability_matrix_reaches_the_public_process_contract(
                 collected = None
                 if code not in {
                     "knowledge_map_evidence_capacity_exceeded",
+                    "knowledge_map_evidence_unavailable",
                     "knowledge_map_evidence_not_found",
                 }:
                     collected = KnowledgeMapEvidenceService().collect(
@@ -549,6 +629,7 @@ def test_shared_error_applicability_matrix_reaches_the_public_process_contract(
             "knowledge_map_scope_not_found",
             "knowledge_map_evidence_budget_insufficient",
             "knowledge_map_evidence_capacity_exceeded",
+            "knowledge_map_evidence_unavailable",
             "knowledge_map_evidence_conflict",
             "knowledge_map_evidence_not_found",
             "knowledge_map_evidence_stale",
